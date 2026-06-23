@@ -1,0 +1,366 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #111;
+  color: #fff;
+}
+
+#pano {
+  position: fixed;
+  inset: 0;
+}
+
+/* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
+.leaflet-container { cursor: crosshair; background: #1b1b1b; }
+
+/* Top HUD pills */
+.hud-pill {
+  position: fixed;
+  top: 12px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(17, 17, 17, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  font-size: 14px;
+  z-index: 500;
+  white-space: nowrap;
+}
+.hud-pill .brand { font-weight: 700; color: #22c55e; letter-spacing: 0.3px; }
+.hud-pill b { color: #fff; }
+#topLeft { left: 55px; }
+#scoreBox { right: 14px; }
+
+/* Compass ribbon (top middle) — scrolls horizontally as you turn */
+#compass {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 34px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: linear-gradient(rgba(28, 28, 30, 0.82), rgba(12, 12, 14, 0.82));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 14px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  z-index: 500;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
+}
+#compassStrip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  will-change: transform;
+}
+#compass .tick {
+  position: absolute;
+  bottom: 6px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateX(-50%);
+}
+#compass .tick.minor { height: 4px; }
+#compass .tick.mid { height: 7px; background: rgba(255, 255, 255, 0.32); }
+#compass .tick.major { height: 10px; background: rgba(255, 255, 255, 0.5); }
+#compass .tick .clabel {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+/* intercardinals (NE, SE, …) are smaller and dimmer than N/E/S/W */
+#compass .tick.card .clabel { font-size: 9px; color: #94a3b8; }
+#compass .tick.primary .clabel { font-size: 12px; color: #f1f5f9; }
+#compass .tick.primary.north .clabel { color: #ef4444; }
+
+/* fixed centre indicator = the direction you face */
+#compassMark {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 100%;
+  transform: translateX(-50%);
+  background: rgba(34, 197, 94, 0.9);
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.7);
+  pointer-events: none;
+}
+#compassMark::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #22c55e;
+}
+
+/* Guess panel (bottom-right, expands on hover) */
+#guessPanel {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  width: 300px;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0.62;
+  transition: width 0.08s ease-out, opacity 0.12s ease;
+}
+#guessPanel:hover,
+#guessPanel.revealed { opacity: 1; }
+#guessPanel:hover { width: min(46vw, 560px); }
+
+#map {
+  width: 100%;
+  height: 190px;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transition: height 0.08s ease-out;
+}
+#guessPanel:hover #map { height: min(42vh, 420px); }
+
+#guessBtn {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #06240f;
+  background: #22c55e;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+#guessBtn:hover:not(:disabled) { background: #16a34a; }
+#guessBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Settings */
+#settingsBtn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 700;
+  width: 35px;
+  height: 35px;
+  font-size: 17px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(17, 17, 17, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+#settingsBtn:hover { background: rgba(34, 197, 94, 0.22); }
+
+#settings {
+  position: fixed;
+  inset: 0;
+  z-index: 850;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+.settings-card {
+  width: min(92vw, 380px);
+  padding: 22px;
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+}
+.settings-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.settings-head h2 { font-size: 18px; }
+#settingsClose {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+#settingsClose:hover { color: #fff; }
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.setting span { opacity: 0.8; }
+.setting select {
+  padding: 10px;
+  font-size: 14px;
+  color: #fff;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.settings-note { font-size: 12px; opacity: 0.55; line-height: 1.45; }
+
+#dropZone {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  border: 1.5px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+#dropZone:hover { border-color: rgba(34, 197, 94, 0.6); background: rgba(34, 197, 94, 0.06); }
+#dropZone.dragover { border-color: #22c55e; background: rgba(34, 197, 94, 0.12); }
+#dropZone b { font-size: 13px; }
+#dropZone small { font-size: 11px; opacity: 0.55; }
+.upload-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  min-height: 18px;
+}
+.link-btn {
+  background: none;
+  border: none;
+  color: #22c55e;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+.link-btn:hover { color: #16a34a; }
+
+/* Round result (fullscreen map + floating panel) */
+#resultScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 750;
+  background: #0b0b0b;
+}
+#resultMap { position: absolute; inset: 0; }
+#resultPanel {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 760;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 30px;
+  background: rgba(17, 17, 17, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  backdrop-filter: blur(6px);
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.result-dist { font-size: 15px; opacity: 0.85; }
+.result-dist b { font-size: 22px; font-weight: 800; color: #fff; }
+.result-points { font-size: 14px; }
+.result-points b { font-size: 20px; font-weight: 800; color: #22c55e; }
+#nextBtn {
+  margin-top: 4px;
+  padding: 11px 44px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #06240f;
+  background: #22c55e;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+#nextBtn:hover { background: #16a34a; }
+
+/* Custom map pins: crisp white outline (8-way) + soft shadow for contrast. */
+.map-pin {
+  filter:
+    drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff)
+    drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)
+    drop-shadow(1px 1px 0 #fff) drop-shadow(-1px 1px 0 #fff)
+    drop-shadow(1px -1px 0 #fff) drop-shadow(-1px -1px 0 #fff)
+    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}
+
+/* Final screen */
+#final {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.78);
+}
+.final-card {
+  text-align: center;
+  padding: 40px 56px;
+  background: #181818;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+}
+.final-card h1 { font-size: 26px; margin-bottom: 10px; }
+.final-score { font-size: 34px; font-weight: 800; color: #22c55e; margin-bottom: 22px; }
+#playAgain {
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #06240f;
+  background: #22c55e;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+#playAgain:hover { background: #16a34a; }
+
+/* Loading overlay */
+#loading {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  grid-auto-flow: row;
+  background: rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+#loading p { font-size: 14px; opacity: 0.85; max-width: 320px; }
+.spinner {
+  width: 42px;
+  height: 42px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #22c55e;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.hidden { display: none !important; }
