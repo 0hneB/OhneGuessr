@@ -35,14 +35,19 @@
         <span>Map style</span>
         <select id="mapStyleSel"></select>
       </label>
-      <label class="setting">
-        <span>Panorama quality</span>
-        <select id="qualitySel">
-          <option value="low">Low &mdash; fastest</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="max">Max &mdash; sharpest</option>
-        </select>
+      <div class="setting">
+        <span>Image quality</span>
+        <div class="segmented" id="qualitySeg">
+          <button type="button" data-value="low">Low</button>
+          <button type="button" data-value="medium">Medium</button>
+          <button type="button" data-value="high">High</button>
+          <button type="button" data-value="max">Max</button>
+        </div>
+      </div>
+      <label class="setting setting-toggle">
+        <span>Application fullscreen</span>
+        <input id="appFullscreenToggle" type="checkbox" />
+        <span class="switch" aria-hidden="true"></span>
       </label>
       <div class="setting">
         <span>Rounds per game</span>

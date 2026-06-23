@@ -398,6 +398,55 @@ function setupSegmented({ segId, inputId, presets, customDefault, read, write, t
   render();
 }
 
+function setupChoiceSegmented({ segId, read, write, onCommit }) {
+  const seg = $(segId);
+  const buttons = [...seg.querySelectorAll('button')];
+  const paint = () => {
+    const active = String(read());
+    for (const b of buttons) b.classList.toggle('active', b.dataset.value === active);
+  };
+
+  for (const b of buttons) b.addEventListener('click', () => {
+    write(b.dataset.value);
+    paint();
+    onCommit();
+  });
+
+  paint();
+}
+
+function setupAppFullscreenToggle() {
+  const toggle = $('appFullscreenToggle');
+  const label = toggle.closest('.setting-toggle');
+  const supported = Boolean(document.fullscreenEnabled && document.documentElement.requestFullscreen);
+
+  const sync = () => {
+    toggle.checked = Boolean(document.fullscreenElement);
+    scheduleGuessMapLayout();
+  };
+
+  if (!supported) {
+    toggle.disabled = true;
+    label.classList.add('disabled');
+    return;
+  }
+
+  toggle.addEventListener('change', async () => {
+    try {
+      if (toggle.checked && !document.fullscreenElement) {
+        await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      } else if (!toggle.checked) {
+        sync();
+      }
+    } catch (err) {
+      console.warn('Could not toggle fullscreen.', err);
+      sync();
+    }
+  });
+  document.addEventListener('fullscreenchange', sync);
+  sync();
+}
+
 function setupSettingsUI() {
   const styleSel = $('mapStyleSel');
   for (const [key, style] of Object.entries(MAP_STYLES)) {
@@ -407,7 +456,6 @@ function setupSettingsUI() {
     styleSel.appendChild(opt);
   }
   styleSel.value = settings.mapStyle;
-  $('qualitySel').value = settings.quality;
 
   styleSel.addEventListener('change', () => {
     settings.mapStyle = styleSel.value;
@@ -416,11 +464,14 @@ function setupSettingsUI() {
     resultMap.setStyle(settings.mapStyle);
     summaryMap.setStyle(settings.mapStyle);
   });
-  $('qualitySel').addEventListener('change', () => {
-    settings.quality = $('qualitySel').value;
-    saveSettings(settings);
-    applyQuality();
+
+  setupChoiceSegmented({
+    segId: 'qualitySeg',
+    read: () => QUALITY_ZOOM[settings.quality] ? settings.quality : 'high',
+    write: (v) => { settings.quality = v; saveSettings(settings); },
+    onCommit: applyQuality
   });
+  setupAppFullscreenToggle();
 
   // Changing the round count restarts the game (it redefines the deck).
   setupSegmented({

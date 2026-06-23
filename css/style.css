@@ -244,6 +244,51 @@ body.ui-hidden #scoreBox { display: none !important; }
 }
 .setting-sub { font-size: 11px; font-weight: 400; opacity: 0.6; }
 
+.setting-toggle {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  cursor: pointer;
+}
+.setting-toggle.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.setting-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #cbd2dd;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.setting-toggle input:checked + .switch {
+  background: #22c55e;
+  border-color: #22c55e;
+}
+.setting-toggle input:checked + .switch::after {
+  transform: translateX(20px);
+  background: #06240f;
+}
+
 /* Segmented switch (4-option toggle) used for rounds + time limit. */
 .segmented {
   display: flex;
@@ -400,20 +445,18 @@ body.ui-hidden #scoreBox { display: none !important; }
 }
 #nextBtn:hover { background: #16a34a; }
 
-/* Teardrop guess pin: even white outline (stacked white blur follows the
-   alpha edge smoothly, unlike chained offsets) + soft shadow for contrast. */
-.map-pin {
+/* Result-map markers: stacked drop-shadows follow the asset alpha edge and give
+   both marker types the same soft white outline. */
+.map-pin,
+.map-pin-correct {
   filter:
     drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
     drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
     drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4));
 }
 
-/* Correct-location badge is a circle, so a crisp 2px ring + soft shadow gives a
-   perfectly even border (box-shadow hugs the rounded box). */
 .map-pin-correct {
   border-radius: 50%;
-  box-shadow: 0 0 0 2px #fff, 0 3px 6px rgba(0, 0, 0, 0.45);
 }
 
 /* Final screen — fullscreen summary map with a floating results card */
