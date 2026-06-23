@@ -135,6 +135,22 @@ function updateTimerDisplay() {
   $('timerBox').classList.toggle('low', timer.remaining <= 10);
 }
 
+function updateRoundLimitDisplay() {
+  const el = $('rounds');
+  el.classList.toggle('rounds-unlimited', state.unlimited);
+  if (!state.unlimited) {
+    el.textContent = String(state.rounds);
+    return;
+  }
+
+  el.textContent = '';
+  const icon = document.createElement('span');
+  icon.className = 'svg-icon unlimited-icon';
+  icon.setAttribute('role', 'img');
+  icon.setAttribute('aria-label', 'Unlimited');
+  el.appendChild(icon);
+}
+
 // Start (or restart) the countdown for the current round. No-op / hidden when the
 // timer is off. Pauses itself while the settings panel is open.
 function startTimer() {
@@ -289,7 +305,7 @@ async function loadRound() {
   }
   state.current = state.deck[state.round];
   $('round').textContent = String(state.round + 1);
-  $('rounds').textContent = state.unlimited ? '∞' : String(state.rounds);
+  updateRoundLimitDisplay();
   $('total').textContent = String(state.total);
   $('resultScreen').classList.add('hidden');
   $('guessBtn').disabled = true;

@@ -23,7 +23,9 @@
 <body>
   <div id="pano"></div>
 
-  <button id="settingsBtn" aria-label="Settings" title="Settings">&#9881;</button>
+  <button id="settingsBtn" aria-label="Settings" title="Settings">
+    <span class="svg-icon settings-icon" aria-hidden="true"></span>
+  </button>
 
   <div id="settings" class="hidden">
     <div class="settings-card">
@@ -52,7 +54,9 @@
       <div class="setting">
         <span>Rounds per game</span>
         <div class="segmented" id="roundsSeg">
-          <button type="button" data-value="unlimited">Unlimited</button>
+          <button type="button" data-value="unlimited" aria-label="Unlimited" title="Unlimited">
+            <span class="svg-icon unlimited-icon" aria-hidden="true"></span>
+          </button>
           <button type="button" data-value="5">5</button>
           <button type="button" data-value="10">10</button>
           <button type="button" data-value="custom">Custom</button>
@@ -63,7 +67,9 @@
       <div class="setting">
         <span>Time limit <small class="setting-sub">per location</small></span>
         <div class="segmented" id="timerSeg">
-          <button type="button" data-value="unlimited">Unlimited</button>
+          <button type="button" data-value="unlimited" aria-label="Unlimited" title="Unlimited">
+            <span class="svg-icon unlimited-icon" aria-hidden="true"></span>
+          </button>
           <button type="button" data-value="120">2 min</button>
           <button type="button" data-value="300">5 min</button>
           <button type="button" data-value="custom">Custom</button>

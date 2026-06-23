@@ -12,7 +12,9 @@ import { CONFIG } from './config.js';
 const FRICTION = 0.965;   // inertia decay per frame after releasing a drag
 const VEL_EPS = 0.004;    // below this angular speed (deg/frame) inertia stops
 const EASE = 0.16;        // smoothing factor for animateTo (N key, etc.)
-const ZOOM_PAN_GAIN = 1.8; // exaggerate the pan-toward-cursor while zooming
+const ZOOM_PAN_GAIN = 1.35; // pan toward the cursor while zooming, but keep it subtle
+const DRAG_DEADZONE_PX = 3;
+const INERTIA_RELEASE_MS = 120;
 const MIN_FOV = 30;
 const MAX_FOV = 75;
 const TILE_RADIUS = 499;
@@ -182,6 +184,7 @@ export class PanoViewer {
   _bindControls() {
     const dom = this.renderer.domElement;
     let px = 0, py = 0, plon = 0, plat = 0;
+    let moved = false, lastMoveAt = 0;
     dom.style.touchAction = 'none';
 
     dom.addEventListener('pointerdown', (e) => {
@@ -190,17 +193,31 @@ export class PanoViewer {
       this.velLon = this.velLat = 0;
       px = e.clientX; py = e.clientY;
       plon = this.lon; plat = this.lat;
+      moved = false;
+      lastMoveAt = 0;
       dom.style.cursor = 'all-scroll';
       dom.setPointerCapture(e.pointerId);
     });
 
     dom.addEventListener('pointermove', (e) => {
       if (!this.dragging) return;
+      const dx = e.clientX - px;
+      const dy = e.clientY - py;
+      if (!moved && dx * dx + dy * dy < DRAG_DEADZONE_PX * DRAG_DEADZONE_PX) {
+        this.velLon = this.velLat = 0;
+        return;
+      }
+
+      const wasMoved = moved;
+      moved = true;
+      lastMoveAt = performance.now();
       const k = 0.1 * (this.fov / MAX_FOV);
-      const newLon = (px - e.clientX) * k + plon;
-      const newLat = clampPitch((e.clientY - py) * k + plat);
-      this.velLon = newLon - this.lon; // remember last-frame speed for inertia
-      this.velLat = newLat - this.lat;
+      const newLon = -dx * k + plon;
+      const newLat = clampPitch(dy * k + plat);
+      // The first post-deadzone movement positions the view, but only later
+      // movement samples represent actual release velocity for inertia.
+      this.velLon = wasMoved ? newLon - this.lon : 0;
+      this.velLat = wasMoved ? newLat - this.lat : 0;
       this.lon = newLon;
       this.lat = newLat;
     });
@@ -208,6 +225,9 @@ export class PanoViewer {
     const end = (e) => {
       if (!this.dragging) return;
       this.dragging = false;
+      if (!moved || performance.now() - lastMoveAt > INERTIA_RELEASE_MS) {
+        this.velLon = this.velLat = 0;
+      }
       dom.style.cursor = 'pointer';
       try { dom.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
     };
