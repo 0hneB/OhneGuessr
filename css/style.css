@@ -89,14 +89,9 @@ body.ui-hidden #scoreBox { display: none !important; }
   flex-direction: column;
   gap: 8px;
   opacity: 0.62;
-  overflow: hidden;
+  overflow: visible;
   transform-origin: bottom right;
-  transition:
-    right 0.13s cubic-bezier(.2, .8, .2, 1),
-    bottom 0.13s cubic-bezier(.2, .8, .2, 1),
-    width 0.13s cubic-bezier(.2, .8, .2, 1),
-    height 0.13s cubic-bezier(.2, .8, .2, 1),
-    opacity 0.09s ease;
+  transition: opacity 0.08s ease;
 }
 #guessPanel:hover,
 #guessPanel.revealed { opacity: 1; }
@@ -113,10 +108,9 @@ body.ui-hidden #scoreBox { display: none !important; }
   border: 2px solid rgba(255, 255, 255, 0.25);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   transition:
-    height 0.13s cubic-bezier(.2, .8, .2, 1),
-    border-radius 0.13s cubic-bezier(.2, .8, .2, 1),
-    border-color 0.13s ease,
-    box-shadow 0.13s ease;
+    border-radius 0.08s ease,
+    border-color 0.11s ease,
+    box-shadow 0.11s ease;
 }
 
 #guessBtn {
@@ -138,15 +132,22 @@ body.ui-hidden #scoreBox { display: none !important; }
 
 /* In-page fullscreen map mode (F): keep HUD/settings visible above it. */
 #guessPanel.map-fullscreen {
-  right: 0;
-  bottom: 0;
+  left: 0;
+  top: 0;
+  right: auto;
+  bottom: auto;
   width: 100vw;
   height: 100dvh;
   z-index: 450;
   opacity: 1;
   gap: 0;
+  overflow: hidden;
+  transition: opacity 0.08s ease;
 }
-#guessPanel.map-fullscreen:hover { width: 100vw; }
+#guessPanel.map-fullscreen:hover {
+  --guess-map-h: 190px;
+  width: 100vw;
+}
 #guessPanel.map-fullscreen #map,
 #guessPanel.map-fullscreen:hover #map {
   position: absolute;
