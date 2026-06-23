@@ -467,20 +467,32 @@ function isNormalGuessScreen() {
     $('loading').classList.contains('hidden');
 }
 
-function settleGuessMapLayout() {
-  const adjust = () => {
-    if ($('guessPanel').classList.contains('map-fullscreen')) gmap.enterFullscreenView();
-    else gmap.exitFullscreenView();
-    gmap.refresh();
+const guessMapLayout = { raf: 0, timers: [] };
+
+function scheduleGuessMapLayout() {
+  cancelAnimationFrame(guessMapLayout.raf);
+  for (const id of guessMapLayout.timers) clearTimeout(id);
+  guessMapLayout.timers = [];
+
+  const pass = () => {
+    gmap.applyLayout($('guessPanel').classList.contains('map-fullscreen'));
   };
-  requestAnimationFrame(adjust);
-  setTimeout(adjust, 80);
-  setTimeout(adjust, 220);
+
+  guessMapLayout.raf = requestAnimationFrame(pass);
+  guessMapLayout.timers.push(setTimeout(pass, 50));
+  guessMapLayout.timers.push(setTimeout(pass, 140));
 }
 
 function setMapFullscreen(on) {
-  $('guessPanel').classList.toggle('map-fullscreen', on);
-  settleGuessMapLayout();
+  const panel = $('guessPanel');
+  const wasFullscreen = panel.classList.contains('map-fullscreen');
+  if (wasFullscreen === on) {
+    scheduleGuessMapLayout();
+    return;
+  }
+
+  panel.classList.toggle('map-fullscreen', on);
+  scheduleGuessMapLayout();
 }
 
 function toggleMapFullscreen() {
@@ -584,12 +596,18 @@ async function init() {
   setupUpload();
 
   // Expand/collapse the guess panel.
-  $('guessPanel').addEventListener('mouseenter', () => gmap.refresh());
+  $('guessPanel').addEventListener('mouseenter', () => scheduleGuessMapLayout());
+  $('guessPanel').addEventListener('transitionend', (e) => {
+    if (e.propertyName === 'opacity') {
+      scheduleGuessMapLayout();
+    }
+  });
 
   $('guessBtn').addEventListener('click', (e) => { submitGuess(); e.currentTarget.blur(); });
   $('nextBtn').addEventListener('click', (e) => { nextRound(); e.currentTarget.blur(); });
   $('playAgain').addEventListener('click', startGame);
   window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('resize', () => scheduleGuessMapLayout());
 
   try {
     state.maps = await listMaps();

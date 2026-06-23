@@ -11,7 +11,7 @@ function addBaseLayer(map, key, current) {
     ? L.maplibreGL({ style: style.url, attribution: style.attribution })
     : L.tileLayer(style.url, {
       updateWhenIdle: false,
-      keepBuffer: 4,
+      keepBuffer: 6,
       ...(style.options || {})
     });
   layer.addTo(map);
@@ -28,19 +28,45 @@ function bindDragCursor(map) {
   map.on('dragend', () => { c.style.cursor = ''; });
 }
 
-// Keep Leaflet's internal size in sync with its container (hover-expand, becoming
-// visible, window resize). Without this the map shows black/grey bars after a
-// resize. Coalesced to one invalidateSize per frame.
+// Keep Leaflet's internal size in sync with its container. Grey bars usually
+// mean Leaflet still believes the map has its old dimensions.
 function invalidateSizeNow(map) {
-  map.invalidateSize({ animate: false, pan: false });
+  const center = map.getCenter();
+  const zoom = map.getZoom();
+  map.invalidateSize({ animate: false });
+  map.setView(center, zoom, { animate: false });
 }
 
-function invalidateSizeSoon(map) {
+function invalidateSizeBurst(map) {
   invalidateSizeNow(map);
   requestAnimationFrame(() => invalidateSizeNow(map));
-  setTimeout(() => invalidateSizeNow(map), 70);
-  setTimeout(() => invalidateSizeNow(map), 160);
-  setTimeout(() => invalidateSizeNow(map), 300);
+  setTimeout(() => invalidateSizeNow(map), 90);
+  setTimeout(() => invalidateSizeNow(map), 180);
+}
+
+function minZoomToFillHeight(map) {
+  invalidateSizeNow(map);
+  const size = map.getSize();
+  if (!size.y) return map.getMinZoom() || 0;
+
+  const crs = map.options.crs || L.CRS.EPSG3857;
+  const maxZoom = map.getMaxZoom() || 19;
+  let zoom = map.options._freeguessrBaseMinZoom ?? 0;
+  while (zoom < maxZoom && crs.scale(zoom) < size.y + 12) zoom++;
+  return zoom;
+}
+
+function clampCenterToWorld(map, center, zoom) {
+  const size = map.getSize();
+  const bounds = map.getPixelWorldBounds(zoom);
+  if (!bounds) return center;
+
+  const point = map.project(center, zoom);
+  const minY = bounds.min.y + size.y / 2;
+  const maxY = bounds.max.y - size.y / 2;
+  if (minY <= maxY) point.y = Math.max(minY, Math.min(maxY, point.y));
+  else point.y = (bounds.min.y + bounds.max.y) / 2;
+  return map.unproject(point, zoom);
 }
 
 function autoResize(map) {
@@ -48,7 +74,7 @@ function autoResize(map) {
   let raf = 0;
   new ResizeObserver(() => {
     cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => invalidateSizeSoon(map));
+    raf = requestAnimationFrame(() => invalidateSizeBurst(map));
   }).observe(map.getContainer());
 }
 
@@ -58,67 +84,58 @@ export class GuessMap {
       worldCopyJump: true, zoomControl: false, maxZoom: 19,
       attributionControl: false // keep the small map clean; credits show on result map
     }).setView([20, 0], 1);
+    this.map.options._freeguessrBaseMinZoom = this.map.options.minZoom ?? 0;
     this.baseLayer = addBaseLayer(this.map, styleKey);
     bindDragCursor(this.map);
     autoResize(this.map);
     this.guessMarker = null;
     this.guess = null;
-    this.preFullscreenView = null;
+    this.isFullscreen = false;
+    this.isConstraining = false;
 
     this.map.on('click', (e) => {
       this.setGuess(e.latlng);
       onPlace(this.guess);
     });
+    this.map.on('moveend zoomend', () => {
+      if (this.isFullscreen && !this.isConstraining) this.constrainFullscreenView();
+    });
   }
 
   refresh() {
-    invalidateSizeSoon(this.map);
+    invalidateSizeBurst(this.map);
   }
 
-  zoomToFillVerticalExtent() {
-    invalidateSizeNow(this.map);
-    const height = this.map.getSize().y;
-    if (!height) return;
-    const crs = this.map.options.crs || L.CRS.EPSG3857;
-    const maxZoom = this.map.getMaxZoom() || 19;
-    let zoom = Math.max(1, this.map.getMinZoom() || 0);
-    while (zoom < maxZoom && crs.scale(zoom) < height + 24) zoom++;
+  applyLayout(isFullscreen) {
+    this.isFullscreen = isFullscreen;
 
-    const targetZoom = Math.max(this.map.getZoom(), zoom);
-    const center = this.clampedCenterForZoom(this.map.getCenter(), targetZoom);
-    this.map.setView(center, targetZoom, { animate: false });
-    invalidateSizeSoon(this.map);
-  }
-
-  enterFullscreenView() {
-    if (!this.preFullscreenView) {
-      this.preFullscreenView = {
-        center: this.map.getCenter(),
-        zoom: this.map.getZoom()
-      };
+    if (isFullscreen) {
+      this.constrainFullscreenView();
+    } else {
+      invalidateSizeNow(this.map);
+      this.map.setMinZoom(this.map.options._freeguessrBaseMinZoom ?? 0);
     }
-    this.zoomToFillVerticalExtent();
+
+    invalidateSizeBurst(this.map);
   }
 
-  exitFullscreenView() {
-    invalidateSizeNow(this.map);
-    if (this.preFullscreenView) {
-      this.map.setView(this.preFullscreenView.center, this.preFullscreenView.zoom, { animate: false });
-      this.preFullscreenView = null;
+  constrainFullscreenView() {
+    if (this.isConstraining) return;
+    this.isConstraining = true;
+    try {
+      const center = this.map.getCenter();
+      const currentZoom = this.map.getZoom();
+      const minZoom = minZoomToFillHeight(this.map);
+      const targetZoom = Math.max(currentZoom, minZoom);
+      const targetCenter = clampCenterToWorld(this.map, center, targetZoom);
+
+      this.map.setMinZoom(minZoom);
+      if (targetZoom !== currentZoom || center.distanceTo(targetCenter) >= 0.01) {
+        this.map.setView(targetCenter, targetZoom, { animate: false });
+      }
+    } finally {
+      this.isConstraining = false;
     }
-    invalidateSizeSoon(this.map);
-  }
-
-  clampedCenterForZoom(center, zoom) {
-    const size = this.map.getSize();
-    const bounds = this.map.getPixelWorldBounds(zoom);
-    if (!bounds) return center;
-    const point = this.map.project(center, zoom);
-    const minY = bounds.min.y + size.y / 2;
-    const maxY = bounds.max.y - size.y / 2;
-    if (minY <= maxY) point.y = Math.max(minY, Math.min(maxY, point.y));
-    else point.y = (bounds.min.y + bounds.max.y) / 2;
-    return this.map.unproject(point, zoom);
   }
 
   setStyle(key) {
@@ -191,13 +208,14 @@ export class ResultMap {
   }
 
   show(guess, actual) {
-    invalidateSizeSoon(this.map);
+    invalidateSizeBurst(this.map);
     for (const l of this.layers) this.map.removeLayer(l);
     this.layers = [];
 
     const pts = drawGuessPair(this.map, this.layers, guess, actual);
     if (pts.length > 1) this.map.fitBounds(L.latLngBounds(pts).pad(0.35), { animate: false });
     else this.map.setView(pts[0], 5, { animate: false }); // forfeit: only the answer
+    invalidateSizeBurst(this.map);
   }
 }
 
@@ -218,7 +236,7 @@ export class SummaryMap {
 
   // results: [{ guess: {lat,lng}, actual: {lat,lng} }, ...]
   show(results) {
-    invalidateSizeSoon(this.map);
+    invalidateSizeBurst(this.map);
     for (const l of this.layers) this.map.removeLayer(l);
     this.layers = [];
     if (!results.length) return;
@@ -228,5 +246,6 @@ export class SummaryMap {
       pts.push(...drawGuessPair(this.map, this.layers, r.guess, r.actual));
     }
     this.map.fitBounds(L.latLngBounds(pts).pad(0.2), { animate: false });
+    invalidateSizeBurst(this.map);
   }
 }
