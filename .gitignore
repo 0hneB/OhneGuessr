@@ -1,0 +1,10 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*~
+
+# Scratch / reference captures
+Screenshot*.png
+
+# Node (in case tooling deps get added later)
+node_modules/
