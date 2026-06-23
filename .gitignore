@@ -8,3 +8,6 @@ Screenshot*.png
 
 # Node (in case tooling deps get added later)
 node_modules/
+
+# Image assets are kept out of the repo for now (added separately)
+assets/
