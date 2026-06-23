@@ -1,21 +1,22 @@
-// Game orchestration: load locations, run rounds, score, show results.
+// Game orchestration: pick a map, run rounds, score, show results.
 import { CONFIG } from './config.js';
 import { PanoViewer } from './pano.js';
 import { GuessMap, ResultMap } from './map.js';
 import { buildPanoCanvas, resolvePano } from './streetview.js';
 import { haversineKm, scoreFor, formatDistance } from './scoring.js';
 import { loadSettings, saveSettings, MAP_STYLES, QUALITY_ZOOM } from './settings.js';
+import { CompassHUD } from './compass.js';
+import { listMaps, getLocations, addUserMap, deleteUserMap } from './maps.js';
 
 const $ = (id) => document.getElementById(id);
-
-// Compass ribbon geometry.
-const COMPASS_PX_PER_DEG = 4;
-const COMPASS_START = -90; // strip spans -90°..450° so it wraps cleanly
 
 let settings = loadSettings();
 const zoomForQuality = () => QUALITY_ZOOM[settings.quality] ?? 4;
 
 const state = {
+  all: [],         // locations of the selected map
+  maps: [],        // unified library (built-in + user)
+  currentKey: null,// selected map key
   deck: [],        // shuffled locations for this game
   round: 0,
   rounds: CONFIG.ROUNDS,
@@ -24,40 +25,35 @@ const state = {
   guessed: false
 };
 
-let viewer, gmap, resultMap;
-let builtinLocations = [];
+let viewer, gmap, resultMap, compass;
 
-const CUSTOM_KEY = 'freeguessr.customLocations';
 const randomLocation = () => state.all[Math.floor(Math.random() * state.all.length)];
 
 // Accepts a GeoGuessr export ({customCoordinates:[...]}) or a plain array in
-// either GeoGuessr or FreeGuessr shape. Missing panoid/dimensions are resolved
-// lazily at round load.
+// either GeoGuessr or FreeGuessr shape. Missing panoid/dimensions/north are
+// resolved lazily at round load; built-ins already carry them.
 function normalizeLocations(json) {
   const arr = Array.isArray(json) ? json : (json && json.customCoordinates) || [];
   return arr
     .map((e) => ({
       lat: e.lat, lng: e.lng,
-      heading: e.heading ?? 0,
-      pitch: e.pitch ?? 0,
+      heading: e.heading, // kept if provided; otherwise the view faces north
+      pitch: e.pitch,
       panoid: e.panoid || e.panoId || null,
-      w: e.w, h: e.h
+      w: e.w, h: e.h,
+      north: e.north
     }))
     .filter((e) => Number.isFinite(e.lat) && Number.isFinite(e.lng));
 }
 
-function saveCustom(arr) {
-  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(arr)); } catch { /* quota */ }
-}
-function loadCustom() {
-  try {
-    const a = JSON.parse(localStorage.getItem(CUSTOM_KEY));
-    return Array.isArray(a) && a.length ? a : null;
-  } catch { return null; }
+function mapNameFrom(json, filename) {
+  const named = (!Array.isArray(json) && json && typeof json.name === 'string') ? json.name.trim() : '';
+  if (named) return named;
+  return filename.replace(/\.json$/i, '').trim() || 'Untitled map';
 }
 
-// Ensure a location has a tile-servable panoid + dimensions (resolving uploaded
-// coords on demand). Returns false if no panorama could be found.
+// Ensure a location has a tile-servable panoid + dimensions + north (resolving
+// uploaded coords on demand). Returns false if no panorama could be found.
 async function ensureRenderable(loc) {
   if (loc.panoid && loc.w && loc.h && loc.north !== undefined) return true;
   const r = await resolvePano(loc.lat, loc.lng);
@@ -78,18 +74,119 @@ function shuffle(arr) {
   return a;
 }
 
-async function loadLocations() {
-  const res = await fetch('data/locations.json');
-  if (!res.ok) throw new Error(`locations.json ${res.status}`);
-  const data = await res.json();
-  if (!Array.isArray(data) || data.length === 0) throw new Error('no locations');
-  return data;
-}
-
 function setLoading(on, msg) {
   $('loading').classList.toggle('hidden', !on);
   if (msg) $('loadingText').textContent = msg;
 }
+
+// ---- Map library ----------------------------------------------------------
+
+const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function renderMapList() {
+  const list = $('mapList');
+  list.innerHTML = '';
+  for (const m of state.maps) {
+    const row = document.createElement('div');
+    row.className = 'map-row' + (m.key === state.currentKey ? ' selected' : '');
+
+    const main = document.createElement('button');
+    main.className = 'map-row-main';
+    main.innerHTML =
+      `<span class="map-row-name">${escapeHtml(m.name)}</span>` +
+      (m.count != null ? `<span class="map-row-count">${m.count}</span>` : '');
+    main.addEventListener('click', () => {
+      $('settings').classList.add('hidden');
+      selectMap(m.key);
+    });
+    row.appendChild(main);
+
+    if (!m.builtin) {
+      const del = document.createElement('button');
+      del.className = 'map-row-del';
+      del.title = 'Delete map';
+      del.innerHTML = '&times;';
+      del.addEventListener('click', (e) => { e.stopPropagation(); removeMap(m); });
+      row.appendChild(del);
+    }
+    list.appendChild(row);
+  }
+}
+
+async function selectMap(key) {
+  const item = state.maps.find((m) => m.key === key) || state.maps[0];
+  if (!item) return;
+  state.currentKey = item.key;
+  settings.currentMap = item.key;
+  saveSettings(settings);
+  renderMapList();
+
+  setLoading(true, `Loading ${item.name}…`);
+  let locs;
+  try {
+    locs = normalizeLocations(await getLocations(item));
+  } catch (err) {
+    setLoading(true, `Could not load that map: ${err.message}`);
+    return;
+  }
+  if (!locs.length) { setLoading(true, 'That map has no usable locations.'); return; }
+  state.all = locs;
+  await startGame();
+}
+
+async function removeMap(m) {
+  await deleteUserMap(m.id);
+  state.maps = await listMaps();
+  renderMapList();
+  if (state.currentKey === m.key) {
+    state.currentKey = null;
+    if (state.maps[0]) await selectMap(state.maps[0].key);
+    else showNoMaps();
+  }
+}
+
+// Empty library: keep the game out of an error state and point the player at the
+// upload area instead of a blocked loading overlay.
+function showNoMaps() {
+  setLoading(false);
+  state.currentKey = null;
+  renderMapList();
+  $('settings').classList.remove('hidden');
+  $('uploadInfo').textContent = 'No maps yet — add one below to start playing.';
+}
+
+async function readUpload(file) {
+  let json;
+  try { json = JSON.parse(await file.text()); }
+  catch { $('uploadInfo').textContent = 'Could not parse that JSON file.'; return; }
+  const arr = normalizeLocations(json);
+  if (!arr.length) { $('uploadInfo').textContent = 'No usable coordinates found.'; return; }
+  const item = await addUserMap(mapNameFrom(json, file.name), arr);
+  state.maps = await listMaps();
+  $('uploadInfo').textContent = '';
+  $('settings').classList.add('hidden');
+  await selectMap(item.key);
+}
+
+function setupUpload() {
+  const dz = $('dropZone');
+  const fi = $('fileInput');
+  dz.addEventListener('click', () => fi.click());
+  fi.addEventListener('change', () => { if (fi.files[0]) readUpload(fi.files[0]); fi.value = ''; });
+  ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => {
+    e.preventDefault(); dz.classList.add('dragover');
+  }));
+  ['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => {
+    e.preventDefault(); dz.classList.remove('dragover');
+  }));
+  dz.addEventListener('drop', (e) => {
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) readUpload(f);
+  });
+}
+
+// ---- Rounds ---------------------------------------------------------------
 
 async function startGame() {
   $('resultScreen').classList.add('hidden');
@@ -171,97 +268,8 @@ function setupSettingsUI() {
   });
 }
 
-function refreshUploadInfo() {
-  const custom = loadCustom();
-  if (custom) {
-    $('uploadInfo').textContent = `Using ${custom.length} custom locations.`;
-    $('resetLocations').classList.remove('hidden');
-  } else {
-    $('uploadInfo').textContent = `Using ${builtinLocations.length} built-in locations.`;
-    $('resetLocations').classList.add('hidden');
-  }
-}
-
-async function readUpload(file) {
-  let json;
-  try { json = JSON.parse(await file.text()); }
-  catch { $('uploadInfo').textContent = 'Could not parse that JSON file.'; return; }
-  const arr = normalizeLocations(json);
-  if (!arr.length) { $('uploadInfo').textContent = 'No usable coordinates found.'; return; }
-  saveCustom(arr);
-  state.all = arr;
-  refreshUploadInfo();
-  $('settings').classList.add('hidden');
-  startGame();
-}
-
-function setupUpload() {
-  const dz = $('dropZone');
-  const fi = $('fileInput');
-  dz.addEventListener('click', () => fi.click());
-  fi.addEventListener('change', () => { if (fi.files[0]) readUpload(fi.files[0]); fi.value = ''; });
-  ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => {
-    e.preventDefault(); dz.classList.add('dragover');
-  }));
-  ['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => {
-    e.preventDefault(); dz.classList.remove('dragover');
-  }));
-  dz.addEventListener('drop', (e) => {
-    const f = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (f) readUpload(f);
-  });
-  $('resetLocations').addEventListener('click', () => {
-    try { localStorage.removeItem(CUSTOM_KEY); } catch { /* ignore */ }
-    state.all = builtinLocations;
-    refreshUploadInfo();
-    $('settings').classList.add('hidden');
-    startGame();
-  });
-  refreshUploadInfo();
-}
-
 function onPlaceGuess() {
   if (!state.guessed) $('guessBtn').disabled = false;
-}
-
-const CARDINALS = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
-
-// Build the compass ribbon's ticks once. minor every 5°, mid every 15°, and a
-// labelled major every 45° (N/E/S/W emphasised over NE/SE/SW/NW).
-function buildCompass() {
-  const strip = $('compassStrip');
-  for (let d = COMPASS_START; d <= 450; d += 5) {
-    const mod = ((d % 360) + 360) % 360;
-    const isCard = mod % 45 === 0;
-    let cls = 'tick';
-    if (isCard) {
-      cls += ' major card';
-      if (mod % 90 === 0) cls += ' primary';
-      if (mod === 0) cls += ' north';
-    } else if (mod % 15 === 0) {
-      cls += ' mid';
-    } else {
-      cls += ' minor';
-    }
-    const tick = document.createElement('div');
-    tick.className = cls;
-    tick.style.left = `${(d - COMPASS_START) * COMPASS_PX_PER_DEG}px`;
-    if (isCard) {
-      const lbl = document.createElement('span');
-      lbl.className = 'clabel';
-      lbl.textContent = CARDINALS[mod];
-      tick.appendChild(lbl);
-    }
-    strip.appendChild(tick);
-  }
-}
-
-// Scroll the ribbon so the current heading sits under the centre mark. Uses the
-// element's real width so the centre always matches the (50%) marker.
-function updateCompass(heading) {
-  const center = $('compass').clientWidth / 2;
-  const x = center - (heading - COMPASS_START) * COMPASS_PX_PER_DEG;
-  $('compassStrip').style.transform = `translateX(${x}px)`;
 }
 
 function onKeyDown(e) {
@@ -314,12 +322,13 @@ function showFinal() {
 }
 
 async function init() {
-  buildCompass();
+  compass = new CompassHUD($('compass-hud'));
   viewer = new PanoViewer($('pano'));
-  viewer.onChange = updateCompass;
+  viewer.onChange = (heading) => compass.setHeading(heading);
   gmap = new GuessMap('map', onPlaceGuess, settings.mapStyle);
   resultMap = new ResultMap('resultMap', settings.mapStyle);
   setupSettingsUI();
+  setupUpload();
 
   // Expand/collapse the guess panel.
   $('guessPanel').addEventListener('mouseenter', () => gmap.refresh());
@@ -330,13 +339,15 @@ async function init() {
   window.addEventListener('keydown', onKeyDown);
 
   try {
-    builtinLocations = await loadLocations();
-    state.all = loadCustom() || builtinLocations;
-    setupUpload();
-    await startGame();
+    state.maps = await listMaps();
+    renderMapList();
+    const saved = state.maps.find((m) => m.key === settings.currentMap);
+    const start = saved || state.maps[0];
+    if (start) await selectMap(start.key);
+    else showNoMaps();
   } catch (err) {
-    setLoading(true, `Could not load locations: ${err.message}. ` +
-      `Run tools/generate-locations.mjs and serve over http://.`);
+    setLoading(true, `Could not load maps: ${err.message}. ` +
+      `Serve over http:// (use serve.bat) so data/ can be fetched.`);
     console.error(err);
   }
 }

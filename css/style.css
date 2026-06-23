@@ -16,96 +16,45 @@ html, body {
 /* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
 .leaflet-container { cursor: crosshair; background: #1b1b1b; }
 
-/* Top HUD pills */
+/* Top HUD pills — matched to the compass HUD: 32px tall, translucent black with
+   a soft bevel (top highlight + bottom shade) and the same drop shadow. */
 .hud-pill {
   position: fixed;
   top: 12px;
   display: flex;
-  gap: 16px;
+  gap: 8px;
   align-items: center;
-  padding: 8px 16px;
-  background: rgba(17, 17, 17, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
+  height: 32px;
+  padding: 0 15px;
+  background: rgba(0, 0, 0, 0.62);
+  border-radius: 16px;
+  box-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.13),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(6px);
-  font-size: 14px;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #fbfbfd;
   z-index: 500;
   white-space: nowrap;
 }
-.hud-pill .brand { font-weight: 700; color: #22c55e; letter-spacing: 0.3px; }
-.hud-pill b { color: #fff; }
-#topLeft { left: 55px; }
+.hud-pill .brand { font-weight: 800; color: #22c55e; letter-spacing: 0.3px; }
+.hud-pill b { color: #fff; font-weight: 800; }
+#topLeft { left: 54px; }
 #scoreBox { right: 14px; }
 
-/* Compass ribbon (top middle) — scrolls horizontally as you turn */
-#compass {
+/* Compass HUD (canvas, top middle) — draws its own bar; just position it. */
+#compass-hud {
   position: fixed;
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
-  width: 300px;
-  height: 34px;
-  overflow: hidden;
-  border-radius: 10px;
-  background: linear-gradient(rgba(28, 28, 30, 0.82), rgba(12, 12, 14, 0.82));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 14px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(8px);
   z-index: 500;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
-          mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
-}
-#compassStrip {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  will-change: transform;
-}
-#compass .tick {
-  position: absolute;
-  bottom: 6px;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.22);
-  transform: translateX(-50%);
-}
-#compass .tick.minor { height: 4px; }
-#compass .tick.mid { height: 7px; background: rgba(255, 255, 255, 0.32); }
-#compass .tick.major { height: 10px; background: rgba(255, 255, 255, 0.5); }
-#compass .tick .clabel {
-  position: absolute;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-/* intercardinals (NE, SE, …) are smaller and dimmer than N/E/S/W */
-#compass .tick.card .clabel { font-size: 9px; color: #94a3b8; }
-#compass .tick.primary .clabel { font-size: 12px; color: #f1f5f9; }
-#compass .tick.primary.north .clabel { color: #ef4444; }
-
-/* fixed centre indicator = the direction you face */
-#compassMark {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 1px;
-  height: 100%;
-  transform: translateX(-50%);
-  background: rgba(34, 197, 94, 0.9);
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.7);
   pointer-events: none;
-}
-#compassMark::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid #22c55e;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
 }
 
 /* Guess panel (bottom-right, expands on hover) */
@@ -156,18 +105,24 @@ html, body {
   top: 12px;
   left: 12px;
   z-index: 700;
-  width: 35px;
-  height: 35px;
-  font-size: 17px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
   line-height: 1;
-  color: #fff;
-  background: rgba(17, 17, 17, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
+  color: #fbfbfd;
+  background: rgba(0, 0, 0, 0.62);
+  border: none;
+  border-radius: 16px;
   cursor: pointer;
+  box-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.13),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.22),
+    0 4px 12px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(6px);
 }
-#settingsBtn:hover { background: rgba(34, 197, 94, 0.22); }
+#settingsBtn:hover { background: rgba(34, 197, 94, 0.30); }
 
 #settings {
   position: fixed;
@@ -237,25 +192,65 @@ html, body {
 #dropZone.dragover { border-color: #22c55e; background: rgba(34, 197, 94, 0.12); }
 #dropZone b { font-size: 13px; }
 #dropZone small { font-size: 11px; opacity: 0.55; }
-.upload-row {
+
+/* Map library list */
+.map-list {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-  min-height: 18px;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 232px;
+  overflow-y: auto;
+  margin-bottom: 10px;
 }
-.link-btn {
+.map-row {
+  display: flex;
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.map-row:hover { border-color: rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.05); }
+.map-row.selected { border-color: rgba(34, 197, 94, 0.7); background: rgba(34, 197, 94, 0.10); }
+.map-row-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
   background: none;
   border: none;
-  color: #22c55e;
-  font-size: 12px;
+  color: #fff;
+  font-size: 13px;
+  text-align: left;
   cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-  white-space: nowrap;
 }
-.link-btn:hover { color: #16a34a; }
+.map-row-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-row-count {
+  flex: none;
+  font-size: 11px;
+  color: #9aa3ad;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.map-row.selected .map-row-count { color: #bbf7d0; background: rgba(34, 197, 94, 0.18); }
+.map-row-del {
+  flex: none;
+  width: 34px;
+  background: none;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  color: #8a8a8a;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.map-row-del:hover { color: #f87171; background: rgba(248, 113, 113, 0.10); }
+.settings-note:empty { display: none; }
 
 /* Round result (fullscreen map + floating panel) */
 #resultScreen {
@@ -300,14 +295,20 @@ html, body {
 }
 #nextBtn:hover { background: #16a34a; }
 
-/* Custom map pins: crisp white outline (8-way) + soft shadow for contrast. */
+/* Teardrop guess pin: even white outline (stacked white blur follows the
+   alpha edge smoothly, unlike chained offsets) + soft shadow for contrast. */
 .map-pin {
   filter:
-    drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff)
-    drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)
-    drop-shadow(1px 1px 0 #fff) drop-shadow(-1px 1px 0 #fff)
-    drop-shadow(1px -1px 0 #fff) drop-shadow(-1px -1px 0 #fff)
-    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+    drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
+    drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
+    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4));
+}
+
+/* Correct-location badge is a circle, so a crisp 2px ring + soft shadow gives a
+   perfectly even border (box-shadow hugs the rounded box). */
+.map-pin-correct {
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #fff, 0 3px 6px rgba(0, 0, 0, 0.45);
 }
 
 /* Final screen */
