@@ -9,7 +9,11 @@ function addBaseLayer(map, key, current) {
   // are plain Leaflet tile layers.
   const layer = style.type === 'vector'
     ? L.maplibreGL({ style: style.url, attribution: style.attribution })
-    : L.tileLayer(style.url, style.options);
+    : L.tileLayer(style.url, {
+      updateWhenIdle: false,
+      keepBuffer: 4,
+      ...(style.options || {})
+    });
   layer.addTo(map);
   if (layer.bringToBack) layer.bringToBack();
   if (current) map.removeLayer(current);
@@ -27,12 +31,24 @@ function bindDragCursor(map) {
 // Keep Leaflet's internal size in sync with its container (hover-expand, becoming
 // visible, window resize). Without this the map shows black/grey bars after a
 // resize. Coalesced to one invalidateSize per frame.
+function invalidateSizeNow(map) {
+  map.invalidateSize({ animate: false, pan: false });
+}
+
+function invalidateSizeSoon(map) {
+  invalidateSizeNow(map);
+  requestAnimationFrame(() => invalidateSizeNow(map));
+  setTimeout(() => invalidateSizeNow(map), 70);
+  setTimeout(() => invalidateSizeNow(map), 160);
+  setTimeout(() => invalidateSizeNow(map), 300);
+}
+
 function autoResize(map) {
   if (typeof ResizeObserver === 'undefined') return;
   let raf = 0;
   new ResizeObserver(() => {
     cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => map.invalidateSize(false));
+    raf = requestAnimationFrame(() => invalidateSizeSoon(map));
   }).observe(map.getContainer());
 }
 
@@ -47,6 +63,7 @@ export class GuessMap {
     autoResize(this.map);
     this.guessMarker = null;
     this.guess = null;
+    this.preFullscreenView = null;
 
     this.map.on('click', (e) => {
       this.setGuess(e.latlng);
@@ -55,7 +72,53 @@ export class GuessMap {
   }
 
   refresh() {
-    setTimeout(() => this.map.invalidateSize(), 50);
+    invalidateSizeSoon(this.map);
+  }
+
+  zoomToFillVerticalExtent() {
+    invalidateSizeNow(this.map);
+    const height = this.map.getSize().y;
+    if (!height) return;
+    const crs = this.map.options.crs || L.CRS.EPSG3857;
+    const maxZoom = this.map.getMaxZoom() || 19;
+    let zoom = Math.max(1, this.map.getMinZoom() || 0);
+    while (zoom < maxZoom && crs.scale(zoom) < height + 24) zoom++;
+
+    const targetZoom = Math.max(this.map.getZoom(), zoom);
+    const center = this.clampedCenterForZoom(this.map.getCenter(), targetZoom);
+    this.map.setView(center, targetZoom, { animate: false });
+    invalidateSizeSoon(this.map);
+  }
+
+  enterFullscreenView() {
+    if (!this.preFullscreenView) {
+      this.preFullscreenView = {
+        center: this.map.getCenter(),
+        zoom: this.map.getZoom()
+      };
+    }
+    this.zoomToFillVerticalExtent();
+  }
+
+  exitFullscreenView() {
+    invalidateSizeNow(this.map);
+    if (this.preFullscreenView) {
+      this.map.setView(this.preFullscreenView.center, this.preFullscreenView.zoom, { animate: false });
+      this.preFullscreenView = null;
+    }
+    invalidateSizeSoon(this.map);
+  }
+
+  clampedCenterForZoom(center, zoom) {
+    const size = this.map.getSize();
+    const bounds = this.map.getPixelWorldBounds(zoom);
+    if (!bounds) return center;
+    const point = this.map.project(center, zoom);
+    const minY = bounds.min.y + size.y / 2;
+    const maxY = bounds.max.y - size.y / 2;
+    if (minY <= maxY) point.y = Math.max(minY, Math.min(maxY, point.y));
+    else point.y = (bounds.min.y + bounds.max.y) / 2;
+    return this.map.unproject(point, zoom);
   }
 
   setStyle(key) {
@@ -128,7 +191,7 @@ export class ResultMap {
   }
 
   show(guess, actual) {
-    this.map.invalidateSize();
+    invalidateSizeSoon(this.map);
     for (const l of this.layers) this.map.removeLayer(l);
     this.layers = [];
 
@@ -155,7 +218,7 @@ export class SummaryMap {
 
   // results: [{ guess: {lat,lng}, actual: {lat,lng} }, ...]
   show(results) {
-    this.map.invalidateSize();
+    invalidateSizeSoon(this.map);
     for (const l of this.layers) this.map.removeLayer(l);
     this.layers = [];
     if (!results.length) return;

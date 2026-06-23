@@ -77,34 +77,53 @@ body.ui-hidden #scoreBox { display: none !important; }
 
 /* Guess panel (bottom-right, expands on hover) */
 #guessPanel {
+  --guess-map-h: 190px;
+  --guess-button-h: 44px;
   position: fixed;
   right: 14px;
   bottom: 14px;
   width: 300px;
+  height: calc(var(--guess-map-h) + 8px + var(--guess-button-h));
   z-index: 600;
   display: flex;
   flex-direction: column;
   gap: 8px;
   opacity: 0.62;
-  transition: width 0.08s ease-out, opacity 0.12s ease;
+  overflow: hidden;
+  transform-origin: bottom right;
+  transition:
+    right 0.13s cubic-bezier(.2, .8, .2, 1),
+    bottom 0.13s cubic-bezier(.2, .8, .2, 1),
+    width 0.13s cubic-bezier(.2, .8, .2, 1),
+    height 0.13s cubic-bezier(.2, .8, .2, 1),
+    opacity 0.09s ease;
 }
 #guessPanel:hover,
 #guessPanel.revealed { opacity: 1; }
-#guessPanel:hover { width: min(46vw, 560px); }
+#guessPanel:hover {
+  --guess-map-h: min(42vh, 420px);
+  width: min(46vw, 560px);
+}
 
 #map {
   width: 100%;
-  height: 190px;
+  height: var(--guess-map-h);
+  flex: none;
   border-radius: 10px;
   border: 2px solid rgba(255, 255, 255, 0.25);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  transition: height 0.08s ease-out;
+  transition:
+    height 0.13s cubic-bezier(.2, .8, .2, 1),
+    border-radius 0.13s cubic-bezier(.2, .8, .2, 1),
+    border-color 0.13s ease,
+    box-shadow 0.13s ease;
 }
-#guessPanel:hover #map { height: min(42vh, 420px); }
 
 #guessBtn {
   width: 100%;
-  padding: 12px;
+  height: var(--guess-button-h);
+  flex: none;
+  padding: 0 12px;
   font-size: 15px;
   font-weight: 700;
   color: #06240f;
@@ -116,6 +135,38 @@ body.ui-hidden #scoreBox { display: none !important; }
 }
 #guessBtn:hover:not(:disabled) { background: #16a34a; }
 #guessBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* In-page fullscreen map mode (F): keep HUD/settings visible above it. */
+#guessPanel.map-fullscreen {
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 450;
+  opacity: 1;
+  gap: 0;
+}
+#guessPanel.map-fullscreen:hover { width: 100vw; }
+#guessPanel.map-fullscreen #map,
+#guessPanel.map-fullscreen:hover #map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+#guessPanel.map-fullscreen #guessBtn {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 2;
+  width: min(360px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
 
 /* Settings */
 #settingsBtn {
