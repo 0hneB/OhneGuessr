@@ -5,8 +5,13 @@ import { MAP_STYLES } from './settings.js';
 
 function addBaseLayer(map, key, current) {
   const style = MAP_STYLES[key] || MAP_STYLES.osm;
-  const layer = L.tileLayer(style.url, style.options).addTo(map);
-  layer.bringToBack();
+  // Vector styles (e.g. OSM Liberty) render through MapLibre GL; raster styles
+  // are plain Leaflet tile layers.
+  const layer = style.type === 'vector'
+    ? L.maplibreGL({ style: style.url, attribution: style.attribution })
+    : L.tileLayer(style.url, style.options);
+  layer.addTo(map);
+  if (layer.bringToBack) layer.bringToBack();
   if (current) map.removeLayer(current);
   return layer;
 }
@@ -77,13 +82,15 @@ export class GuessMap {
   }
 }
 
+// Teardrop pin (632x736) — anchor at the bottom tip.
 const GUESS_ICON = L.icon({
   iconUrl: 'assets/pin-guess.webp',
-  iconSize: [30, 35], iconAnchor: [15, 35], className: 'map-pin'
+  iconSize: [31, 36], iconAnchor: [15.5, 36], className: 'map-pin'
 });
+// Circular badge (128x128) — anchor at its centre (the exact spot it marks).
 const CORRECT_ICON = L.icon({
-  iconUrl: 'assets/pin-correct.webp',
-  iconSize: [38, 38], iconAnchor: [10, 35], className: 'map-pin'
+  iconUrl: 'assets/correct-location.webp',
+  iconSize: [36, 36], iconAnchor: [18, 18], className: 'map-pin-correct'
 });
 
 export class ResultMap {

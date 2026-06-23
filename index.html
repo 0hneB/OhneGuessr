@@ -6,9 +6,12 @@
   <title>FreeGuessr</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="css/style.css" />
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
   <script type="importmap">
   {
     "imports": {
@@ -42,16 +45,14 @@
         </select>
       </label>
       <div class="setting">
-        <span>Custom locations</span>
+        <span>Maps</span>
+        <div id="mapList" class="map-list"></div>
         <div id="dropZone">
-          <b>Drop a .json here</b>
-          <small>or click to choose &middot; GeoGuessr export or FreeGuessr format</small>
+          <b>Add a map</b>
+          <small>Drop a .json here or click &middot; GeoGuessr export or FreeGuessr format</small>
         </div>
         <input id="fileInput" type="file" accept=".json,application/json" hidden />
-        <div class="upload-row">
-          <span id="uploadInfo" class="settings-note"></span>
-          <button id="resetLocations" class="link-btn hidden">Reset to built-in</button>
-        </div>
+        <div id="uploadInfo" class="settings-note"></div>
       </div>
     </div>
   </div>
@@ -60,10 +61,8 @@
     <span>Round <b id="round">1</b>/<b id="rounds">5</b></span>
   </div>
 
-  <div id="compass" title="Heading (N to face north, R to reset view)">
-    <div id="compassStrip"></div>
-    <div id="compassMark"></div>
-  </div>
+  <canvas id="compass-hud" width="240" height="32"
+          title="Heading (N to face north, R to reset view)"></canvas>
 
   <div id="scoreBox" class="hud-pill">Score <b id="total">0</b></div>
 
