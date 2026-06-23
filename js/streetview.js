@@ -35,14 +35,40 @@ function clampZoomToGPU(loc, zoom) {
   return z;
 }
 
-function loadImage(url) {
+function loadImage(url, signal) {
   return new Promise((resolve) => {
+    if (signal?.aborted) { resolve(null); return; }
+    let settled = false;
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null); // missing/edge tiles -> skip
+    const done = (value) => {
+      if (settled) return;
+      settled = true;
+      img.onload = null;
+      img.onerror = null;
+      signal?.removeEventListener?.('abort', abort);
+      resolve(value);
+    };
+    const abort = () => {
+      img.src = '';
+      done(null);
+    };
+    img.onload = () => done(img);
+    img.onerror = () => done(null); // missing/edge tiles -> skip
+    signal?.addEventListener?.('abort', abort, { once: true });
     img.src = url;
   });
+}
+
+async function runLimited(items, limit, worker, signal) {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (!signal?.aborted && next < items.length) {
+      const item = items[next++];
+      await worker(item);
+    }
+  });
+  await Promise.all(workers);
 }
 
 // Resolve the nearest panorama (id + dimensions + exact coords) for a lat/lng,
@@ -90,7 +116,14 @@ export function resolvePano(lat, lng, radius = 50) {
 
 // Builds an equirectangular canvas for a location at CONFIG.RENDER_ZOOM.
 // loc.w / loc.h are the full panorama dimensions at CONFIG.MAX_PANO_ZOOM.
-export async function buildPanoCanvas(loc, zoom = CONFIG.RENDER_ZOOM) {
+export async function buildPanoCanvas(loc, zoom = CONFIG.RENDER_ZOOM, options = {}) {
+  const {
+    baseCanvas = null,
+    concurrency = CONFIG.TILE_LOAD_CONCURRENCY,
+    onUpdate = null,
+    signal = null
+  } = options;
+
   zoom = clampZoomToGPU(loc, zoom);
   const scale = Math.pow(2, CONFIG.MAX_PANO_ZOOM - zoom);
   const width = Math.max(TILE, Math.round(loc.w / scale));
@@ -98,26 +131,44 @@ export async function buildPanoCanvas(loc, zoom = CONFIG.RENDER_ZOOM) {
   const cols = Math.ceil(width / TILE);
   const rows = Math.ceil(height / TILE);
 
-  // Draw tiles onto an oversized grid canvas, then crop to true pano size so
-  // the texture keeps an exact 2:1 ratio for correct spherical mapping.
-  const grid = document.createElement('canvas');
-  grid.width = cols * TILE;
-  grid.height = rows * TILE;
-  const gctx = grid.getContext('2d');
-
-  const jobs = [];
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      jobs.push(loadImage(tileUrl(loc.panoid, x, y, zoom)).then((img) => {
-        if (img) gctx.drawImage(img, x * TILE, y * TILE);
-      }));
-    }
-  }
-  await Promise.all(jobs);
-
+  // Draw directly into the true pano canvas. Edge tiles are clipped by the
+  // canvas bounds, preserving the exact aspect ratio without a second crop pass.
   const out = document.createElement('canvas');
   out.width = width;
   out.height = height;
-  out.getContext('2d').drawImage(grid, 0, 0);
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, width, height);
+  if (baseCanvas) ctx.drawImage(baseCanvas, 0, 0, width, height);
+
+  const tiles = [];
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      tiles.push({ x, y });
+    }
+  }
+
+  let loaded = 0;
+  let lastUpdate = 0;
+  const total = tiles.length;
+  const notify = (force = false) => {
+    if (!onUpdate || signal?.aborted) return;
+    const now = performance.now();
+    if (!force && loaded < total && now - lastUpdate < 180) return;
+    lastUpdate = now;
+    onUpdate(out, { loaded, total, done: loaded >= total });
+  };
+
+  if (baseCanvas) notify(true);
+
+  await runLimited(tiles, Math.max(1, concurrency || 1), async ({ x, y }) => {
+    const img = await loadImage(tileUrl(loc.panoid, x, y, zoom), signal);
+    if (signal?.aborted) return;
+    if (img) ctx.drawImage(img, x * TILE, y * TILE);
+    loaded++;
+    notify();
+  }, signal);
+
+  notify(true);
   return out;
 }

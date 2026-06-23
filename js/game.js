@@ -2,7 +2,7 @@
 import { CONFIG } from './config.js';
 import { PanoViewer } from './pano.js';
 import { GuessMap, ResultMap, SummaryMap } from './map.js';
-import { buildPanoCanvas, resolvePano } from './streetview.js';
+import { buildPanoCanvas, resolvePano, tileUrl } from './streetview.js';
 import { haversineKm, scoreFor, formatDistance } from './scoring.js';
 import { loadSettings, saveSettings, MAP_STYLES, QUALITY_ZOOM } from './settings.js';
 import { CompassHUD } from './compass.js';
@@ -32,7 +32,9 @@ const state = {
 };
 
 let viewer, gmap, resultMap, summaryMap, compass;
+let currentPanoCanvas = null;
 const timer = { id: null, remaining: 0 };
+const panoLoad = { seq: 0, controller: null };
 
 const randomLocation = () => state.all[Math.floor(Math.random() * state.all.length)];
 
@@ -84,6 +86,37 @@ function shuffle(arr) {
 function setLoading(on, msg) {
   $('loading').classList.toggle('hidden', !on);
   if (msg) $('loadingText').textContent = msg;
+}
+
+function beginPanoLoad() {
+  if (panoLoad.controller) panoLoad.controller.abort();
+  panoLoad.seq += 1;
+  panoLoad.controller = typeof AbortController !== 'undefined'
+    ? new AbortController()
+    : null;
+  return { seq: panoLoad.seq, signal: panoLoad.controller?.signal || null };
+}
+
+function isPanoLoadActive(load, loc = null) {
+  return load.seq === panoLoad.seq &&
+    !load.signal?.aborted &&
+    (!loc || state.current === loc);
+}
+
+function showPanoramaCanvas(canvas) {
+  currentPanoCanvas = canvas;
+  viewer.setPanorama(canvas);
+}
+
+function setTiledPanorama(loc, targetZoom) {
+  const previewZoom = Math.min(targetZoom, CONFIG.PREVIEW_ZOOM);
+  viewer.clearTileSource();
+  if (targetZoom <= previewZoom) return;
+  viewer.setTileSource({
+    loc,
+    zoom: targetZoom,
+    urlForTile: (x, y, z) => tileUrl(loc.panoid, x, y, z)
+  });
 }
 
 // ---- Round timer ----------------------------------------------------------
@@ -245,6 +278,10 @@ async function startGame() {
 }
 
 async function loadRound() {
+  const load = beginPanoLoad();
+  currentPanoCanvas = null;
+  viewer.clearTileSource();
+  setMapFullscreen(false);
   state.guessed = false;
   // Endless mode: when the shuffled deck runs out, reshuffle and keep going.
   if (state.unlimited && state.round >= state.deck.length) {
@@ -264,28 +301,58 @@ async function loadRound() {
   // For uploaded lists, resolve a tile-servable panorama on demand; if a spot
   // has no coverage, swap in another and try again.
   let tries = 0;
-  while (!(await ensureRenderable(state.current)) && tries < 8) {
+  let renderable = await ensureRenderable(state.current);
+  while (isPanoLoadActive(load) && !renderable && tries < 8) {
     tries++;
     state.current = state.deck[state.round] = randomLocation();
+    renderable = await ensureRenderable(state.current);
   }
+  if (!isPanoLoadActive(load)) return;
+  if (!renderable) {
+    setLoading(true, 'Could not find Street View coverage for this round.');
+    return;
+  }
+
   const loc = state.current;
   const north = loc.north ?? 0;
-  const canvas = await buildPanoCanvas(loc, zoomForQuality());
-  viewer.setPanorama(canvas);
+  const targetZoom = zoomForQuality();
+  const previewZoom = Math.min(targetZoom, CONFIG.PREVIEW_ZOOM);
+  const canvas = await buildPanoCanvas(loc, previewZoom, { signal: load.signal });
+  if (!isPanoLoadActive(load, loc)) return;
+  showPanoramaCanvas(canvas);
   // Imported spots carry the author's heading; otherwise face down the road.
   viewer.setDefaultView(loc.heading ?? north, loc.pitch ?? 0, north);
   viewer.resetView();
+  setTiledPanorama(loc, targetZoom);
   setLoading(false);
   startTimer(); // only after the pano is up, so loading time isn't counted
 }
 
-// Re-render the current panorama after a quality change.
+// Quality now controls the high-res viewport tile level. The low-res sphere
+// stays visible so changing quality does not block interaction.
 async function applyQuality() {
   if (!state.current) return;
-  setLoading(true, 'Reloading panorama…');
-  const canvas = await buildPanoCanvas(state.current, zoomForQuality());
-  viewer.setPanorama(canvas);
-  setLoading(false);
+  const loc = state.current;
+  const load = beginPanoLoad();
+  const targetZoom = zoomForQuality();
+  const previewZoom = Math.min(targetZoom, CONFIG.PREVIEW_ZOOM);
+
+  try {
+    if (!currentPanoCanvas) {
+      setLoading(true, 'Reloading panorama…');
+      const canvas = await buildPanoCanvas(loc, previewZoom, { signal: load.signal });
+      if (!isPanoLoadActive(load, loc)) return;
+      showPanoramaCanvas(canvas);
+      setLoading(false);
+    }
+    if (!isPanoLoadActive(load, loc)) return;
+    setTiledPanorama(loc, targetZoom);
+    setLoading(false);
+  } catch (err) {
+    if (!isPanoLoadActive(load, loc)) return;
+    console.error(err);
+    setLoading(true, 'Could not reload panorama quality.');
+  }
 }
 
 // Wire a segmented switch (buttons with data-value, one being "custom") to a
@@ -391,6 +458,36 @@ function onPlaceGuess() {
   if (!state.guessed) $('guessBtn').disabled = false;
 }
 
+function isNormalGuessScreen() {
+  return !state.guessed &&
+    state.current &&
+    $('settings').classList.contains('hidden') &&
+    $('resultScreen').classList.contains('hidden') &&
+    $('final').classList.contains('hidden') &&
+    $('loading').classList.contains('hidden');
+}
+
+function settleGuessMapLayout() {
+  const adjust = () => {
+    if ($('guessPanel').classList.contains('map-fullscreen')) gmap.enterFullscreenView();
+    else gmap.exitFullscreenView();
+    gmap.refresh();
+  };
+  requestAnimationFrame(adjust);
+  setTimeout(adjust, 80);
+  setTimeout(adjust, 220);
+}
+
+function setMapFullscreen(on) {
+  $('guessPanel').classList.toggle('map-fullscreen', on);
+  settleGuessMapLayout();
+}
+
+function toggleMapFullscreen() {
+  if (!isNormalGuessScreen()) return;
+  setMapFullscreen(!$('guessPanel').classList.contains('map-fullscreen'));
+}
+
 function onKeyDown(e) {
   // Don't hijack keys while the settings panel (with its selects) is open.
   if (!$('settings').classList.contains('hidden')) return;
@@ -401,6 +498,8 @@ function onKeyDown(e) {
   } else if (e.key === 'h' || e.key === 'H') {
     // Hide the HUD on the guess page for an unobstructed view (map + button stay).
     if (!state.guessed) document.body.classList.toggle('ui-hidden');
+  } else if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    toggleMapFullscreen();
   } else if (e.key === 'r' || e.key === 'R') {
     viewer.resetView();
   } else if (e.key === 'n' || e.key === 'N') {
@@ -423,6 +522,7 @@ function submitGuess() {
 function finishRound() {
   if (state.guessed) return;
   state.guessed = true;
+  setMapFullscreen(false);
   stopTimer();
 
   const guess = gmap.guess;
