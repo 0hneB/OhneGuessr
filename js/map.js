@@ -93,6 +93,26 @@ const CORRECT_ICON = L.icon({
   iconSize: [36, 36], iconAnchor: [18, 18], className: 'map-pin-correct'
 });
 
+// Draw one round (the answer pin, plus the guess pin + dashed link when a guess
+// was made — it's null on a timeout forfeit) onto a map, pushing the created
+// layers so the caller can clear them later. Returns the drawn points as
+// [lat, lng] pairs for bounds fitting. Shared by ResultMap and SummaryMap.
+function drawGuessPair(map, layers, guess, actual) {
+  const a = [actual.lat, actual.lng];
+  const pts = [];
+  if (guess) {
+    const g = [guess.lat, guess.lng];
+    layers.push(L.polyline([g, a], {
+      color: '#000000', weight: 2, dashArray: '3 9', opacity: 0.85
+    }).addTo(map));
+    layers.push(L.marker(g, { icon: GUESS_ICON }).addTo(map));
+    pts.push(g);
+  }
+  layers.push(L.marker(a, { icon: CORRECT_ICON }).addTo(map));
+  pts.push(a);
+  return pts;
+}
+
 export class ResultMap {
   constructor(elId, styleKey = 'osm') {
     this.map = L.map(elId, { worldCopyJump: true, zoomControl: false, maxZoom: 19 })
@@ -112,14 +132,38 @@ export class ResultMap {
     for (const l of this.layers) this.map.removeLayer(l);
     this.layers = [];
 
-    const g = [guess.lat, guess.lng];
-    const a = [actual.lat, actual.lng];
-    this.layers.push(L.polyline([g, a], {
-      color: '#000000', weight: 2, dashArray: '3 9', opacity: 0.85
-    }).addTo(this.map));
-    this.layers.push(L.marker(g, { icon: GUESS_ICON }).addTo(this.map));
-    this.layers.push(L.marker(a, { icon: CORRECT_ICON }).addTo(this.map));
+    const pts = drawGuessPair(this.map, this.layers, guess, actual);
+    if (pts.length > 1) this.map.fitBounds(L.latLngBounds(pts).pad(0.35), { animate: false });
+    else this.map.setView(pts[0], 5, { animate: false }); // forfeit: only the answer
+  }
+}
 
-    this.map.fitBounds(L.latLngBounds([g, a]).pad(0.35), { animate: false });
+// End-of-game overview: every round's guess→answer pair on one world map.
+export class SummaryMap {
+  constructor(elId, styleKey = 'osm') {
+    this.map = L.map(elId, { worldCopyJump: true, zoomControl: false, maxZoom: 19 })
+      .setView([20, 0], 2);
+    this.baseLayer = addBaseLayer(this.map, styleKey);
+    bindDragCursor(this.map);
+    autoResize(this.map);
+    this.layers = [];
+  }
+
+  setStyle(key) {
+    this.baseLayer = addBaseLayer(this.map, key, this.baseLayer);
+  }
+
+  // results: [{ guess: {lat,lng}, actual: {lat,lng} }, ...]
+  show(results) {
+    this.map.invalidateSize();
+    for (const l of this.layers) this.map.removeLayer(l);
+    this.layers = [];
+    if (!results.length) return;
+
+    const pts = [];
+    for (const r of results) {
+      pts.push(...drawGuessPair(this.map, this.layers, r.guess, r.actual));
+    }
+    this.map.fitBounds(L.latLngBounds(pts).pad(0.2), { animate: false });
   }
 }
