@@ -62,7 +62,9 @@ export const MAP_STYLES = {
 export const QUALITY_ZOOM = { low: 2, medium: 3, high: 4, max: 5 };
 
 const KEY = 'freeguessr.settings';
-const DEFAULTS = { mapStyle: 'osm', quality: 'high' };
+// rounds: 'unlimited' | a count ('5','10', or a custom integer).
+// timer:  'unlimited' | seconds per location ('120','300', or a custom value).
+const DEFAULTS = { mapStyle: 'osm', quality: 'high', rounds: '5', timer: 'unlimited' };
 
 export function loadSettings() {
   try {

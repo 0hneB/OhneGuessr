@@ -46,6 +46,24 @@ html, body {
 #topLeft { left: 54px; }
 #scoreBox { right: 14px; }
 
+/* Round timer — centred just below the compass; turns red in the last seconds. */
+#timerBox {
+  left: 50%;
+  top: 52px;
+  transform: translateX(-50%);
+  gap: 6px;
+}
+#timerBox.low { color: #fca5a5; }
+#timerBox.low b { color: #f87171; }
+
+/* 'H' on the guess page hides the HUD, leaving only the panorama, guess map and
+   button for an unobstructed view. */
+body.ui-hidden #settingsBtn,
+body.ui-hidden #topLeft,
+body.ui-hidden #compass-hud,
+body.ui-hidden #timerBox,
+body.ui-hidden #scoreBox { display: none !important; }
+
 /* Compass HUD (canvas, top middle) — draws its own bar; just position it. */
 #compass-hud {
   position: fixed;
@@ -172,6 +190,41 @@ html, body {
   border-radius: 8px;
   cursor: pointer;
 }
+.setting-sub { font-size: 11px; font-weight: 400; opacity: 0.6; }
+
+/* Segmented switch (4-option toggle) used for rounds + time limit. */
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+}
+.segmented button {
+  flex: 1;
+  padding: 8px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd2dd;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.segmented button:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.segmented button.active { background: #22c55e; color: #06240f; }
+.seg-custom {
+  padding: 10px;
+  font-size: 14px;
+  color: #fff;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+}
+.seg-custom::placeholder { color: #6b7280; }
+
 .settings-note { font-size: 12px; opacity: 0.55; line-height: 1.45; }
 
 #dropZone {
@@ -311,24 +364,52 @@ html, body {
   box-shadow: 0 0 0 2px #fff, 0 3px 6px rgba(0, 0, 0, 0.45);
 }
 
-/* Final screen */
+/* Final screen — fullscreen summary map with a floating results card */
 #final {
   position: fixed;
   inset: 0;
   z-index: 800;
-  display: grid;
-  place-items: center;
-  background: rgba(0, 0, 0, 0.78);
+  background: #0b0b0b;
 }
+#finalMap { position: absolute; inset: 0; }
 .final-card {
+  position: absolute;
+  left: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 810;
+  width: min(86vw, 320px);
   text-align: center;
-  padding: 40px 56px;
-  background: #181818;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
+  padding: 24px 28px;
+  background: rgba(17, 17, 17, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
-.final-card h1 { font-size: 26px; margin-bottom: 10px; }
-.final-score { font-size: 34px; font-weight: 800; color: #22c55e; margin-bottom: 22px; }
+.final-card h1 { font-size: 24px; margin-bottom: 8px; }
+.final-score { font-size: 30px; font-weight: 800; color: #22c55e; margin-bottom: 14px; }
+
+.final-rounds {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+.final-round {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.fr-no { color: #9aa3ad; font-weight: 700; text-align: left; }
+.fr-dist { color: #cbd2dd; text-align: left; }
+.fr-pts { color: #22c55e; font-weight: 800; }
 #playAgain {
   padding: 12px 28px;
   font-size: 15px;

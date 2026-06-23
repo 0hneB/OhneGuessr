@@ -1,7 +1,7 @@
 // Game orchestration: pick a map, run rounds, score, show results.
 import { CONFIG } from './config.js';
 import { PanoViewer } from './pano.js';
-import { GuessMap, ResultMap } from './map.js';
+import { GuessMap, ResultMap, SummaryMap } from './map.js';
 import { buildPanoCanvas, resolvePano } from './streetview.js';
 import { haversineKm, scoreFor, formatDistance } from './scoring.js';
 import { loadSettings, saveSettings, MAP_STYLES, QUALITY_ZOOM } from './settings.js';
@@ -11,7 +11,11 @@ import { listMaps, getLocations, addUserMap, deleteUserMap } from './maps.js';
 const $ = (id) => document.getElementById(id);
 
 let settings = loadSettings();
+if (settings.timer === 'off') settings.timer = 'unlimited'; // migrate older saves
 const zoomForQuality = () => QUALITY_ZOOM[settings.quality] ?? 4;
+// 'unlimited' rounds -> Infinity (the game never ends on its own).
+const roundsPerGame = () =>
+  settings.rounds === 'unlimited' ? Infinity : (parseInt(settings.rounds, 10) || CONFIG.ROUNDS);
 
 const state = {
   all: [],         // locations of the selected map
@@ -22,10 +26,13 @@ const state = {
   rounds: CONFIG.ROUNDS,
   total: 0,
   current: null,   // current location
-  guessed: false
+  guessed: false,
+  unlimited: false,// endless mode (no fixed round count)
+  results: []      // per-round {guess, actual, distKm, points} for the summary
 };
 
-let viewer, gmap, resultMap, compass;
+let viewer, gmap, resultMap, summaryMap, compass;
+const timer = { id: null, remaining: 0 };
 
 const randomLocation = () => state.all[Math.floor(Math.random() * state.all.length)];
 
@@ -77,6 +84,41 @@ function shuffle(arr) {
 function setLoading(on, msg) {
   $('loading').classList.toggle('hidden', !on);
   if (msg) $('loadingText').textContent = msg;
+}
+
+// ---- Round timer ----------------------------------------------------------
+
+const timerSeconds = () =>
+  settings.timer === 'unlimited' ? 0 : (parseInt(settings.timer, 10) || 0);
+
+function stopTimer() {
+  if (timer.id) { clearInterval(timer.id); timer.id = null; }
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(timer.remaining / 60);
+  const s = String(timer.remaining % 60).padStart(2, '0');
+  $('timerVal').textContent = `${m}:${s}`;
+  $('timerBox').classList.toggle('low', timer.remaining <= 10);
+}
+
+// Start (or restart) the countdown for the current round. No-op / hidden when the
+// timer is off. Pauses itself while the settings panel is open.
+function startTimer() {
+  stopTimer();
+  const box = $('timerBox');
+  const secs = timerSeconds();
+  if (!secs || state.guessed) { box.classList.add('hidden'); return; }
+  timer.remaining = secs;
+  box.classList.remove('hidden');
+  updateTimerDisplay();
+  timer.id = setInterval(() => {
+    if (!$('settings').classList.contains('hidden')) return; // paused
+    if (state.guessed) { stopTimer(); return; }
+    timer.remaining -= 1;
+    updateTimerDisplay();
+    if (timer.remaining <= 0) { stopTimer(); finishRound(); } // auto-submit / forfeit
+  }, 1000);
 }
 
 // ---- Map library ----------------------------------------------------------
@@ -189,20 +231,28 @@ function setupUpload() {
 // ---- Rounds ---------------------------------------------------------------
 
 async function startGame() {
+  stopTimer();
   $('resultScreen').classList.add('hidden');
   $('final').classList.add('hidden');
-  state.deck = shuffle(state.all).slice(0, CONFIG.ROUNDS);
-  state.rounds = Math.min(CONFIG.ROUNDS, state.deck.length);
+  const n = roundsPerGame();
+  state.unlimited = !Number.isFinite(n);
+  state.deck = state.unlimited ? shuffle(state.all) : shuffle(state.all).slice(0, n);
+  state.rounds = state.unlimited ? Infinity : Math.min(n, state.deck.length);
   state.round = 0;
   state.total = 0;
+  state.results = [];
   await loadRound();
 }
 
 async function loadRound() {
   state.guessed = false;
+  // Endless mode: when the shuffled deck runs out, reshuffle and keep going.
+  if (state.unlimited && state.round >= state.deck.length) {
+    state.deck = state.deck.concat(shuffle(state.all));
+  }
   state.current = state.deck[state.round];
   $('round').textContent = String(state.round + 1);
-  $('rounds').textContent = String(state.rounds);
+  $('rounds').textContent = state.unlimited ? '∞' : String(state.rounds);
   $('total').textContent = String(state.total);
   $('resultScreen').classList.add('hidden');
   $('guessBtn').disabled = true;
@@ -226,6 +276,7 @@ async function loadRound() {
   viewer.setDefaultView(loc.heading ?? north, loc.pitch ?? 0, north);
   viewer.resetView();
   setLoading(false);
+  startTimer(); // only after the pano is up, so loading time isn't counted
 }
 
 // Re-render the current panorama after a quality change.
@@ -235,6 +286,49 @@ async function applyQuality() {
   const canvas = await buildPanoCanvas(state.current, zoomForQuality());
   viewer.setPanorama(canvas);
   setLoading(false);
+}
+
+// Wire a segmented switch (buttons with data-value, one being "custom") to a
+// stored string setting. read/write get and persist the value; toInput/fromInput
+// convert between the stored value and the custom number box (e.g. seconds<->min);
+// onCommit runs after a deliberate change (button click or committing the box).
+function setupSegmented({ segId, inputId, presets, customDefault, read, write, toInput, fromInput, onCommit }) {
+  const seg = $(segId);
+  const input = $(inputId);
+  const buttons = [...seg.querySelectorAll('button')];
+  const activeFor = (v) => (presets.includes(String(v)) ? String(v) : 'custom');
+
+  const paint = () => {
+    const active = activeFor(read());
+    for (const b of buttons) b.classList.toggle('active', b.dataset.value === active);
+    input.classList.toggle('hidden', active !== 'custom');
+  };
+  const render = () => {
+    paint();
+    if (activeFor(read()) === 'custom') input.value = toInput(read());
+  };
+
+  for (const b of buttons) b.addEventListener('click', () => {
+    if (b.dataset.value === 'custom') {
+      if (activeFor(read()) !== 'custom') write(customDefault); // seed once
+      render();
+      input.focus();
+      input.select();
+    } else {
+      write(b.dataset.value);
+      render();
+    }
+    onCommit();
+  });
+  // Live-save while typing (no re-render, so the cursor isn't disturbed); the
+  // side effect (restart / re-arm) only fires once editing is committed.
+  input.addEventListener('input', () => {
+    const v = fromInput(input.value);
+    if (v != null) { write(v); paint(); }
+  });
+  input.addEventListener('change', onCommit);
+
+  render();
 }
 
 function setupSettingsUI() {
@@ -253,11 +347,36 @@ function setupSettingsUI() {
     saveSettings(settings);
     gmap.setStyle(settings.mapStyle);
     resultMap.setStyle(settings.mapStyle);
+    summaryMap.setStyle(settings.mapStyle);
   });
   $('qualitySel').addEventListener('change', () => {
     settings.quality = $('qualitySel').value;
     saveSettings(settings);
     applyQuality();
+  });
+
+  // Changing the round count restarts the game (it redefines the deck).
+  setupSegmented({
+    segId: 'roundsSeg', inputId: 'roundsCustom',
+    presets: ['unlimited', '5', '10'], customDefault: '7',
+    read: () => String(settings.rounds),
+    write: (v) => { settings.rounds = v; saveSettings(settings); },
+    toInput: (v) => String(v),
+    fromInput: (raw) => { const n = parseInt(raw, 10); return n >= 1 ? String(n) : null; },
+    onCommit: () => { if (state.all.length) startGame(); }
+  });
+  // Time limit is per location; custom is entered in minutes, stored as seconds.
+  setupSegmented({
+    segId: 'timerSeg', inputId: 'timerCustom',
+    presets: ['unlimited', '120', '300'], customDefault: '180',
+    read: () => String(settings.timer),
+    write: (v) => { settings.timer = v; saveSettings(settings); },
+    toInput: (sec) => String(+(parseInt(sec, 10) / 60).toFixed(2)),
+    fromInput: (raw) => { const m = parseFloat(raw); return m > 0 ? String(Math.round(m * 60)) : null; },
+    onCommit: () => {
+      if (state.current && !state.guessed) startTimer(); // re-arm for the live round
+      else { stopTimer(); $('timerBox').classList.add('hidden'); }
+    }
   });
 
   const panel = $('settings');
@@ -279,6 +398,9 @@ function onKeyDown(e) {
     e.preventDefault(); // stop the focused button/map from grabbing it
     if (state.guessed) nextRound();
     else if (gmap.guess) submitGuess();
+  } else if (e.key === 'h' || e.key === 'H') {
+    // Hide the HUD on the guess page for an unobstructed view (map + button stay).
+    if (!state.guessed) document.body.classList.toggle('ui-hidden');
   } else if (e.key === 'r' || e.key === 'R') {
     viewer.resetView();
   } else if (e.key === 'n' || e.key === 'N') {
@@ -293,32 +415,62 @@ function onKeyDown(e) {
 function submitGuess() {
   if (state.guessed) { nextRound(); return; }
   if (!gmap.guess) return;
+  finishRound();
+}
 
+// Score and reveal the round. `gmap.guess` may be null when the timer runs out
+// with no guess placed — that's a forfeit (0 points, no guess pin).
+function finishRound() {
+  if (state.guessed) return;
   state.guessed = true;
-  const distKm = haversineKm(gmap.guess, state.current);
-  const points = scoreFor(distKm);
+  stopTimer();
+
+  const guess = gmap.guess;
+  const distKm = guess ? haversineKm(guess, state.current) : null;
+  const points = distKm == null ? 0 : scoreFor(distKm);
   state.total += points;
+  state.results.push({
+    guess: guess ? { lat: guess.lat, lng: guess.lng } : null,
+    actual: { lat: state.current.lat, lng: state.current.lng },
+    distKm, points
+  });
 
   $('total').textContent = String(state.total);
-  $('resultDist').textContent = formatDistance(distKm);
+  $('resultDist').textContent = distKm == null ? '—' : formatDistance(distKm);
   $('resultPoints').textContent = String(points);
   $('nextBtn').textContent = state.round + 1 >= state.rounds ? 'See results' : 'Next';
 
   $('resultScreen').classList.remove('hidden');
-  resultMap.show(gmap.guess, state.current);
+  resultMap.show(guess, state.current);
 }
 
 function nextRound() {
   $('resultScreen').classList.add('hidden');
-  if (state.round + 1 >= state.rounds) { showFinal(); return; }
+  if (!state.unlimited && state.round + 1 >= state.rounds) { showFinal(); return; }
   state.round++;
   loadRound();
+}
+
+function renderFinalRounds() {
+  const list = $('finalRounds');
+  list.innerHTML = '';
+  state.results.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'final-round';
+    row.innerHTML =
+      `<span class="fr-no">${i + 1}</span>` +
+      `<span class="fr-dist">${r.distKm == null ? '—' : formatDistance(r.distKm)}</span>` +
+      `<span class="fr-pts">${r.points}</span>`;
+    list.appendChild(row);
+  });
 }
 
 function showFinal() {
   const max = state.rounds * CONFIG.SCORE_MAX;
   $('finalScore').textContent = `${state.total} / ${max}`;
+  renderFinalRounds();
   $('final').classList.remove('hidden');
+  summaryMap.show(state.results); // after un-hiding so Leaflet sizes correctly
 }
 
 async function init() {
@@ -327,6 +479,7 @@ async function init() {
   viewer.onChange = (heading) => compass.setHeading(heading);
   gmap = new GuessMap('map', onPlaceGuess, settings.mapStyle);
   resultMap = new ResultMap('resultMap', settings.mapStyle);
+  summaryMap = new SummaryMap('finalMap', settings.mapStyle);
   setupSettingsUI();
   setupUpload();
 
