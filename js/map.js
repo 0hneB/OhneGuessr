@@ -51,7 +51,7 @@ function minZoomToFillHeight(map) {
 
   const crs = map.options.crs || L.CRS.EPSG3857;
   const maxZoom = map.getMaxZoom() || 19;
-  let zoom = map.options._freeguessrBaseMinZoom ?? 0;
+  let zoom = map.options._ohneguessrBaseMinZoom ?? 0;
   while (zoom < maxZoom && crs.scale(zoom) < size.y + 12) zoom++;
   return zoom;
 }
@@ -84,7 +84,7 @@ export class GuessMap {
       worldCopyJump: true, zoomControl: false, maxZoom: 19,
       attributionControl: false // keep the small map clean; credits show on result map
     }).setView([20, 0], 1);
-    this.map.options._freeguessrBaseMinZoom = this.map.options.minZoom ?? 0;
+    this.map.options._ohneguessrBaseMinZoom = this.map.options.minZoom ?? 0;
     this.baseLayer = addBaseLayer(this.map, styleKey);
     bindDragCursor(this.map);
     autoResize(this.map);
@@ -113,7 +113,7 @@ export class GuessMap {
       this.constrainFullscreenView();
     } else {
       invalidateSizeNow(this.map);
-      this.map.setMinZoom(this.map.options._freeguessrBaseMinZoom ?? 0);
+      this.map.setMinZoom(this.map.options._ohneguessrBaseMinZoom ?? 0);
     }
 
     invalidateSizeBurst(this.map);

@@ -39,7 +39,7 @@ const panoLoad = { seq: 0, controller: null };
 const randomLocation = () => state.all[Math.floor(Math.random() * state.all.length)];
 
 // Accepts a GeoGuessr export ({customCoordinates:[...]}) or a plain array in
-// either GeoGuessr or FreeGuessr shape. Missing panoid/dimensions/north are
+// either GeoGuessr or OhneGuessr shape. Missing panoid/dimensions/north are
 // resolved lazily at round load; built-ins already carry them.
 function normalizeLocations(json) {
   const arr = Array.isArray(json) ? json : (json && json.customCoordinates) || [];
