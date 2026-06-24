@@ -21,7 +21,7 @@ const DRAG_DEADZONE_PX = 3;
 const INERTIA_RELEASE_MS = 120;
 const MIN_FOV = 8;          // deep zoom-in; Street View imagery softens past this
 const MAX_FOV = 75;
-const TILE_RADIUS = 499;
+const TILE_RADIUS = 500; // match the base sphere so the layers don't parallax/z-fight
 const TILE_SUBDIVISIONS = 6;
 const TILE_CACHE_LIMIT = 180;
 const norm360 = (d) => ((d % 360) + 360) % 360;
@@ -477,15 +477,23 @@ export class PanoViewer {
 
     const texture = new THREE.Texture(img);
     texture.colorSpace = THREE.SRGBColorSpace;
-    texture.minFilter = THREE.LinearFilter;
+    // Trilinear + anisotropy tame the shimmer/aliasing while panning. Safe here:
+    // each tile is its own 512px (power-of-two) image with clamped edges, so
+    // mipmapping never samples across the equirect wrap seam — that's why the
+    // single wrapping *base* texture still has to skip mipmaps.
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
     texture.magFilter = THREE.LinearFilter;
-    texture.generateMipmaps = false;
+    texture.generateMipmaps = true;
+    texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
     texture.needsUpdate = true;
 
     const material = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.DoubleSide,
-      depthWrite: false
+      // Always paint over the low-res sphere (no depth compare) so the two layers
+      // can share a radius without z-fighting.
+      depthWrite: false,
+      depthTest: false
     });
     const mesh = new THREE.Mesh(this._tileGeometry(entry.x, entry.y), material);
     mesh.renderOrder = 1;
