@@ -155,7 +155,6 @@ class Handler(SimpleHTTPRequestHandler):
                 "name": name,
                 "file": fname,
                 "count": len(locations),
-                "added": True,
             }
             entries.append(entry)
             write_json(MANIFEST, entries)
