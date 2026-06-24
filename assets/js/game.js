@@ -88,6 +88,16 @@ function setLoading(on, msg) {
   if (msg) $('loadingText').textContent = msg;
 }
 
+function setEmptyState(on) {
+  $('emptyState').classList.toggle('hidden', !on);
+  document.body.classList.toggle('empty-mode', on);
+}
+
+function setUploadMessage(message) {
+  $('uploadInfo').textContent = message;
+  $('emptyUploadInfo').textContent = message;
+}
+
 function beginPanoLoad() {
   if (panoLoad.controller) panoLoad.controller.abort();
   panoLoad.seq += 1;
@@ -262,6 +272,7 @@ function beginRename(m, mainBtn) {
 async function selectMap(key) {
   const item = state.maps.find((m) => m.key === key) || state.maps[0];
   if (!item) { showNoMaps(); return; }
+  setEmptyState(false);
   state.currentKey = item.key;
   settings.currentMap = item.key;
   saveSettings(settings);
@@ -289,11 +300,12 @@ async function selectMap(key) {
 // full-screen overlay, unable to even open Settings to fix it.
 async function recoverToSettings(message) {
   setLoading(false);
+  setEmptyState(false);
   state.currentKey = null;
   state.maps = await listMaps();
   renderMapList();
   $('settings').classList.remove('hidden');
-  $('uploadInfo').textContent = message;
+  setUploadMessage(message);
 }
 
 async function removeMap(m) {
@@ -313,44 +325,50 @@ function showNoMaps() {
   setLoading(false);
   state.currentKey = null;
   renderMapList();
-  $('settings').classList.remove('hidden');
-  $('uploadInfo').textContent = 'No maps yet — add one below to start playing.';
+  $('settings').classList.add('hidden');
+  setEmptyState(true);
+  setUploadMessage('');
 }
 
 async function readUpload(file) {
   let json;
   try { json = JSON.parse(await file.text()); }
-  catch { $('uploadInfo').textContent = 'Could not parse that JSON file.'; return; }
+  catch { setUploadMessage('Could not parse that JSON file.'); return; }
   const arr = normalizeLocations(json);
-  if (!arr.length) { $('uploadInfo').textContent = 'No usable coordinates found.'; return; }
+  if (!arr.length) { setUploadMessage('No usable coordinates found.'); return; }
   let item;
   try {
     item = await addUserMap(mapNameFrom(json, file.name), arr);
   } catch {
-    $('uploadInfo').textContent = 'Could not save the map. Is the local server (run/serve.bat) running?';
+    setUploadMessage('Could not save the map. Is the local server (run/serve.bat) running?');
     return;
   }
   state.maps = await listMaps();
-  $('uploadInfo').textContent = '';
+  setUploadMessage('');
   $('settings').classList.add('hidden');
+  setEmptyState(false);
   await selectMap(item.key);
 }
 
-function setupUpload() {
-  const dz = $('dropZone');
-  const fi = $('fileInput');
-  dz.addEventListener('click', () => fi.click());
-  fi.addEventListener('change', () => { if (fi.files[0]) readUpload(fi.files[0]); fi.value = ''; });
-  ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => {
-    e.preventDefault(); dz.classList.add('dragover');
+function bindUploadZone(zone, fileInput) {
+  zone.addEventListener('click', () => fileInput.click());
+  ['dragenter', 'dragover'].forEach((ev) => zone.addEventListener(ev, (e) => {
+    e.preventDefault(); zone.classList.add('dragover');
   }));
-  ['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => {
-    e.preventDefault(); dz.classList.remove('dragover');
+  ['dragleave', 'drop'].forEach((ev) => zone.addEventListener(ev, (e) => {
+    e.preventDefault(); zone.classList.remove('dragover');
   }));
-  dz.addEventListener('drop', (e) => {
+  zone.addEventListener('drop', (e) => {
     const f = e.dataTransfer.files && e.dataTransfer.files[0];
     if (f) readUpload(f);
   });
+}
+
+function setupUpload() {
+  const fi = $('fileInput');
+  bindUploadZone($('dropZone'), fi);
+  bindUploadZone($('emptyDropZone'), fi);
+  fi.addEventListener('change', () => { if (fi.files[0]) readUpload(fi.files[0]); fi.value = ''; });
 }
 
 // ---- Rounds ---------------------------------------------------------------
@@ -593,11 +611,15 @@ function setupSettingsUI() {
   $('settingsBtn').addEventListener('click', () => {
     const opening = panel.classList.contains('hidden');
     panel.classList.toggle('hidden');
-    if (opening) $('uploadInfo').textContent = ''; // drop any stale error/info
+    if (opening) setUploadMessage(''); // drop any stale error/info
   });
   $('settingsClose').addEventListener('click', () => panel.classList.add('hidden'));
   panel.addEventListener('click', (e) => {
     if (e.target === panel) panel.classList.add('hidden');
+  });
+  $('emptySettingsBtn').addEventListener('click', () => {
+    setUploadMessage('');
+    panel.classList.remove('hidden');
   });
 }
 
@@ -609,6 +631,7 @@ function isNormalGuessScreen() {
   return !state.guessed &&
     state.current &&
     $('settings').classList.contains('hidden') &&
+    $('emptyState').classList.contains('hidden') &&
     $('resultScreen').classList.contains('hidden') &&
     $('final').classList.contains('hidden') &&
     $('loading').classList.contains('hidden');
