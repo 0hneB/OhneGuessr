@@ -233,7 +233,7 @@ def main():
     except OSError:
         pass
 
-    server = ThreadingHTTPServer(("", PORT), Handler)
+    server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     log("serving %s (pid %d)" % (url, os.getpid()))
     threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:
