@@ -5,8 +5,8 @@ Serves the repo over http:// (browsers block ES modules + fetch over file://) an
 adds a tiny write API so maps uploaded in Settings are saved as real files under
 data/ — not just IndexedDB — making them git-committable and reload-proof.
 
-Standard library only, no dependencies. Launched windowless by serve.bat; stop it
-with stop.bat. Routes:
+Standard library only, no dependencies. Launched windowless by server/serve.bat;
+stop it with server/stop.bat. Routes:
     GET    /api/health        -> {"ok": true}        (capability probe)
     POST   /api/maps          -> create a map        body {name, locations}
     PATCH  /api/maps/<id>      -> rename a map (+file) body {name}
@@ -25,7 +25,8 @@ import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = 8000
-BASE = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.dirname(SCRIPT_DIR)
 DATA_DIR = os.path.join(BASE, "data")
 MANIFEST = os.path.join(DATA_DIR, "maps.json")
 PIDFILE = os.path.join(tempfile.gettempdir(), "ohneguessr-serve.pid")
