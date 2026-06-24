@@ -43,6 +43,10 @@ html, body {
   -webkit-mask-image: url("../icons/unlimited.svg");
   mask-image: url("../icons/unlimited.svg");
 }
+.timer-icon {
+  -webkit-mask-image: url("../icons/timer.svg");
+  mask-image: url("../icons/timer.svg");
+}
 
 /* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
 .leaflet-container { cursor: crosshair; background: #1b1b1b; }
@@ -95,7 +99,9 @@ html, body {
   top: 52px;
   transform: translateX(-50%);
   gap: 6px;
+  padding-left: 12px; /* the icon glyph has transparent margin; trim to balance */
 }
+#timerBox .timer-icon { width: 15px; height: 15px; } /* inherits currentColor (red when .low) */
 #timerBox.low { color: #fca5a5; }
 #timerBox.low b { color: #f87171; }
 
