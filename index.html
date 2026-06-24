@@ -82,13 +82,28 @@
       <div class="setting">
         <span>Maps</span>
         <div id="mapList" class="map-list"></div>
-        <div id="dropZone">
+        <div id="dropZone" class="drop-zone">
           <b>Add a map</b>
           <small>Drop a .json here or click &middot; GeoGuessr export or OhneGuessr format</small>
         </div>
         <input id="fileInput" type="file" accept=".json,application/json" hidden />
         <div id="uploadInfo" class="settings-note"></div>
       </div>
+    </div>
+  </div>
+
+  <div id="emptyState" class="hidden">
+    <div class="empty-card">
+      <h1>Add a map</h1>
+      <div id="emptyDropZone" class="drop-zone drop-zone-large">
+        <b>Choose a .json map</b>
+        <small>GeoGuessr export or OhneGuessr format</small>
+      </div>
+      <div id="emptyUploadInfo" class="settings-note"></div>
+      <button id="emptySettingsBtn" type="button">
+        <span class="svg-icon settings-icon" aria-hidden="true"></span>
+        <span>Settings</span>
+      </button>
     </div>
   </div>
 

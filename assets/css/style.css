@@ -99,6 +99,12 @@ body.ui-hidden #compass-hud,
 body.ui-hidden #timerBox,
 body.ui-hidden #scoreBox { display: none !important; }
 
+body.empty-mode #topLeft,
+body.empty-mode #compass-hud,
+body.empty-mode #timerBox,
+body.empty-mode #scoreBox,
+body.empty-mode #guessPanel { display: none !important; }
+
 /* Compass HUD (canvas, top middle) — draws its own bar; just position it. */
 #compass-hud {
   position: fixed;
@@ -373,7 +379,7 @@ body.ui-hidden #scoreBox { display: none !important; }
 
 .settings-note { font-size: 12px; opacity: 0.55; line-height: 1.45; }
 
-#dropZone {
+.drop-zone {
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -387,10 +393,67 @@ body.ui-hidden #scoreBox { display: none !important; }
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
-#dropZone:hover { border-color: rgba(34, 197, 94, 0.6); background: rgba(34, 197, 94, 0.06); }
-#dropZone.dragover { border-color: #22c55e; background: rgba(34, 197, 94, 0.12); }
-#dropZone b { font-size: 13px; }
-#dropZone small { font-size: 11px; opacity: 0.55; }
+.drop-zone:hover { border-color: rgba(34, 197, 94, 0.6); background: rgba(34, 197, 94, 0.06); }
+.drop-zone.dragover { border-color: #22c55e; background: rgba(34, 197, 94, 0.12); }
+.drop-zone b { font-size: 13px; }
+.drop-zone small { font-size: 11px; opacity: 0.55; }
+.drop-zone-large {
+  min-height: 132px;
+  padding: 24px;
+}
+.drop-zone-large b { font-size: 16px; }
+.drop-zone-large small { font-size: 12px; }
+
+/* First-run map import */
+#emptyState {
+  position: fixed;
+  inset: 0;
+  z-index: 820;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.72);
+}
+.empty-card {
+  width: min(92vw, 440px);
+  padding: 26px;
+  background: rgba(24, 24, 24, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+}
+.empty-card h1 {
+  margin-bottom: 18px;
+  font-size: 24px;
+  line-height: 1.1;
+}
+#emptyUploadInfo {
+  margin-top: 10px;
+  min-height: 18px;
+}
+#emptySettingsBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 42px;
+  margin-top: 14px;
+  color: #cbd2dd;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+#emptySettingsBtn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+#emptySettingsBtn .settings-icon {
+  width: 16px;
+  height: 16px;
+}
 
 /* Map library list */
 .map-list {
