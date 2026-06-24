@@ -185,8 +185,7 @@ function startTimer() {
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// Inline Feather-style icons (stroked, inherit color via currentColor). Sized in
-// CSS. Keep the path data in sync with the shared icon set (icons.php).
+// Inline Feather-style icons (stroked, inherit color via currentColor). Sized in CSS.
 const ICON_PATHS = {
   edit: '<path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
   close: '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>'
