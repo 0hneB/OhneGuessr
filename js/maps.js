@@ -4,7 +4,7 @@
 // and the game decides what to do with them.
 
 const MANIFEST_URL = 'data/maps.json';
-const DB_NAME = 'freeguessr';
+const DB_NAME = 'ohneguessr';
 const DB_VERSION = 1;
 const STORE = 'maps';
 
