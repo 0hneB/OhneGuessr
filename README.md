@@ -7,7 +7,7 @@ A completely free, debloated and local GeoGuessr alternative.
 
 ## Features
 
-- Runs entirely locally, no API keys or sign-in.
+- Runs locally, no API keys or sign-in.
 - Multiple free map styles (OSM, Carto, Esri, satellite, terrain).
 - Distance-based scoring, per-round result screen, end-of-game summary map.
 - use your own maps either hand picked in [Map Making App](https://map-making.app/) or generated with [MapGenerator](https://map-g3nerator.vercel.app/)
