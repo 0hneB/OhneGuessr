@@ -387,6 +387,43 @@ async function startGame() {
   await loadRound();
 }
 
+// React to a "rounds per game" change. Outside a live game this just (re)starts.
+// Mid-game it adjusts the limit in place — extending or trimming the upcoming
+// deck while keeping the played + current rounds — so the current panorama
+// keeps playing instead of the whole game reloading.
+function applyRoundLimitChange() {
+  if (!state.all.length) return;
+  const inGame = state.current && $('final').classList.contains('hidden');
+  if (!inGame) { startGame(); return; }
+
+  const nRaw = roundsPerGame();
+  state.unlimited = !Number.isFinite(nRaw);
+
+  if (state.unlimited) {
+    state.rounds = Infinity; // loadRound grows the deck on demand
+  } else {
+    const n = Math.min(nRaw, state.all.length);
+    const keep = Math.min(state.deck.length, state.round + 1); // played + current
+    if (n > keep) {
+      // Need more rounds: append fresh locations not already in the kept deck.
+      const have = new Set(state.deck.slice(0, keep));
+      let deck = state.deck.slice(0, keep).concat(shuffle(state.all).filter((l) => !have.has(l)));
+      while (deck.length < n) deck = deck.concat(shuffle(state.all)); // map smaller than n
+      state.deck = deck.slice(0, n);
+    } else {
+      state.deck = state.deck.slice(0, Math.max(n, keep)); // fewer rounds: trim the tail
+    }
+    state.rounds = Math.min(n, state.deck.length);
+  }
+
+  updateRoundLimitDisplay();
+  // If a result screen is up, its Next/See-results label may have flipped.
+  if (!$('resultScreen').classList.contains('hidden')) {
+    $('nextBtn').textContent =
+      state.unlimited || state.round + 1 < state.rounds ? 'Next' : 'See results';
+  }
+}
+
 async function loadRound() {
   const load = beginPanoLoad();
   currentPanoCanvas = null;
@@ -627,7 +664,7 @@ function setupSettingsUI() {
     write: (v) => { settings.rounds = v; saveSettings(settings); },
     toInput: (v) => String(v),
     fromInput: (raw) => { const n = parseInt(raw, 10); return n >= 1 ? String(n) : null; },
-    onCommit: () => { if (state.all.length) startGame(); }
+    onCommit: applyRoundLimitChange
   });
   // Time limit is per location; custom is entered in minutes, stored as seconds.
   setupSegmented({
