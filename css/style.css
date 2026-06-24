@@ -69,13 +69,16 @@ html, body {
 #topLeft { left: 54px; }
 #scoreBox { right: 14px; }
 #rounds.rounds-unlimited {
-  display: inline-grid;
-  place-items: center;
-  min-width: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: text-bottom;
 }
+
 #rounds .unlimited-icon {
   width: 18px;
   height: 18px;
+  transform: translateY(1px);
 }
 
 /* Round timer — centred just below the compass; turns red in the last seconds. */
@@ -339,7 +342,7 @@ body.ui-hidden #scoreBox { display: none !important; }
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 6px;
+  padding: 4px 6px;
   font-size: 13px;
   font-weight: 600;
   color: #cbd2dd;
@@ -353,8 +356,8 @@ body.ui-hidden #scoreBox { display: none !important; }
 .segmented button.active { background: #22c55e; color: #06240f; }
 .segmented button.active .svg-icon { background: #000; }
 .segmented .unlimited-icon {
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
 }
 .seg-custom {
   padding: 10px;
