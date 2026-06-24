@@ -193,21 +193,20 @@ function renderMapList() {
     });
     row.appendChild(main);
 
-    if (!m.builtin) {
-      const edit = document.createElement('button');
-      edit.className = 'map-row-edit';
-      edit.title = 'Rename map';
-      edit.innerHTML = '&#9998;'; // pencil
-      edit.addEventListener('click', (e) => { e.stopPropagation(); beginRename(m, main); });
-      row.appendChild(edit);
+    const edit = document.createElement('button');
+    edit.className = 'map-row-edit';
+    edit.title = 'Rename map';
+    edit.innerHTML = '&#9998;'; // pencil
+    edit.addEventListener('click', (e) => { e.stopPropagation(); beginRename(m, main); });
+    row.appendChild(edit);
 
-      const del = document.createElement('button');
-      del.className = 'map-row-del';
-      del.title = 'Delete map';
-      del.innerHTML = '&times;';
-      del.addEventListener('click', (e) => { e.stopPropagation(); removeMap(m); });
-      row.appendChild(del);
-    }
+    const del = document.createElement('button');
+    del.className = 'map-row-del';
+    del.title = 'Delete map';
+    del.innerHTML = '&times;';
+    del.addEventListener('click', (e) => { e.stopPropagation(); removeMap(m); });
+    row.appendChild(del);
+
     list.appendChild(row);
   }
 }

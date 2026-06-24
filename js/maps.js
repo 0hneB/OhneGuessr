@@ -36,18 +36,18 @@ async function loadManifest() {
 
 // ---- unified library ------------------------------------------------------
 
-// Returns [{ key, id, name, count, builtin, file }] for every map on disk. `key`
-// is the stable id used for selection/persistence. builtin:true marks maps shipped
-// with the repo (no edit controls); uploaded maps are builtin:false.
+// Returns [{ key, id, name, count, file }] for every map on disk. `key` is the
+// stable id used for selection/persistence. Every map is editable.
 export async function listMaps() {
   const manifest = await loadManifest();
   return manifest
     .filter((m) => m && m.id && m.file)
     .map((m) => ({
-      key: m.added ? `disk:${m.id}` : `builtin:${m.id}`,
-      id: m.id, name: m.name || m.id,
+      key: m.id,
+      id: m.id,
+      name: m.name || m.id,
       count: Number.isFinite(m.count) ? m.count : null,
-      builtin: !m.added, file: m.file
+      file: m.file
     }));
 }
 
@@ -69,8 +69,8 @@ export async function addUserMap(name, locations) {
   });
   manifestCache = null;
   return {
-    key: `disk:${entry.id}`, id: entry.id, name: entry.name,
-    count: entry.count, builtin: false, file: entry.file
+    key: entry.id, id: entry.id, name: entry.name,
+    count: entry.count, file: entry.file
   };
 }
 
