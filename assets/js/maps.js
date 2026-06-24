@@ -1,6 +1,6 @@
 // Map library storage layer. Maps are on-disk JSON files listed in data/maps.json
 // (one file each, under data/) — both maps shipped with the repo and maps uploaded
-// in Settings, which the local write-server (server/serve.bat / server/serve.py) saves as real
+// in Settings, which the local write-server (run/serve.bat / run/serve.py) saves as real
 // files so they survive reloads and are git-committable. A "map" is just a list of
 // locations; the game decides what to do with them.
 
