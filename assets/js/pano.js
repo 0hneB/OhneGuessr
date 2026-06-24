@@ -61,6 +61,7 @@ export class PanoViewer {
     this._tileSourceSeq = 0;
     this.tileSource = null;
     this.tileCache = new Map();
+    this.tileCacheLimit = TILE_CACHE_LIMIT; // raised per-pano in setTileSource()
     this.tileQueue = [];
     this.tileLoading = 0;
     this.tileVisible = new Set();
@@ -101,9 +102,13 @@ export class PanoViewer {
     this.material.needsUpdate = true;
   }
 
+  // Drops the whole current panorama's tiles at once. Called at the start of
+  // each round load, so the previous location's tiles are freed the instant the
+  // next one comes in.
   clearTileSource() {
     this._tileSourceSeq++;
     this.tileSource = null;
+    this.tileCacheLimit = TILE_CACHE_LIMIT;
     this.tileQueue = [];
     this.tileLoading = 0;
     this.tileVisible.clear();
@@ -132,6 +137,10 @@ export class PanoViewer {
       cols: Math.ceil(width / tileSize),
       rows: Math.ceil(height / tileSize)
     };
+    // Hold the entire current panorama in cache so looking around never refetches
+    // a tile. It's bounded to one location and wiped by clearTileSource() on the
+    // next round, so memory can't grow past a single pano.
+    this.tileCacheLimit = this.tileSource.cols * this.tileSource.rows;
     this._updateTileVisibility(true);
   }
 
@@ -541,11 +550,11 @@ export class PanoViewer {
   }
 
   _pruneTileCache() {
-    if (this.tileCache.size <= TILE_CACHE_LIMIT) return;
+    if (this.tileCache.size <= this.tileCacheLimit) return;
     const removable = [...this.tileCache.values()]
       .filter((entry) => !this.tileVisible.has(entry.key) && entry.status !== 'loading')
       .sort((a, b) => a.lastUsed - b.lastUsed);
-    while (this.tileCache.size > TILE_CACHE_LIMIT && removable.length) {
+    while (this.tileCache.size > this.tileCacheLimit && removable.length) {
       const entry = removable.shift();
       this.tileCache.delete(entry.key);
       this._disposeTile(entry);
