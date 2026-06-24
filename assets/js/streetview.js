@@ -114,9 +114,9 @@ export function resolvePano(lat, lng, radius = 50) {
   });
 }
 
-// Builds an equirectangular canvas for a location at CONFIG.RENDER_ZOOM.
+// Builds an equirectangular canvas for a location at the given tile zoom.
 // loc.w / loc.h are the full panorama dimensions at CONFIG.MAX_PANO_ZOOM.
-export async function buildPanoCanvas(loc, zoom = CONFIG.RENDER_ZOOM, options = {}) {
+export async function buildPanoCanvas(loc, zoom, options = {}) {
   const {
     baseCanvas = null,
     concurrency = CONFIG.TILE_LOAD_CONCURRENCY,

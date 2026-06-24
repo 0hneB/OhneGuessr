@@ -6,9 +6,6 @@
 
 const MANIFEST_URL = 'data/maps.json';
 
-// One-time cleanup of the legacy IndexedDB store used before maps moved on-disk.
-try { indexedDB.deleteDatabase('ohneguessr'); } catch { /* ignore */ }
-
 async function api(path, options) {
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
