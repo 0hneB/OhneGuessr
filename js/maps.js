@@ -1,21 +1,31 @@
-// Map library: built-in maps listed in data/maps.json (one JSON file each, under
-// data/) plus user-uploaded maps persisted in IndexedDB so several maps survive
-// reloads. A "map" is just a list of locations; this module is the storage layer
-// and the game decides what to do with them.
+// Map library storage layer. Maps are on-disk JSON files listed in data/maps.json
+// (one file each, under data/) — both maps shipped with the repo and maps uploaded
+// in Settings, which the local write-server (serve.bat / serve.py) saves as real
+// files so they survive reloads and are git-committable. A "map" is just a list of
+// locations; the game decides what to do with them.
 
 const MANIFEST_URL = 'data/maps.json';
-const DB_NAME = 'ohneguessr';
-const DB_VERSION = 1;
-const STORE = 'maps';
 
-// ---- built-in maps (shipped JSON files under data/) -----------------------
+// One-time cleanup of the legacy IndexedDB store used before maps moved on-disk.
+try { indexedDB.deleteDatabase('ohneguessr'); } catch { /* ignore */ }
+
+async function api(path, options) {
+  const res = await fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options
+  });
+  if (!res.ok) throw new Error(`${path} ${res.status}`);
+  return res.json();
+}
+
+// ---- manifest (data/maps.json) --------------------------------------------
 
 let manifestCache = null;
 
 async function loadManifest() {
   if (manifestCache) return manifestCache;
   try {
-    const res = await fetch(MANIFEST_URL);
+    const res = await fetch(MANIFEST_URL, { cache: 'no-store' });
     const data = res.ok ? await res.json() : [];
     manifestCache = Array.isArray(data) ? data : [];
   } catch {
@@ -24,88 +34,61 @@ async function loadManifest() {
   return manifestCache;
 }
 
-// ---- user maps (IndexedDB) ------------------------------------------------
-
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: 'id' });
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-// Run one request against the store; resolves null on any failure so a missing or
-// blocked IndexedDB (private mode, old browser) simply means "no user maps".
-async function withStore(mode, run) {
-  let db;
-  try { db = await openDB(); } catch { return null; }
-  return new Promise((resolve) => {
-    let req;
-    try { req = run(db.transaction(STORE, mode).objectStore(STORE)); }
-    catch { resolve(null); return; }
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => resolve(null);
-  });
-}
-
-const getUserRecords = async () => (await withStore('readonly', (s) => s.getAll())) || [];
-const getUserRecord = (id) => withStore('readonly', (s) => s.get(id));
-const putUserRecord = (rec) => withStore('readwrite', (s) => s.put(rec));
-
-export function deleteUserMap(id) {
-  return withStore('readwrite', (s) => s.delete(id));
-}
-
 // ---- unified library ------------------------------------------------------
 
-// Returns [{ key, id, name, count, builtin, file? }], built-ins first, newest
-// user maps next. `key` is the stable id used for selection/persistence.
+// Returns [{ key, id, name, count, builtin, file }] for every map on disk. `key`
+// is the stable id used for selection/persistence. builtin:true marks maps shipped
+// with the repo (no edit controls); uploaded maps are builtin:false.
 export async function listMaps() {
-  const [manifest, records] = await Promise.all([loadManifest(), getUserRecords()]);
-
-  const builtin = manifest
+  const manifest = await loadManifest();
+  return manifest
     .filter((m) => m && m.id && m.file)
     .map((m) => ({
-      key: `builtin:${m.id}`, id: m.id, name: m.name || m.id,
+      key: m.added ? `disk:${m.id}` : `builtin:${m.id}`,
+      id: m.id, name: m.name || m.id,
       count: Number.isFinite(m.count) ? m.count : null,
-      builtin: true, file: m.file
+      builtin: !m.added, file: m.file
     }));
-
-  const user = records
-    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-    .map((r) => ({
-      key: `user:${r.id}`, id: r.id, name: r.name || 'Untitled map',
-      count: Array.isArray(r.locations) ? r.locations.length : 0,
-      builtin: false
-    }));
-
-  return [...builtin, ...user];
 }
 
 // Resolve a library item to its raw locations array.
 export async function getLocations(item) {
-  if (item.builtin) {
-    const res = await fetch(`data/${item.file}`);
-    if (!res.ok) throw new Error(`${item.file} ${res.status}`);
-    const data = await res.json();
-    if (!Array.isArray(data) || !data.length) throw new Error('map is empty');
-    return data;
-  }
-  const rec = await getUserRecord(item.id);
-  return (rec && rec.locations) || [];
+  const res = await fetch(`data/${item.file}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`${item.file} ${res.status}`);
+  const data = await res.json();
+  if (!Array.isArray(data) || !data.length) throw new Error('map is empty');
+  return data;
 }
 
-// Persist a new user map; returns its library item.
+// Persist a new uploaded map as a file under data/ (via the write-server) and add
+// it to the manifest. Returns its library item; throws if the server isn't running.
 export async function addUserMap(name, locations) {
-  const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : Date.now().toString(36) + Math.random().toString(36).slice(2);
-  await putUserRecord({ id, name, locations, createdAt: Date.now() });
-  return { key: `user:${id}`, id, name, count: locations.length, builtin: false };
+  const entry = await api('api/maps', {
+    method: 'POST',
+    body: JSON.stringify({ name, locations })
+  });
+  manifestCache = null;
+  return {
+    key: `disk:${entry.id}`, id: entry.id, name: entry.name,
+    count: entry.count, builtin: false, file: entry.file
+  };
+}
+
+// Delete an uploaded map (removes the file on disk too). Best-effort: if the
+// server isn't reachable, nothing is deleted and the map stays listed.
+export async function deleteUserMap(item) {
+  try { await api(`api/maps/${item.id}`, { method: 'DELETE' }); }
+  catch { /* server down: nothing deleted */ }
+  manifestCache = null;
+}
+
+// Rename an uploaded map (renames the file on disk too). Throws if the server
+// isn't reachable so the caller can surface the failure.
+export async function renameUserMap(item, name) {
+  const entry = await api(`api/maps/${item.id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name })
+  });
+  manifestCache = null;
+  return entry;
 }

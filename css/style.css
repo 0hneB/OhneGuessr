@@ -447,6 +447,32 @@ body.ui-hidden #scoreBox { display: none !important; }
   transition: color 0.15s ease, background 0.15s ease;
 }
 .map-row-del:hover { color: #f87171; background: rgba(248, 113, 113, 0.10); }
+.map-row-edit {
+  flex: none;
+  width: 32px;
+  background: none;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  color: #8a8a8a;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.map-row-edit:hover { color: #22c55e; background: rgba(34, 197, 94, 0.10); }
+.map-row-rename-input {
+  flex: 1;
+  min-width: 0;
+  margin: 6px 8px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(34, 197, 94, 0.6);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.map-row-rename-input:focus { outline: none; border-color: #22c55e; }
 .settings-note:empty { display: none; }
 
 /* Round result (fullscreen map + floating panel) */
