@@ -164,12 +164,12 @@ export class GuessMap {
 
 // Teardrop pin (632x736) — anchor at the bottom tip.
 const GUESS_ICON = L.icon({
-  iconUrl: 'assets/pin-guess.svg',
+  iconUrl: 'assets/images/pin-guess.svg',
   iconSize: [44, 56], iconAnchor: [22, 48], className: 'map-pin'
 });
 // Circular badge (128x128) — anchor at its centre (the exact spot it marks).
 const CORRECT_ICON = L.icon({
-  iconUrl: 'assets/correct-location.webp',
+  iconUrl: 'assets/images/correct-location.webp',
   iconSize: [28, 28], iconAnchor: [14, 14], className: 'map-pin-correct'
 });
 
