@@ -256,13 +256,15 @@ body.ui-hidden #scoreBox { display: none !important; }
 }
 .settings-head h2 { font-size: 18px; }
 #settingsClose {
+  display: grid;
+  place-items: center;
+  padding: 0;
   background: none;
   border: none;
   color: #aaa;
-  font-size: 22px;
-  line-height: 1;
   cursor: pointer;
 }
+#settingsClose svg { width: 18px; height: 18px; }
 #settingsClose:hover { color: #fff; }
 .setting {
   display: flex;
@@ -400,6 +402,7 @@ body.ui-hidden #scoreBox { display: none !important; }
   margin-bottom: 10px;
 }
 .map-row {
+  position: relative;
   display: flex;
   align-items: stretch;
   background: rgba(255, 255, 255, 0.03);
@@ -409,7 +412,7 @@ body.ui-hidden #scoreBox { display: none !important; }
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .map-row:hover { border-color: rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.05); }
-.map-row.selected { border-color: rgba(34, 197, 94, 0.7); background: rgba(34, 197, 94, 0.10); }
+.map-row.selected { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.08); }
 .map-row-main {
   flex: 1;
   display: flex;
@@ -433,39 +436,38 @@ body.ui-hidden #scoreBox { display: none !important; }
   padding: 2px 8px;
   border-radius: 999px;
 }
-.map-row.selected .map-row-count { color: #bbf7d0; background: rgba(34, 197, 94, 0.18); }
 .map-row-del {
   flex: none;
   width: 34px;
+  display: grid;
+  place-items: center;
   background: none;
   border: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
   color: #8a8a8a;
-  font-size: 18px;
-  line-height: 1;
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition: color 0.15s ease;
 }
-.map-row-del:hover { color: #f87171; background: rgba(248, 113, 113, 0.10); }
+.map-row-del svg { width: 14px; height: 14px; }
+.map-row-del:hover { color: #f87171; }
 .map-row-edit {
   flex: none;
   width: 32px;
+  display: grid;
+  place-items: center;
   background: none;
   border: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
   color: #8a8a8a;
-  font-size: 13px;
-  line-height: 1;
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
 }
-.map-row-edit:hover { color: #22c55e; background: rgba(34, 197, 94, 0.10); }
+.map-row-edit svg { width: 14px; height: 14px; }
 .map-row-rename-input {
-  flex: 1;
-  min-width: 0;
-  margin: 6px 8px;
-  padding: 6px 8px;
-  background: rgba(0, 0, 0, 0.3);
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  bottom: 4px;
+  right: 70px; /* clear the edit (32px) + delete (34px) buttons on the right */
+  padding: 0 10px;
+  background: #101010;
   border: 1px solid rgba(34, 197, 94, 0.6);
   border-radius: 6px;
   color: #fff;

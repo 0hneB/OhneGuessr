@@ -175,6 +175,18 @@ function startTimer() {
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// Inline Feather-style icons (stroked, inherit color via currentColor). Sized in
+// CSS. Keep the path data in sync with the shared icon set (icons.php).
+const ICON_PATHS = {
+  edit: '<path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
+  close: '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>'
+};
+function svgIcon(name) {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    ICON_PATHS[name] + '</svg>';
+}
+
 function renderMapList() {
   const list = $('mapList');
   list.innerHTML = '';
@@ -196,14 +208,14 @@ function renderMapList() {
     const edit = document.createElement('button');
     edit.className = 'map-row-edit';
     edit.title = 'Rename map';
-    edit.innerHTML = '&#9998;'; // pencil
+    edit.innerHTML = svgIcon('edit');
     edit.addEventListener('click', (e) => { e.stopPropagation(); beginRename(m, main); });
     row.appendChild(edit);
 
     const del = document.createElement('button');
     del.className = 'map-row-del';
     del.title = 'Delete map';
-    del.innerHTML = '&times;';
+    del.innerHTML = svgIcon('close');
     del.addEventListener('click', (e) => { e.stopPropagation(); removeMap(m); });
     row.appendChild(del);
 
@@ -218,7 +230,10 @@ function beginRename(m, mainBtn) {
   const input = document.createElement('input');
   input.className = 'map-row-rename-input';
   input.value = m.name;
-  row.replaceChild(input, mainBtn);
+  // Keep the (hidden) main button in flow so the row keeps its height; overlay
+  // the input on top of it (.map-row-rename-input is absolutely positioned).
+  mainBtn.style.visibility = 'hidden';
+  row.appendChild(input);
   input.focus();
   input.select();
 
