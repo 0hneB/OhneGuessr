@@ -3,7 +3,7 @@
 A completely free, debloated and local GeoGuessr alternative.
 
 > [!NOTE]
-> You need a small local server running (Python, included via `server/serve.bat`). Opening `index.html` straight from your file manager won't work — browsers block ES modules and `fetch` over `file://`. See [Running it](#running-it).
+> You need a small local server running (Python, included via `run/serve.bat`). Opening `index.html` straight from your file manager won't work — browsers block ES modules and `fetch` over `file://`. See [Running it](#running-it).
 
 ## Features
 
@@ -15,7 +15,7 @@ A completely free, debloated and local GeoGuessr alternative.
 
 ## Requirements
 
-- **Python 3.7+** (`server/serve.py` uses `ThreadingHTTPServer`, added in 3.7.)
+- **Python 3.7+** (`run/serve.py` uses `ThreadingHTTPServer`, added in 3.7.)
 - A browser (Chrome, Firefox, Edge, anything current with ES modules).
 - An internet connection.
 
@@ -23,22 +23,22 @@ A completely free, debloated and local GeoGuessr alternative.
 
 ### Windows
 
-Double-click **`server\serve.bat`**.
+Double-click **`run\serve.bat`**.
 
 It starts the local server, opens your browser at `http://localhost:8000`
 
-To stop it, run **`server\stop.bat`**
+To stop it, run **`run\stop.bat`**
 
 ### macOS / Linux / manual
 
 ```bash
-python server/serve.py
+python run/serve.py
 ```
 
 That serves the folder at `http://localhost:8000` and opens your browser. Stop it with Ctrl+C.
 
 > [!IMPORTANT]
-> `server/serve.py` does two jobs: it serves the static files, and it accepts uploads so maps you add in Settings get written into `data/`. A plain `python -m http.server` will serve the game fine but **map uploads, renames, and deletes won't work** without `server/serve.py`.
+> `run/serve.py` does two jobs: it serves the static files, and it accepts uploads so maps you add in Settings get written into `data/`. A plain `python -m http.server` will serve the game fine but **map uploads, renames, and deletes won't work** without `run/serve.py`.
 
 ## Usage
 
@@ -92,7 +92,7 @@ Each row in the map list has a rename (✎) and delete (×) button:
 > Deleting a map removes its file from `data/` permanently. There's no undo — keep a copy if you might want it back.
 
 > [!WARNING]
-> Uploading, renaming, and deleting all go through `server/serve.py`. If you opened the game some other way (a different static server, or `file://`), you'll see *"Could not save the map. Is the local server (server/serve.bat) running?"* start it with `server/serve.bat` / `python server/serve.py`.
+> Uploading, renaming, and deleting all go through `run/serve.py`. If you opened the game some other way (a different static server, or `file://`), you'll see *"Could not save the map. Is the local server (run/serve.bat) running?"* start it with `run/serve.bat` / `python run/serve.py`.
 
 ### Adding a map by hand
 
@@ -135,9 +135,9 @@ The map file itself is a JSON array of location objects. Two shapes are accepted
 
 ## Troubleshooting
 
-### "Could not save the map. Is the local server (server/serve.bat) running?"
+### "Could not save the map. Is the local server (run/serve.bat) running?"
 
-The upload went to a server that can't write files. Make sure you started the game with `server/serve.bat` (or `python server/serve.py`) and that the browser is on `http://localhost:8000`, not a `file://` path or some other server.
+The upload went to a server that can't write files. Make sure you started the game with `run/serve.bat` (or `python run/serve.py`) and that the browser is on `http://localhost:8000`, not a `file://` path or some other server.
 
 ### Panoramas don't load, or stay blurry / black
 
@@ -147,15 +147,15 @@ The upload went to a server that can't write files. Make sure you started the ga
 
 ### Browser opened but the page is blank or errors in the console
 
-You probably opened `index.html` directly. Run `server/serve.bat` / `python server/serve.py` and use the `http://localhost:8000` URL instead.
+You probably opened `index.html` directly. Run `run/serve.bat` / `python run/serve.py` and use the `http://localhost:8000` URL instead.
 
 ### Port 8000 is already in use
 
-That usually means a server is already running. `server/serve.py` notices this and just opens the browser instead of starting a second one. If something *else* is on 8000, stop it (or stop the old game with `server/stop.bat`).
+That usually means a server is already running. `run/serve.py` notices this and just opens the browser instead of starting a second one. If something *else* is on 8000, stop it (or stop the old game with `run/stop.bat`).
 
 ### `pythonw` not found
 
-`server/serve.bat` falls back to a minimized regular `python` window. Everything still works — there's just a small window you can leave minimized.
+`run/serve.bat` falls back to a minimized regular `python` window. Everything still works — there's just a small window you can leave minimized.
 
 ### Where's the server log?
 

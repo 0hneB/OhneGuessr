@@ -327,7 +327,7 @@ async function readUpload(file) {
   try {
     item = await addUserMap(mapNameFrom(json, file.name), arr);
   } catch {
-    $('uploadInfo').textContent = 'Could not save the map. Is the local server (server/serve.bat) running?';
+    $('uploadInfo').textContent = 'Could not save the map. Is the local server (run/serve.bat) running?';
     return;
   }
   state.maps = await listMaps();
@@ -765,7 +765,7 @@ async function init() {
     else showNoMaps();
   } catch (err) {
     setLoading(true, `Could not load maps: ${err.message}. ` +
-      `Serve over http:// (use server/serve.bat) so data/ can be fetched.`);
+      `Serve over http:// (use run/serve.bat) so data/ can be fetched.`);
     console.error(err);
   }
 }

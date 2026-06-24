@@ -5,8 +5,8 @@ Serves the repo over http:// (browsers block ES modules + fetch over file://) an
 adds a tiny write API so maps uploaded in Settings are saved as real files under
 data/ — not just IndexedDB — making them git-committable and reload-proof.
 
-Standard library only, no dependencies. Launched windowless by server/serve.bat;
-stop it with server/stop.bat. Routes:
+Standard library only, no dependencies. Launched windowless by run/serve.bat;
+stop it with run/stop.bat. Routes:
     GET    /api/health        -> {"ok": true}        (capability probe)
     POST   /api/maps          -> create a map        body {name, locations}
     PATCH  /api/maps/<id>      -> rename a map (+file) body {name}
