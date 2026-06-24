@@ -424,7 +424,12 @@ body.empty-mode #guessPanel { display: none !important; }
   background: #222;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
+  -moz-appearance: textfield;  /* hide the number spinner (Firefox) */
+  appearance: textfield;
 }
+/* hide the number spinner (Chrome/Edge/Safari) */
+.seg-custom::-webkit-outer-spin-button,
+.seg-custom::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .seg-custom::placeholder { color: #6b7280; }
 
 .settings-note { font-size: 12px; opacity: 0.55; line-height: 1.45; }
