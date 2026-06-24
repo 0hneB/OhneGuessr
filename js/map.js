@@ -165,12 +165,12 @@ export class GuessMap {
 // Teardrop pin (632x736) — anchor at the bottom tip.
 const GUESS_ICON = L.icon({
   iconUrl: 'assets/pin-guess.svg',
-  iconSize: [34, 43], iconAnchor: [17, 37], className: 'map-pin'
+  iconSize: [44, 56], iconAnchor: [22, 48], className: 'map-pin'
 });
 // Circular badge (128x128) — anchor at its centre (the exact spot it marks).
 const CORRECT_ICON = L.icon({
   iconUrl: 'assets/correct-location.webp',
-  iconSize: [36, 36], iconAnchor: [18, 18], className: 'map-pin-correct'
+  iconSize: [28, 28], iconAnchor: [14, 14], className: 'map-pin-correct'
 });
 
 // Draw one round (the answer pin, plus the guess pin + dashed link when a guess
@@ -185,7 +185,7 @@ function drawGuessPair(map, layers, guess, actual) {
     layers.push(L.polyline([g, a], {
       color: '#000000', weight: 2, dashArray: '3 9', opacity: 0.85
     }).addTo(map));
-    layers.push(L.marker(g, { icon: GUESS_ICON }).addTo(map));
+    layers.push(L.marker(g, { icon: GUESS_ICON, pane: 'guessPane' }).addTo(map));
     pts.push(g);
   }
   layers.push(L.marker(a, { icon: CORRECT_ICON }).addTo(map));
@@ -198,6 +198,9 @@ export class ResultMap {
     this.map = L.map(elId, { worldCopyJump: true, zoomControl: false, maxZoom: 19 })
       .setView([20, 0], 2);
     this.baseLayer = addBaseLayer(this.map, styleKey);
+    // Guess pins live above the default marker pane (600) so they always overlay
+    // the correct-location badges, regardless of Leaflet's lat-based z-ordering.
+    this.map.createPane('guessPane').style.zIndex = 650;
     bindDragCursor(this.map);
     autoResize(this.map);
     this.layers = [];
@@ -225,6 +228,9 @@ export class SummaryMap {
     this.map = L.map(elId, { worldCopyJump: true, zoomControl: false, maxZoom: 19 })
       .setView([20, 0], 2);
     this.baseLayer = addBaseLayer(this.map, styleKey);
+    // Guess pins live above the default marker pane (600) so they always overlay
+    // the correct-location badges, regardless of Leaflet's lat-based z-ordering.
+    this.map.createPane('guessPane').style.zIndex = 650;
     bindDragCursor(this.map);
     autoResize(this.map);
     this.layers = [];
