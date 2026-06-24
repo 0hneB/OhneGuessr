@@ -31,6 +31,7 @@ const state = {
 };
 
 let viewer, gmap, resultMap, summaryMap, compass;
+let selectSettingsTab = () => {}; // set up in setupSettingsTabs()
 let currentPanoCanvas = null;
 const timer = { id: null, remaining: 0 };
 const panoLoad = { seq: 0, controller: null };
@@ -303,6 +304,7 @@ async function recoverToSettings(message) {
   state.maps = await listMaps();
   renderMapList();
   $('settings').classList.remove('hidden');
+  selectSettingsTab('maps'); // surface the message next to the map list
   setUploadMessage(message);
 }
 
@@ -543,8 +545,8 @@ function setupAppFullscreenToggle() {
     try {
       if (toggle.checked && !document.fullscreenElement) {
         await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-      } else if (!toggle.checked) {
-        sync();
+      } else if (!toggle.checked && document.fullscreenElement) {
+        await document.exitFullscreen();
       }
     } catch (err) {
       console.warn('Could not toggle fullscreen.', err);
@@ -555,7 +557,41 @@ function setupAppFullscreenToggle() {
   sync();
 }
 
+// Tabbed settings (Display / Game / Maps). Toggles the active tab + panel and
+// exposes selectSettingsTab so map-error flows can jump to the Maps panel.
+function setupSettingsTabs() {
+  const tabs = [...document.querySelectorAll('.settings-tab')];
+  const panels = [...document.querySelectorAll('.settings-panel')];
+  selectSettingsTab = (name) => {
+    for (const t of tabs) {
+      const on = t.dataset.tab === name;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    }
+    for (const p of panels) {
+      const on = p.dataset.panel === name;
+      p.classList.toggle('active', on);
+      p.hidden = !on;
+    }
+  };
+  for (const t of tabs) t.addEventListener('click', () => selectSettingsTab(t.dataset.tab));
+}
+
+// Wire a plain on/off switch to a boolean setting, applying it immediately and
+// on every change. `apply` runs the side effect (e.g. toggling pano controls).
+function setupBoolToggle(id, key, apply) {
+  const toggle = $(id);
+  toggle.checked = settings[key] !== false;
+  apply(toggle.checked);
+  toggle.addEventListener('change', () => {
+    settings[key] = toggle.checked;
+    saveSettings(settings);
+    apply(toggle.checked);
+  });
+}
+
 function setupSettingsUI() {
+  setupSettingsTabs();
   const styleSel = $('mapStyleSel');
   for (const [key, style] of Object.entries(MAP_STYLES)) {
     const opt = document.createElement('option');
@@ -580,6 +616,8 @@ function setupSettingsUI() {
     onCommit: applyQuality
   });
   setupAppFullscreenToggle();
+  setupBoolToggle('panToggle', 'panning', (on) => viewer.setPanEnabled(on));
+  setupBoolToggle('zoomToggle', 'zooming', (on) => viewer.setZoomEnabled(on));
 
   // Changing the round count restarts the game (it redefines the deck).
   setupSegmented({
@@ -617,6 +655,7 @@ function setupSettingsUI() {
   });
   $('emptySettingsBtn').addEventListener('click', () => {
     setUploadMessage('');
+    selectSettingsTab('maps'); // no maps yet -> drop them on the Maps tab
     panel.classList.remove('hidden');
   });
 }
