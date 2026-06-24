@@ -28,12 +28,12 @@ html, body {
   mask-size: contain;
 }
 .settings-icon {
-  -webkit-mask-image: url("../assets/settings.svg");
-  mask-image: url("../assets/settings.svg");
+  -webkit-mask-image: url("../icons/settings.svg");
+  mask-image: url("../icons/settings.svg");
 }
 .unlimited-icon {
-  -webkit-mask-image: url("../assets/unlimited.svg");
-  mask-image: url("../assets/unlimited.svg");
+  -webkit-mask-image: url("../icons/unlimited.svg");
+  mask-image: url("../icons/unlimited.svg");
 }
 
 /* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
