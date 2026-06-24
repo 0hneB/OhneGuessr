@@ -101,10 +101,10 @@ You can also drop a `.json` straight into `data/` and add a matching entry to `d
 ```json
 [
   {
-    "id": "any-unique-string",
-    "name": "My Cool Map",
-    "file": "my-cool-map.json",
-    "count": 250,
+    "id": "a-stunning-world",
+    "name": "A Stunning World",
+    "file": "a-stunning-world.json",
+    "count": 250
   }
 ]
 ```
@@ -168,4 +168,4 @@ When it runs windowless there's no console, so errors go to `ohneguessr-serve.lo
 - An older version kept uploaded maps in the browser's IndexedDB; that's gone now and is cleared automatically on first load. Maps live on disk only.
 
 > [!CAUTION]
-> Panoramas are pulled from Google's internal Street View tile endpoint, which has no public API and isn't meant to be used this way. Hitting it like this is against [Google's Terms of Service](https://www.google.com/help/terms_maps/). It works today, but it can break or get blocked at any time — use it at your own risk.
+> Panoramas are loaded directly from Google’s Street View tile endpoint instead of the paid official Street View API. Hitting it like this is against [Google's Terms of Service](https://www.google.com/help/terms_maps/). It works today, but it can break or get blocked at any time — use it at your own risk.
