@@ -161,6 +161,16 @@ That usually means a server is already running. `serve.py` notices this and just
 
 When it runs windowless there's no console, so errors go to `ohneguessr-serve.log` in your system temp folder (`%TEMP%` on Windows).
 
+## License
+
+Required Notice: Copyright © 2026 OhneB
+
+This project is source-available for non-commercial use only under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+Commercial use is not permitted without explicit written permission. This includes paid hosting, ad-supported hosting, resale, paid bundles, SaaS use, or using this project as part of a monetized product or service.
+
+This license only covers this project's own code and assets. It does not grant rights to Google Street View imagery, map tiles, third-party data, provider trademarks, or external services used by the project.
+
 ## Notes
 
 - **What's stored where:** maps are files in `data/` (indexed by `data/maps.json`); your settings live in the browser's `localStorage` under `ohneguessr.settings`.
