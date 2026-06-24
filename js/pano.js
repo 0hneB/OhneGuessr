@@ -13,9 +13,13 @@ const FRICTION = 0.965;   // inertia decay per frame after releasing a drag
 const VEL_EPS = 0.004;    // below this angular speed (deg/frame) inertia stops
 const EASE = 0.16;        // smoothing factor for animateTo (N key, etc.)
 const ZOOM_PAN_GAIN = 1.35; // pan toward the cursor while zooming, but keep it subtle
+const ZOOM_SENS = 0.05;     // FOV degrees per wheel deltaY unit — how far one notch zooms
+const ZOOM_FRICTION = 0.8;  // float only: how long the glide tails off (NOT how far it zooms)
+const ZOOM_VEL_MAX = 6;     // cap on zoom velocity (deg/frame) for fast scroll bursts
+const ZOOM_VEL_EPS = 0.01;  // below this the zoom is treated as stopped
 const DRAG_DEADZONE_PX = 3;
 const INERTIA_RELEASE_MS = 120;
-const MIN_FOV = 30;
+const MIN_FOV = 8;          // deep zoom-in; Street View imagery softens past this
 const MAX_FOV = 75;
 const TILE_RADIUS = 499;
 const TILE_SUBDIVISIONS = 6;
@@ -41,6 +45,8 @@ export class PanoViewer {
     this.lon = 0;          // internal azimuth (deg)
     this.lat = 0;          // internal elevation / pitch (deg)
     this.fov = MAX_FOV;
+    this.zoomVel = 0;         // zoom momentum (deg/frame); decays with friction
+    this.zoomAnchor = null;   // {ux, uy}: cursor in normalised screen coords for zoom-toward
     this.defaultLon = 0;
     this.defaultLat = 0;
     this.panoNorth = 0;    // compass bearing the texture's reference faces (per pano)
@@ -149,6 +155,7 @@ export class PanoViewer {
     this.lon = this.defaultLon;
     this.lat = this.defaultLat;
     this.fov = MAX_FOV;
+    this.zoomVel = 0;
     this.velLon = this.velLat = 0;
   }
 
@@ -160,6 +167,7 @@ export class PanoViewer {
   animateTo(heading, pitch, fov = this.fov) {
     const desiredLon = this._headingToLon(heading);
     this.velLon = this.velLat = 0;
+    this.zoomVel = 0; // a programmatic move shouldn't fight leftover zoom momentum
     this.target = {
       lon: this.lon + shortestAngle(desiredLon - this.lon), // shortest path
       lat: clampPitch(pitch),
@@ -238,22 +246,17 @@ export class PanoViewer {
       e.preventDefault();
       this.target = null;
       const rect = dom.getBoundingClientRect();
-      const fovNew = Math.max(MIN_FOV, Math.min(MAX_FOV, this.fov + e.deltaY * 0.05));
-      if (fovNew === this.fov) return;
-
-      // Keep the world point under the cursor fixed: shift lon/lat by the change
-      // in the cursor's angular offset between the old and new fov.
-      const aspect = this._aspect();
-      const ux = (e.clientX - rect.left - rect.width / 2) / (rect.width / 2);
-      const uy = (rect.height / 2 - (e.clientY - rect.top)) / (rect.height / 2);
-      const tanOld = Math.tan(THREE.MathUtils.degToRad(this.fov) / 2);
-      const tanNew = Math.tan(THREE.MathUtils.degToRad(fovNew) / 2);
-      const deg = THREE.MathUtils.radToDeg;
-      const dLon = deg(Math.atan(ux * tanOld * aspect)) - deg(Math.atan(ux * tanNew * aspect));
-      const dLat = deg(Math.atan(uy * tanOld)) - deg(Math.atan(uy * tanNew));
-      this.lon += ZOOM_PAN_GAIN * dLon;
-      this.lat = clampPitch(this.lat + ZOOM_PAN_GAIN * dLat);
-      this.fov = fovNew;
+      // A notch adds a fixed amount of zoom (deltaY * ZOOM_SENS), delivered as
+      // velocity so it eases to a soft stop instead of snapping. The (1 - friction)
+      // factor keeps the *total* travel per notch constant at any friction, so
+      // ZOOM_FRICTION tunes only the float — never how far one scroll zooms.
+      const impulse = e.deltaY * ZOOM_SENS * (1 - ZOOM_FRICTION);
+      this.zoomVel = Math.max(-ZOOM_VEL_MAX, Math.min(ZOOM_VEL_MAX, this.zoomVel + impulse));
+      // Remember the cursor (normalised screen coords) so the glide zooms toward it.
+      this.zoomAnchor = {
+        ux: (e.clientX - rect.left - rect.width / 2) / (rect.width / 2),
+        uy: (rect.height / 2 - (e.clientY - rect.top)) / (rect.height / 2)
+      };
     }, { passive: false });
   }
 
@@ -271,16 +274,19 @@ export class PanoViewer {
         this.fov = this.target.fov;
         this.target = null;
       }
-    } else if (!this.dragging &&
-        (Math.abs(this.velLon) > VEL_EPS || Math.abs(this.velLat) > VEL_EPS)) {
-      // Apply inertial glide after a drag release.
-      this.lon += this.velLon;
-      this.lat = clampPitch(this.lat + this.velLat);
-      this.velLon *= FRICTION;
-      this.velLat *= FRICTION;
-      if (Math.abs(this.velLon) <= VEL_EPS && Math.abs(this.velLat) <= VEL_EPS) {
-        this.velLon = this.velLat = 0;
+    } else {
+      if (!this.dragging &&
+          (Math.abs(this.velLon) > VEL_EPS || Math.abs(this.velLat) > VEL_EPS)) {
+        // Apply inertial glide after a drag release.
+        this.lon += this.velLon;
+        this.lat = clampPitch(this.lat + this.velLat);
+        this.velLon *= FRICTION;
+        this.velLat *= FRICTION;
+        if (Math.abs(this.velLon) <= VEL_EPS && Math.abs(this.velLat) <= VEL_EPS) {
+          this.velLon = this.velLat = 0;
+        }
       }
+      this._applyZoomMomentum(); // glide the zoom with momentum + friction
     }
 
     const phi = THREE.MathUtils.degToRad(90 - this.lat);
@@ -304,6 +310,30 @@ export class PanoViewer {
         this.onChange(h);
       }
     }
+  }
+
+  // Glide the FOV under its own momentum: each wheel notch adds velocity, which
+  // decays with friction so the zoom keeps moving briefly after you stop scrolling
+  // (the buttery deceleration). The point under the cursor stays fixed throughout.
+  _applyZoomMomentum() {
+    if (Math.abs(this.zoomVel) < ZOOM_VEL_EPS) { this.zoomVel = 0; return; }
+    let fovNew = this.fov + this.zoomVel;
+    if (fovNew <= MIN_FOV) { fovNew = MIN_FOV; this.zoomVel = 0; }
+    else if (fovNew >= MAX_FOV) { fovNew = MAX_FOV; this.zoomVel = 0; }
+
+    const a = this.zoomAnchor;
+    if (a) {
+      const aspect = this._aspect();
+      const tanOld = Math.tan(THREE.MathUtils.degToRad(this.fov) / 2);
+      const tanNew = Math.tan(THREE.MathUtils.degToRad(fovNew) / 2);
+      const deg = THREE.MathUtils.radToDeg;
+      const dLon = deg(Math.atan(a.ux * tanOld * aspect)) - deg(Math.atan(a.ux * tanNew * aspect));
+      const dLat = deg(Math.atan(a.uy * tanOld)) - deg(Math.atan(a.uy * tanNew));
+      this.lon += ZOOM_PAN_GAIN * dLon;
+      this.lat = clampPitch(this.lat + ZOOM_PAN_GAIN * dLat);
+    }
+    this.fov = fovNew;
+    this.zoomVel *= ZOOM_FRICTION;
   }
 
   _horizontalFov() {
