@@ -11,7 +11,8 @@ function addBaseLayer(map, key, current) {
     ? L.maplibreGL({ style: style.url, attribution: style.attribution })
     : L.tileLayer(style.url, {
       updateWhenIdle: false,
-      keepBuffer: 6,
+      updateWhenZooming: false, // hold current tiles scaled during the zoom instead of blanking + reloading
+      keepBuffer: 8,
       ...(style.options || {})
     });
   layer.addTo(map);
