@@ -11,7 +11,6 @@ import { listMaps, getLocations, addUserMap, deleteUserMap, renameUserMap } from
 const $ = (id) => document.getElementById(id);
 
 let settings = loadSettings();
-if (settings.timer === 'off') settings.timer = 'unlimited'; // migrate older saves
 const zoomForQuality = () => QUALITY_ZOOM[settings.quality] ?? 4;
 // 'unlimited' rounds -> Infinity (the game never ends on its own).
 const roundsPerGame = () =>

@@ -1,8 +1,6 @@
 // Game / rendering configuration.
 export const CONFIG = {
   ROUNDS: 5,            // rounds per game
-  RENDER_ZOOM: 4,      // Default Street View tile zoom 0..5 (overridden by the
-                       // Quality setting). Auto-caps to the GPU max texture size.
   PREVIEW_ZOOM: 2,     // First-pass pano zoom shown before the selected quality
                        // finishes loading.
   TILE_LOAD_CONCURRENCY: 12, // Cap concurrent Street View tile image requests.
