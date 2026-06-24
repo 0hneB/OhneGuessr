@@ -53,6 +53,8 @@ export class PanoViewer {
     this.velLon = 0;       // inertia velocity (deg/frame)
     this.velLat = 0;
     this.dragging = false;
+    this.panEnabled = true;   // drag-to-look (disabled via the Panning setting)
+    this.zoomEnabled = true;  // scroll-to-zoom (disabled via the Zooming setting)
     this.target = null;    // {lon, lat, fov} for smooth animateTo, else null
     this.onChange = null;  // callback(headingDegrees)
     this._lastHeading = null;
@@ -163,6 +165,22 @@ export class PanoViewer {
     return this._lonToHeading(this.lon);
   }
 
+  // Enable/disable drag-to-look. When off, any in-flight drag + inertia is dropped.
+  setPanEnabled(on) {
+    this.panEnabled = !!on;
+    if (!this.panEnabled) {
+      this.dragging = false;
+      this.velLon = this.velLat = 0;
+    }
+    this.renderer.domElement.style.cursor = this.panEnabled ? 'pointer' : 'default';
+  }
+
+  // Enable/disable scroll-to-zoom. When off, any zoom momentum is dropped.
+  setZoomEnabled(on) {
+    this.zoomEnabled = !!on;
+    if (!this.zoomEnabled) this.zoomVel = 0;
+  }
+
   // Smoothly animate to an absolute heading/pitch (deg). fov optional.
   animateTo(heading, pitch, fov = this.fov) {
     const desiredLon = this._headingToLon(heading);
@@ -196,6 +214,7 @@ export class PanoViewer {
     dom.style.touchAction = 'none';
 
     dom.addEventListener('pointerdown', (e) => {
+      if (!this.panEnabled) return;
       this.dragging = true;
       this.target = null;
       this.velLon = this.velLat = 0;
@@ -244,6 +263,7 @@ export class PanoViewer {
 
     dom.addEventListener('wheel', (e) => {
       e.preventDefault();
+      if (!this.zoomEnabled) return;
       this.target = null;
       const rect = dom.getBoundingClientRect();
       // A notch adds a fixed amount of zoom (deltaY * ZOOM_SENS), delivered as

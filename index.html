@@ -35,59 +35,94 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
       </div>
-      <label class="setting">
-        <span>Map style</span>
-        <select id="mapStyleSel"></select>
-      </label>
-      <div class="setting">
-        <span>Image quality</span>
-        <div class="segmented" id="qualitySeg">
-          <button type="button" data-value="low">Low</button>
-          <button type="button" data-value="medium">Medium</button>
-          <button type="button" data-value="high">High</button>
-          <button type="button" data-value="max">Max</button>
-        </div>
+
+      <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+        <button type="button" class="settings-tab active" role="tab"
+                id="tab-display" aria-controls="panel-display" aria-selected="true"
+                data-tab="display">Display</button>
+        <button type="button" class="settings-tab" role="tab"
+                id="tab-game" aria-controls="panel-game" aria-selected="false"
+                data-tab="game">Game</button>
+        <button type="button" class="settings-tab" role="tab"
+                id="tab-maps" aria-controls="panel-maps" aria-selected="false"
+                data-tab="maps">Maps</button>
       </div>
-      <label class="setting setting-toggle">
-        <span>Application fullscreen</span>
-        <input id="appFullscreenToggle" type="checkbox" />
-        <span class="switch" aria-hidden="true"></span>
-      </label>
-      <div class="setting">
-        <span>Rounds per game</span>
-        <div class="segmented" id="roundsSeg">
-          <button type="button" data-value="unlimited" aria-label="Unlimited" title="Unlimited">
-            <span class="svg-icon unlimited-icon" aria-hidden="true"></span>
-          </button>
-          <button type="button" data-value="5">5</button>
-          <button type="button" data-value="10">10</button>
-          <button type="button" data-value="custom">Custom</button>
-        </div>
-        <input id="roundsCustom" class="seg-custom hidden" type="number"
-               min="1" step="1" placeholder="Number of rounds" />
-      </div>
-      <div class="setting">
-        <span>Time limit <small class="setting-sub">per location</small></span>
-        <div class="segmented" id="timerSeg">
-          <button type="button" data-value="unlimited" aria-label="Unlimited" title="Unlimited">
-            <span class="svg-icon unlimited-icon" aria-hidden="true"></span>
-          </button>
-          <button type="button" data-value="120">2 min</button>
-          <button type="button" data-value="300">5 min</button>
-          <button type="button" data-value="custom">Custom</button>
-        </div>
-        <input id="timerCustom" class="seg-custom hidden" type="number"
-               min="0.5" step="0.5" placeholder="Minutes per location" />
-      </div>
-      <div class="setting">
-        <span>Maps</span>
-        <div id="mapList" class="map-list"></div>
-        <div id="dropZone" class="drop-zone">
-          <b>Add a map</b>
-          <small>Drop a .json here or click &middot; GeoGuessr export or OhneGuessr format</small>
-        </div>
-        <input id="fileInput" type="file" accept=".json,application/json" hidden />
-        <div id="uploadInfo" class="settings-note"></div>
+
+      <div class="settings-body">
+        <section class="settings-panel active" id="panel-display"
+                 role="tabpanel" aria-labelledby="tab-display" data-panel="display">
+          <label class="setting">
+            <span>Map style</span>
+            <select id="mapStyleSel"></select>
+          </label>
+          <div class="setting">
+            <span>Image quality</span>
+            <div class="segmented" id="qualitySeg">
+              <button type="button" data-value="low">Low</button>
+              <button type="button" data-value="medium">Medium</button>
+              <button type="button" data-value="high">High</button>
+              <button type="button" data-value="max">Max</button>
+            </div>
+          </div>
+          <label class="setting setting-toggle">
+            <span>Fullscreen</span>
+            <input id="appFullscreenToggle" type="checkbox" />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+        </section>
+
+        <section class="settings-panel" id="panel-game"
+                 role="tabpanel" aria-labelledby="tab-game" data-panel="game" hidden>
+          <div class="setting">
+            <span>Rounds per game</span>
+            <div class="segmented" id="roundsSeg">
+              <button type="button" data-value="unlimited" aria-label="Unlimited" title="Unlimited">
+                <span class="svg-icon unlimited-icon" aria-hidden="true"></span>
+              </button>
+              <button type="button" data-value="5">5</button>
+              <button type="button" data-value="10">10</button>
+              <button type="button" data-value="custom">Custom</button>
+            </div>
+            <input id="roundsCustom" class="seg-custom hidden" type="number"
+                   min="1" step="1" placeholder="Number of rounds" />
+          </div>
+          <div class="setting">
+            <span>Time limit <small class="setting-sub">per location</small></span>
+            <div class="segmented" id="timerSeg">
+              <button type="button" data-value="unlimited" aria-label="Unlimited" title="Unlimited">
+                <span class="svg-icon unlimited-icon" aria-hidden="true"></span>
+              </button>
+              <button type="button" data-value="120">2 min</button>
+              <button type="button" data-value="300">5 min</button>
+              <button type="button" data-value="custom">Custom</button>
+            </div>
+            <input id="timerCustom" class="seg-custom hidden" type="number"
+                   min="0.5" step="0.5" placeholder="Minutes per location" />
+          </div>
+          <label class="setting setting-toggle">
+            <span>Panning</span>
+            <input id="panToggle" type="checkbox" />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <label class="setting setting-toggle">
+            <span>Zooming</span>
+            <input id="zoomToggle" type="checkbox" />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+        </section>
+
+        <section class="settings-panel" id="panel-maps"
+                 role="tabpanel" aria-labelledby="tab-maps" data-panel="maps" hidden>
+          <div class="setting">
+            <div id="mapList" class="map-list"></div>
+            <div id="dropZone" class="drop-zone">
+              <b>Add a map</b>
+              <small>Drop a .json here or click &middot; GeoGuessr export or OhneGuessr format</small>
+            </div>
+            <input id="fileInput" type="file" accept=".json,application/json" hidden />
+            <div id="uploadInfo" class="settings-note"></div>
+          </div>
+        </section>
       </div>
     </div>
   </div>
