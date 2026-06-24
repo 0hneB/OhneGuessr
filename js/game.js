@@ -6,7 +6,7 @@ import { buildPanoCanvas, resolvePano, tileUrl } from './streetview.js';
 import { haversineKm, scoreFor, formatDistance } from './scoring.js';
 import { loadSettings, saveSettings, MAP_STYLES, QUALITY_ZOOM } from './settings.js';
 import { CompassHUD } from './compass.js';
-import { listMaps, getLocations, addUserMap, deleteUserMap } from './maps.js';
+import { listMaps, getLocations, addUserMap, deleteUserMap, renameUserMap } from './maps.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -194,6 +194,13 @@ function renderMapList() {
     row.appendChild(main);
 
     if (!m.builtin) {
+      const edit = document.createElement('button');
+      edit.className = 'map-row-edit';
+      edit.title = 'Rename map';
+      edit.innerHTML = '&#9998;'; // pencil
+      edit.addEventListener('click', (e) => { e.stopPropagation(); beginRename(m, main); });
+      row.appendChild(edit);
+
       const del = document.createElement('button');
       del.className = 'map-row-del';
       del.title = 'Delete map';
@@ -203,6 +210,39 @@ function renderMapList() {
     }
     list.appendChild(row);
   }
+}
+
+// Inline rename: swap the row's main button for a text field. Enter commits
+// (renaming the on-disk file too, for disk maps), Esc/blur cancels.
+function beginRename(m, mainBtn) {
+  const row = mainBtn.parentElement;
+  const input = document.createElement('input');
+  input.className = 'map-row-rename-input';
+  input.value = m.name;
+  row.replaceChild(input, mainBtn);
+  input.focus();
+  input.select();
+
+  let done = false;
+  const cancel = () => { if (!done) { done = true; renderMapList(); } };
+  const commit = async () => {
+    if (done) return;
+    done = true;
+    const name = input.value.trim();
+    if (!name || name === m.name) { renderMapList(); return; }
+    try {
+      await renameUserMap(m, name);
+      state.maps = await listMaps();
+    } catch {
+      $('uploadInfo').textContent = 'Could not rename that map.';
+    }
+    renderMapList();
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+  });
+  input.addEventListener('blur', commit);
 }
 
 async function selectMap(key) {
@@ -227,7 +267,7 @@ async function selectMap(key) {
 }
 
 async function removeMap(m) {
-  await deleteUserMap(m.id);
+  await deleteUserMap(m);
   state.maps = await listMaps();
   renderMapList();
   if (state.currentKey === m.key) {
@@ -253,7 +293,13 @@ async function readUpload(file) {
   catch { $('uploadInfo').textContent = 'Could not parse that JSON file.'; return; }
   const arr = normalizeLocations(json);
   if (!arr.length) { $('uploadInfo').textContent = 'No usable coordinates found.'; return; }
-  const item = await addUserMap(mapNameFrom(json, file.name), arr);
+  let item;
+  try {
+    item = await addUserMap(mapNameFrom(json, file.name), arr);
+  } catch {
+    $('uploadInfo').textContent = 'Could not save the map. Is the local server (serve.bat) running?';
+    return;
+  }
   state.maps = await listMaps();
   $('uploadInfo').textContent = '';
   $('settings').classList.add('hidden');
