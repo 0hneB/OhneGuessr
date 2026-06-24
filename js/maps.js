@@ -20,18 +20,16 @@ async function api(path, options) {
 
 // ---- manifest (data/maps.json) --------------------------------------------
 
-let manifestCache = null;
-
+// Always fetched fresh (no caching): maps deleted or edited on disk while the
+// server runs are then reflected the next time the list is read.
 async function loadManifest() {
-  if (manifestCache) return manifestCache;
   try {
     const res = await fetch(MANIFEST_URL, { cache: 'no-store' });
     const data = res.ok ? await res.json() : [];
-    manifestCache = Array.isArray(data) ? data : [];
+    return Array.isArray(data) ? data : [];
   } catch {
-    manifestCache = [];
+    return [];
   }
-  return manifestCache;
 }
 
 // ---- unified library ------------------------------------------------------
@@ -67,7 +65,6 @@ export async function addUserMap(name, locations) {
     method: 'POST',
     body: JSON.stringify({ name, locations })
   });
-  manifestCache = null;
   return {
     key: entry.id, id: entry.id, name: entry.name,
     count: entry.count, file: entry.file
@@ -79,7 +76,6 @@ export async function addUserMap(name, locations) {
 export async function deleteUserMap(item) {
   try { await api(`api/maps/${item.id}`, { method: 'DELETE' }); }
   catch { /* server down: nothing deleted */ }
-  manifestCache = null;
 }
 
 // Rename an uploaded map (renames the file on disk too). Throws if the server
@@ -89,6 +85,5 @@ export async function renameUserMap(item, name) {
     method: 'PATCH',
     body: JSON.stringify({ name })
   });
-  manifestCache = null;
   return entry;
 }
