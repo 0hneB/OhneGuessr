@@ -81,8 +81,7 @@ function autoResize(map) {
 export class GuessMap {
   constructor(elId, onPlace, styleKey = 'osm') {
     this.map = L.map(elId, {
-      worldCopyJump: true, zoomControl: false, maxZoom: 19,
-      attributionControl: false // keep the small map clean; credits show on result map
+      worldCopyJump: true, zoomControl: false, maxZoom: 19
     }).setView([20, 0], 1);
     this.map.options._ohneguessrBaseMinZoom = this.map.options.minZoom ?? 0;
     this.baseLayer = addBaseLayer(this.map, styleKey);
