@@ -196,6 +196,13 @@ export class PanoViewer {
   faceNorth() { this.animateTo(0, 0); }
   faceNorthDown() { this.animateTo(0, -85); }
 
+  // Zoom all the way to a cap in one go. direction > 0 zooms fully in (MIN_FOV),
+  // < 0 fully out (MAX_FOV). Eases to the cap; respects the Zooming setting.
+  zoomFull(direction) {
+    if (!this.zoomEnabled || !direction) return;
+    this.animateTo(this.getHeading(), this.lat, direction > 0 ? MIN_FOV : MAX_FOV);
+  }
+
   _aspect() {
     return this.container.clientWidth / this.container.clientHeight;
   }

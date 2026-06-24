@@ -432,6 +432,48 @@ body.empty-mode #guessPanel { display: none !important; }
 .seg-custom::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .seg-custom::placeholder { color: #6b7280; }
 
+/* Editable keyboard shortcuts (Controls tab) */
+.key-list { display: flex; flex-direction: column; gap: 6px; }
+.key-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.key-row-name { font-size: 13px; opacity: 0.85; }
+.key-cap {
+  min-width: 70px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.key-cap:hover { border-color: rgba(255, 255, 255, 0.35); }
+.key-cap.unbound { color: #6b7280; font-weight: 600; }
+.key-cap.capturing {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.key-reset {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd2dd;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.key-reset:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+
 .settings-note { font-size: 12px; opacity: 0.55; line-height: 1.45; }
 
 .drop-zone {

@@ -1,5 +1,5 @@
 // Game orchestration: pick a map, run rounds, score, show results.
-import { CONFIG } from './config.js';
+import { CONFIG, KEYBINDINGS } from './config.js';
 import { PanoViewer } from './pano.js';
 import { GuessMap, ResultMap, SummaryMap } from './map.js';
 import { buildPanoCanvas, resolvePano, tileUrl } from './streetview.js';
@@ -594,8 +594,105 @@ function setupAppFullscreenToggle() {
   sync();
 }
 
-// Tabbed settings (Display / Game / Maps). Toggles the active tab + panel and
-// exposes selectSettingsTab so map-error flows can jump to the Maps panel.
+// ---- Editable shortcuts (Controls tab) ------------------------------------
+
+// Friendly label for a KeyboardEvent.code shown on the rebind buttons.
+function codeLabel(code) {
+  if (!code) return 'Unbound';
+  const named = {
+    Space: 'Space', Escape: 'Esc', Enter: 'Enter', Tab: 'Tab',
+    ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+    Backquote: '`', Minus: '-', Equal: '=', Slash: '/', Backslash: '\\',
+    BracketLeft: '[', BracketRight: ']', Semicolon: ';', Quote: "'",
+    Comma: ',', Period: '.'
+  };
+  if (named[code]) return named[code];
+  const m = code.match(/^Key([A-Z])$/) || code.match(/^Digit(\d)$/);
+  if (m) return m[1];
+  const np = code.match(/^Numpad(\d)$/);
+  if (np) return 'Num ' + np[1];
+  return code;
+}
+
+// Bind one action to a single code (null clears it), removing that code from any
+// other action so a key never triggers two things. Persisted as an override.
+function setBinding(action, code) {
+  const binds = currentBindings();
+  const next = {};
+  for (const a of Object.keys(binds)) {
+    next[a] = (binds[a] || []).filter((c) => c !== code);
+  }
+  next[action] = code ? [code] : [];
+  settings.keybindings = next;
+  saveSettings(settings);
+  rebuildKeyMap();
+  renderKeyBindings();
+}
+
+let capturingKeyFor = null;
+
+function renderKeyBindings() {
+  const list = $('keyList');
+  if (!list) return;
+  list.innerHTML = '';
+  const binds = currentBindings();
+  for (const action of Object.keys(ACTION_LABELS)) {
+    const row = document.createElement('div');
+    row.className = 'key-row';
+
+    const name = document.createElement('span');
+    name.className = 'key-row-name';
+    name.textContent = ACTION_LABELS[action];
+    row.appendChild(name);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'key-cap';
+    const code = (binds[action] || [])[0] || null;
+    if (capturingKeyFor === action) {
+      btn.classList.add('capturing');
+      btn.textContent = 'Press a key…';
+    } else {
+      btn.textContent = codeLabel(code);
+      if (!code) btn.classList.add('unbound');
+    }
+    btn.title = 'Click, then press a key (Esc cancels · Backspace clears)';
+    btn.addEventListener('click', (e) => { e.stopPropagation(); beginCapture(action); });
+    row.appendChild(btn);
+
+    list.appendChild(row);
+  }
+}
+
+// Capture the next keypress for an action. Esc cancels, Backspace/Delete clears.
+function beginCapture(action) {
+  if (capturingKeyFor) return; // one at a time
+  capturingKeyFor = action;
+  renderKeyBindings();
+  const onCapture = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.removeEventListener('keydown', onCapture, true);
+    capturingKeyFor = null;
+    if (e.code === 'Escape') { renderKeyBindings(); return; }
+    if (e.code === 'Backspace' || e.code === 'Delete') { setBinding(action, null); return; }
+    setBinding(action, e.code);
+  };
+  window.addEventListener('keydown', onCapture, true);
+}
+
+function setupKeyBindingsUI() {
+  renderKeyBindings();
+  $('keyReset').addEventListener('click', () => {
+    settings.keybindings = {}; // fall back to the config defaults
+    saveSettings(settings);
+    rebuildKeyMap();
+    renderKeyBindings();
+  });
+}
+
+// Tabbed settings (Display / Game / Maps / Controls). Toggles the active tab +
+// panel and exposes selectSettingsTab so map-error flows can jump to the Maps panel.
 function setupSettingsTabs() {
   const tabs = [...document.querySelectorAll('.settings-tab')];
   const panels = [...document.querySelectorAll('.settings-panel')];
@@ -655,6 +752,7 @@ function setupSettingsUI() {
   setupAppFullscreenToggle();
   setupBoolToggle('panToggle', 'panning', (on) => viewer.setPanEnabled(on));
   setupBoolToggle('zoomToggle', 'zooming', (on) => viewer.setZoomEnabled(on));
+  setupKeyBindingsUI();
 
   // Changing the round count restarts the game (it redefines the deck).
   setupSegmented({
@@ -744,27 +842,58 @@ function toggleMapFullscreen() {
   setMapFullscreen(!$('guessPanel').classList.contains('map-fullscreen'));
 }
 
-function onKeyDown(e) {
-  // Don't hijack keys while the settings panel (with its selects) is open.
-  if (!$('settings').classList.contains('hidden')) return;
-  if (e.code === 'Space') {
-    e.preventDefault(); // stop the focused button/map from grabbing it
-    if (state.guessed) nextRound();
-    else if (gmap.guess) submitGuess();
-  } else if (e.key === 'h' || e.key === 'H') {
-    // Hide the HUD on the guess page for an unobstructed view (map + button stay).
-    if (!state.guessed) document.body.classList.toggle('ui-hidden');
-  } else if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
-    toggleMapFullscreen();
-  } else if (e.key === 'r' || e.key === 'R') {
-    viewer.resetView();
-  } else if (e.key === 'n' || e.key === 'N') {
-    // First N faces north; pressing again (while already north) looks straight down.
+// Every keyboard action, dispatched by name from the customizable KEYBINDINGS
+// map (assets/js/config.js) so all shortcuts live in one place.
+const KEY_ACTIONS = {
+  submitOrNext: () => { if (state.guessed) nextRound(); else if (gmap.guess) submitGuess(); },
+  zoomIn: () => viewer.zoomFull(1),
+  zoomOut: () => viewer.zoomFull(-1),
+  resetView: () => viewer.resetView(),
+  faceNorth: () => {
+    // First press faces north; pressing again (while north) looks straight down.
     const h = viewer.getHeading();
     const atNorth = Math.min(h, 360 - h) < 1.5;
     if (atNorth && Math.abs(viewer.lat) < 2) viewer.faceNorthDown();
     else viewer.faceNorth();
+  },
+  toggleMapFullscreen: () => toggleMapFullscreen(),
+  hideHud: () => { if (!state.guessed) document.body.classList.toggle('ui-hidden'); }
+};
+
+// Human-readable names for the Controls settings list. Order here = list order.
+const ACTION_LABELS = {
+  submitOrNext: 'Submit / Next',
+  zoomIn: 'Zoom in',
+  zoomOut: 'Zoom out',
+  resetView: 'Reset view',
+  faceNorth: 'Face north',
+  toggleMapFullscreen: 'Toggle map fullscreen',
+  hideHud: 'Hide HUD'
+};
+
+// Effective bindings: config defaults overlaid with the user's saved overrides.
+function currentBindings() {
+  return { ...KEYBINDINGS, ...(settings.keybindings || {}) };
+}
+
+// KeyboardEvent.code -> action name. Rebuilt whenever a binding changes.
+let keyBindingMap = {};
+function rebuildKeyMap() {
+  keyBindingMap = {};
+  for (const [action, codes] of Object.entries(currentBindings())) {
+    for (const code of codes || []) keyBindingMap[code] = action;
   }
+}
+rebuildKeyMap();
+
+function onKeyDown(e) {
+  // Don't hijack keys while the settings panel is open, or for browser/app combos.
+  if (!$('settings').classList.contains('hidden')) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const action = keyBindingMap[e.code];
+  if (!action || !KEY_ACTIONS[action]) return;
+  if (e.code === 'Space') e.preventDefault(); // stop the focused button/map grabbing it
+  KEY_ACTIONS[action]();
 }
 
 function submitGuess() {

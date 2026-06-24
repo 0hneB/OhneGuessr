@@ -44,6 +44,9 @@
                 id="tab-game" aria-controls="panel-game" aria-selected="false"
                 data-tab="game">Game</button>
         <button type="button" class="settings-tab" role="tab"
+                id="tab-controls" aria-controls="panel-controls" aria-selected="false"
+                data-tab="controls">Controls</button>
+        <button type="button" class="settings-tab" role="tab"
                 id="tab-maps" aria-controls="panel-maps" aria-selected="false"
                 data-tab="maps">Maps</button>
       </div>
@@ -109,6 +112,14 @@
             <input id="zoomToggle" type="checkbox" />
             <span class="switch" aria-hidden="true"></span>
           </label>
+        </section>
+
+        <section class="settings-panel" id="panel-controls"
+                 role="tabpanel" aria-labelledby="tab-controls" data-panel="controls" hidden>
+          <div class="setting">
+            <div id="keyList" class="key-list"></div>
+            <button id="keyReset" type="button" class="key-reset">Reset to defaults</button>
+          </div>
         </section>
 
         <section class="settings-panel" id="panel-maps"

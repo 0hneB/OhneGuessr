@@ -16,3 +16,17 @@ export const CONFIG = {
   HEADING_SIGN: 1,
   HEADING_OFFSET: 0
 };
+
+// Keyboard shortcuts — the single place to customize ALL hotkeys. Each action
+// maps to one or more KeyboardEvent.code values (physical keys, independent of
+// layout): letters are 'KeyA'..'KeyZ', plus 'Space', 'ArrowUp', 'Digit1', etc.
+// Bind several keys to one action with a list; set an action to [] to disable it.
+export const KEYBINDINGS = {
+  submitOrNext: ['Space'], // place/submit a guess, or advance to the next round
+  zoomIn: ['KeyE'],
+  zoomOut: ['KeyQ'],
+  resetView: ['KeyR'],
+  faceNorth: ['KeyN'],     // face north; press again while north to look straight down
+  toggleMapFullscreen: ['KeyF'],
+  hideHud: ['KeyH']        // hide the HUD on the guess screen (map + button stay)
+};
