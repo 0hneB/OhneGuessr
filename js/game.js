@@ -246,7 +246,7 @@ function beginRename(m, mainBtn) {
 
 async function selectMap(key) {
   const item = state.maps.find((m) => m.key === key) || state.maps[0];
-  if (!item) return;
+  if (!item) { showNoMaps(); return; }
   state.currentKey = item.key;
   settings.currentMap = item.key;
   saveSettings(settings);
@@ -256,13 +256,29 @@ async function selectMap(key) {
   let locs;
   try {
     locs = normalizeLocations(await getLocations(item));
-  } catch (err) {
-    setLoading(true, `Could not load that map: ${err.message}`);
+  } catch {
+    await recoverToSettings(`Couldn't load "${item.name}". It may have been deleted or edited on disk — pick another map below, or remove it with ×.`);
     return;
   }
-  if (!locs.length) { setLoading(true, 'That map has no usable locations.'); return; }
+  if (!locs.length) {
+    await recoverToSettings(`"${item.name}" has no usable locations — pick another map below.`);
+    return;
+  }
   state.all = locs;
   await startGame();
+}
+
+// Clear the loading overlay and drop the player into Settings after a map can't
+// be used (file deleted/edited on disk, empty, etc.). Re-syncs the list so a map
+// removed on disk disappears; otherwise the player is left stuck behind the
+// full-screen overlay, unable to even open Settings to fix it.
+async function recoverToSettings(message) {
+  setLoading(false);
+  state.currentKey = null;
+  state.maps = await listMaps();
+  renderMapList();
+  $('settings').classList.remove('hidden');
+  $('uploadInfo').textContent = message;
 }
 
 async function removeMap(m) {
@@ -559,7 +575,11 @@ function setupSettingsUI() {
   });
 
   const panel = $('settings');
-  $('settingsBtn').addEventListener('click', () => panel.classList.toggle('hidden'));
+  $('settingsBtn').addEventListener('click', () => {
+    const opening = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden');
+    if (opening) $('uploadInfo').textContent = ''; // drop any stale error/info
+  });
   $('settingsClose').addEventListener('click', () => panel.classList.add('hidden'));
   panel.addEventListener('click', (e) => {
     if (e.target === panel) panel.classList.add('hidden');
