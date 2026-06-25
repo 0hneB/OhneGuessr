@@ -1,14 +1,11 @@
-// Customizable keyboard shortcuts: the KeyboardEvent.code -> action dispatch and
-// the Controls-tab rebinding UI. The game owns *what* each action does (the
-// `actions` map it passes in); this module owns capturing keys, persisting
-// overrides on top of the config defaults, and routing key events to the actions.
+// Keyboard shortcuts: KeyboardEvent.code -> action dispatch and the rebinding UI.
+// The game supplies the actions; this stores overrides and routes key events.
 import { $ } from './dom.js';
 import { KEYBINDINGS } from './config.js';
 import { saveSettings } from './settings.js';
 import { settings } from './state.js';
 
-// Human-readable names for the Controls list. Order here = list order; the keys
-// must match the action map the game supplies.
+// Display names and order for the Controls list; keys match the action map.
 const ACTION_LABELS = {
   submitOrNext: 'Submit / Next',
   zoomIn: 'Zoom in',
@@ -19,7 +16,7 @@ const ACTION_LABELS = {
   hideHud: 'Hide HUD'
 };
 
-// Friendly label for a KeyboardEvent.code shown on the rebind buttons.
+// Display label for a KeyboardEvent.code.
 function codeLabel(code) {
   if (!code) return 'Unbound';
   const named = {
@@ -39,15 +36,15 @@ function codeLabel(code) {
 
 export class Keybindings {
   constructor({ actions, isPanelOpen }) {
-    this.actions = actions;         // { [action]: () => void }
-    this.isPanelOpen = isPanelOpen; // () -> don't hijack keys while settings is open
+    this.actions = actions;         // { action: fn }
+    this.isPanelOpen = isPanelOpen; // don't hijack keys while settings is open
     this.capturingKeyFor = null;
     this.map = {};
     this.rebuild();
     this.onKeyDown = this.onKeyDown.bind(this);
   }
 
-  // Effective bindings: config defaults overlaid with the user's saved overrides.
+  // Config defaults overlaid with saved overrides.
   current() {
     return { ...KEYBINDINGS, ...(settings.keybindings || {}) };
   }
@@ -61,17 +58,15 @@ export class Keybindings {
   }
 
   onKeyDown(e) {
-    // Don't hijack keys while the settings panel is open, or for browser/app combos.
     if (this.isPanelOpen()) return;
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return; // leave browser/app combos alone
     const action = this.map[e.code];
     if (!action || !this.actions[action]) return;
-    if (e.code === 'Space') e.preventDefault(); // stop the focused button/map grabbing it
+    if (e.code === 'Space') e.preventDefault(); // don't let a focused button grab it
     this.actions[action]();
   }
 
-  // Bind one action to a single code (null clears it), removing that code from any
-  // other action so a key never triggers two things. Persisted as an override.
+  // Bind an action to a code (null clears), removing it from any other action.
   setBinding(action, code) {
     const binds = this.current();
     const next = {};
@@ -138,7 +133,7 @@ export class Keybindings {
   setupUI() {
     this.render();
     $('keyReset').addEventListener('click', () => {
-      settings.keybindings = {}; // fall back to the config defaults
+      settings.keybindings = {}; // back to defaults
       saveSettings(settings);
       this.rebuild();
       this.render();

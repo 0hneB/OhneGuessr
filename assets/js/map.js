@@ -1,17 +1,17 @@
-// Leaflet maps. `L` is the global from the Leaflet <script> tag in index.html.
-//   GuessMap  - the small in-game map where you drop a guess (clean green dot).
-//   ResultMap - the fullscreen map shown after guessing, with custom pins.
+// Leaflet maps (L is the global from index.html).
+//   GuessMap   - small in-game map for dropping a guess
+//   ResultMap  - per-round reveal with guess/answer pins
+//   SummaryMap - end-of-game overview of every round
 import { MAP_STYLES } from './settings.js';
 
 function addBaseLayer(map, key, current) {
   const style = MAP_STYLES[key] || MAP_STYLES.osm;
-  // Vector styles (e.g. OSM Liberty) render through MapLibre GL; raster styles
-  // are plain Leaflet tile layers.
+  // Vector styles render via MapLibre GL; raster styles are Leaflet tile layers.
   const layer = style.type === 'vector'
     ? L.maplibreGL({ style: style.url, attribution: style.attribution })
     : L.tileLayer(style.url, {
       updateWhenIdle: false,
-      updateWhenZooming: false, // hold current tiles scaled during the zoom instead of blanking + reloading
+      updateWhenZooming: false, // hold scaled tiles during zoom instead of blanking
       keepBuffer: 8,
       ...(style.options || {})
     });
@@ -21,16 +21,14 @@ function addBaseLayer(map, key, current) {
   return layer;
 }
 
-// Show the grabbing cursor while panning; the container's CSS default (crosshair)
-// returns on release.
+// Grabbing cursor while panning.
 function bindDragCursor(map) {
   const c = map.getContainer();
   map.on('dragstart', () => { c.style.cursor = 'grabbing'; });
   map.on('dragend', () => { c.style.cursor = ''; });
 }
 
-// Keep Leaflet's internal size in sync with its container. Grey bars usually
-// mean Leaflet still believes the map has its old dimensions.
+// Resync Leaflet's size with its container (grey bars mean a stale size).
 function invalidateSizeNow(map) {
   const center = map.getCenter();
   const zoom = map.getZoom();
@@ -163,21 +161,19 @@ export class GuessMap {
   }
 }
 
-// Teardrop pin (632x736) — anchor at the bottom tip.
+// Teardrop pin, anchored at the tip.
 const GUESS_ICON = L.icon({
   iconUrl: 'assets/images/pin-guess.svg',
   iconSize: [44, 56], iconAnchor: [22, 48], className: 'map-pin'
 });
-// Circular badge (128x128) — anchor at its centre (the exact spot it marks).
+// Circular badge, anchored at its centre.
 const CORRECT_ICON = L.icon({
   iconUrl: 'assets/images/correct-location.webp',
   iconSize: [28, 28], iconAnchor: [14, 14], className: 'map-pin-correct'
 });
 
-// Draw one round (the answer pin, plus the guess pin + dashed link when a guess
-// was made — it's null on a timeout forfeit) onto a map, pushing the created
-// layers so the caller can clear them later. Returns the drawn points as
-// [lat, lng] pairs for bounds fitting. Shared by ResultMap and SummaryMap.
+// Draw a round's answer pin plus the guess pin and link (guess is null on a
+// forfeit). Pushes layers for later cleanup; returns the points for bounds fitting.
 function drawGuessPair(map, layers, guess, actual) {
   const a = [actual.lat, actual.lng];
   const pts = [];
@@ -199,8 +195,7 @@ export class ResultMap {
     this.map = L.map(elId, { worldCopyJump: true, zoomControl: false, maxZoom: 19 })
       .setView([20, 0], 2);
     this.baseLayer = addBaseLayer(this.map, styleKey);
-    // Guess pins live above the default marker pane (600) so they always overlay
-    // the correct-location badges, regardless of Leaflet's lat-based z-ordering.
+    // Keep guess pins above the answer badges (default marker pane is 600).
     this.map.createPane('guessPane').style.zIndex = 650;
     bindDragCursor(this.map);
     autoResize(this.map);
@@ -223,14 +218,12 @@ export class ResultMap {
   }
 }
 
-// End-of-game overview: every round's guess→answer pair on one world map.
 export class SummaryMap {
   constructor(elId, styleKey = 'osm') {
     this.map = L.map(elId, { worldCopyJump: true, zoomControl: false, maxZoom: 19 })
       .setView([20, 0], 2);
     this.baseLayer = addBaseLayer(this.map, styleKey);
-    // Guess pins live above the default marker pane (600) so they always overlay
-    // the correct-location badges, regardless of Leaflet's lat-based z-ordering.
+    // Keep guess pins above the answer badges (default marker pane is 600).
     this.map.createPane('guessPane').style.zIndex = 650;
     bindDragCursor(this.map);
     autoResize(this.map);

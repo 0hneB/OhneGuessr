@@ -1,7 +1,5 @@
-// The map library: the Settings → Maps list (select / rename / delete), uploading
-// new maps, and recovering when a selected map can't be loaded. Reads/writes the
-// shared state, talks to the maps storage layer, and calls back into the game to
-// (re)start a round once a map is chosen.
+// Settings → Maps: list, select, rename, delete, upload, and recovery when a
+// chosen map can't load. Calls back into the game to start a round.
 import { $, setLoading, setEmptyState, setUploadMessage } from './dom.js';
 import { state, settings } from './state.js';
 import { saveSettings } from './settings.js';
@@ -12,7 +10,7 @@ import { selectSettingsTab } from './settings-panel.js';
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// Inline Feather-style icons (stroked, inherit color via currentColor). Sized in CSS.
+// Inline icons, coloured via currentColor and sized in CSS.
 const ICON_PATHS = {
   edit: '<path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
   close: '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>'
@@ -23,8 +21,7 @@ function svgIcon(name) {
     ICON_PATHS[name] + '</svg>';
 }
 
-// `startGame` is the game's entry point, called once a map's locations are loaded.
-// Returns the handful of operations the game needs to drive from init.
+// startGame runs once a map's locations are loaded.
 export function createMapLibrary({ startGame }) {
   function renderMapList() {
     const list = $('mapList');
@@ -62,15 +59,13 @@ export function createMapLibrary({ startGame }) {
     }
   }
 
-  // Inline rename: swap the row's main button for a text field. Enter commits
-  // (renaming the on-disk file too, for disk maps), Esc/blur cancels.
+  // Inline rename: overlay a text field on the row. Enter commits, Esc/blur cancels.
   function beginRename(m, mainBtn) {
     const row = mainBtn.parentElement;
     const input = document.createElement('input');
     input.className = 'map-row-rename-input';
     input.value = m.name;
-    // Keep the (hidden) main button in flow so the row keeps its height; overlay
-    // the input on top of it (.map-row-rename-input is absolutely positioned).
+    // Hidden but kept in flow so the row keeps its height; the input overlays it.
     mainBtn.style.visibility = 'hidden';
     row.appendChild(input);
     input.focus();
@@ -123,10 +118,8 @@ export function createMapLibrary({ startGame }) {
     await startGame();
   }
 
-  // Clear the loading overlay and drop the player into Settings after a map can't
-  // be used (file deleted/edited on disk, empty, etc.). Re-syncs the list so a map
-  // removed on disk disappears; otherwise the player is left stuck behind the
-  // full-screen overlay, unable to even open Settings to fix it.
+  // Drop the player into Settings when a map can't load, re-syncing the list so a
+  // map deleted on disk disappears instead of trapping them behind the overlay.
   async function recoverToSettings(message) {
     setLoading(false);
     setEmptyState(false);
@@ -134,7 +127,7 @@ export function createMapLibrary({ startGame }) {
     state.maps = await listMaps();
     renderMapList();
     $('settings').classList.remove('hidden');
-    selectSettingsTab('maps'); // surface the message next to the map list
+    selectSettingsTab('maps');
     setUploadMessage(message);
   }
 
@@ -149,8 +142,7 @@ export function createMapLibrary({ startGame }) {
     }
   }
 
-  // Empty library: keep the game out of an error state and point the player at the
-  // upload area instead of a blocked loading overlay.
+  // No maps: show the upload prompt instead of a blocked loading overlay.
   function showNoMaps() {
     setLoading(false);
     state.currentKey = null;

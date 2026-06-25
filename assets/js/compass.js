@@ -1,6 +1,4 @@
-// Canvas compass HUD — a horizontal heading bar. Render-only: it's driven by the
-// panorama's heading via setHeading(), with no input of its own. Adapted from a
-// standalone design; marker centred and ticks un-offset so the reading is exact.
+// Canvas compass HUD: a horizontal heading bar, driven by setHeading().
 
 const CONFIG = {
   size: { w: 240, h: 32 },

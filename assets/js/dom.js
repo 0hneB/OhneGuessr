@@ -1,5 +1,4 @@
-// Shared DOM helpers. Pure: no game state, no imports — just thin wrappers over
-// the document used across modules.
+// DOM helpers shared across modules.
 export const $ = (id) => document.getElementById(id);
 
 export function setLoading(on, msg) {

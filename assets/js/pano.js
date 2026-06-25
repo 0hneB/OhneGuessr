@@ -1,32 +1,26 @@
-// Equirectangular panorama viewer (three.js only). Camera sits at the centre of
-// an inverted sphere textured with the stitched Street View canvas.
-//
-// Controls aim to match Google Street View / GeoGuessr feel:
-//  - drag to look, with inertia (glide) on release
-//  - scroll to zoom *towards the cursor* (the point under the cursor stays put,
-//    so the view pans/tilts that way as you zoom in)
-//  - heading/pitch are the source of truth so a compass can read them directly
+// Equirectangular panorama viewer (three.js). Camera at the centre of an inverted
+// sphere textured with the stitched canvas. Drag to look (with inertia), scroll to
+// zoom toward the cursor. Heading/pitch are authoritative so the compass reads them.
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 
-const FRICTION = 0.965;   // inertia decay per frame after releasing a drag
-const VEL_EPS = 0.004;    // below this angular speed (deg/frame) inertia stops
-const EASE = 0.16;        // smoothing factor for animateTo (N key, etc.)
-const ZOOM_PAN_GAIN = 1.35; // pan toward the cursor while zooming, but keep it subtle
-const ZOOM_SENS = 0.05;     // FOV degrees per wheel deltaY unit — how far one notch zooms
-const ZOOM_FRICTION = 0.8;  // float only: how long the glide tails off (NOT how far it zooms)
-const ZOOM_VEL_MAX = 6;     // cap on zoom velocity (deg/frame) for fast scroll bursts
-const ZOOM_VEL_EPS = 0.01;  // below this the zoom is treated as stopped
+const FRICTION = 0.965;     // drag inertia decay per frame
+const VEL_EPS = 0.004;      // inertia stops below this (deg/frame)
+const EASE = 0.16;          // animateTo smoothing
+const ZOOM_PAN_GAIN = 1.35; // pan toward the cursor while zooming
+const ZOOM_SENS = 0.05;     // FOV degrees per wheel deltaY unit
+const ZOOM_FRICTION = 0.8;  // zoom glide tail, not zoom distance
+const ZOOM_VEL_MAX = 6;     // zoom velocity cap (deg/frame)
+const ZOOM_VEL_EPS = 0.01;  // zoom stops below this
 const DRAG_DEADZONE_PX = 3;
 const INERTIA_RELEASE_MS = 120;
-const MIN_FOV = 8;          // deep zoom-in; Street View imagery softens past this
+const MIN_FOV = 8;          // imagery softens past this
 const MAX_FOV = 75;
-const TILE_RADIUS = 500; // match the base sphere so the layers don't parallax/z-fight
+const TILE_RADIUS = 500;    // match the base sphere to avoid z-fighting
 const TILE_SUBDIVISIONS = 6;
 const TILE_CACHE_LIMIT = 180;
 const norm360 = (d) => ((d % 360) + 360) % 360;
 const clampPitch = (p) => Math.max(-85, Math.min(85, p));
-// Shortest signed angular difference (deg) in [-180, 180].
 const shortestAngle = (d) => ((((d % 360) + 540) % 360) - 180);
 
 function loadTileImage(url) {
@@ -42,21 +36,21 @@ function loadTileImage(url) {
 export class PanoViewer {
   constructor(container) {
     this.container = container;
-    this.lon = 0;          // internal azimuth (deg)
-    this.lat = 0;          // internal elevation / pitch (deg)
+    this.lon = 0;             // azimuth (deg)
+    this.lat = 0;             // pitch (deg)
     this.fov = MAX_FOV;
-    this.zoomVel = 0;         // zoom momentum (deg/frame); decays with friction
-    this.zoomAnchor = null;   // {ux, uy}: cursor in normalised screen coords for zoom-toward
+    this.zoomVel = 0;         // zoom momentum (deg/frame)
+    this.zoomAnchor = null;   // cursor {ux, uy} to zoom toward
     this.defaultLon = 0;
     this.defaultLat = 0;
-    this.panoNorth = 0;    // compass bearing the texture's reference faces (per pano)
-    this.velLon = 0;       // inertia velocity (deg/frame)
+    this.panoNorth = 0;       // texture's reference bearing for this pano
+    this.velLon = 0;          // inertia velocity (deg/frame)
     this.velLat = 0;
     this.dragging = false;
-    this.panEnabled = true;   // drag-to-look (disabled via the Panning setting)
-    this.zoomEnabled = true;  // scroll-to-zoom (disabled via the Zooming setting)
-    this.target = null;    // {lon, lat, fov} for smooth animateTo, else null
-    this.onChange = null;  // callback(headingDegrees)
+    this.panEnabled = true;   // Panning setting
+    this.zoomEnabled = true;  // Zooming setting
+    this.target = null;       // animateTo {lon, lat, fov} or null
+    this.onChange = null;     // callback(heading)
     this._lastHeading = null;
     this._tileSourceSeq = 0;
     this.tileSource = null;
@@ -88,12 +82,11 @@ export class PanoViewer {
     this.renderer.setAnimationLoop(() => this._animate());
   }
 
-  // Swap the displayed panorama texture only; the current view is preserved.
+  // Swap the panorama texture; the view is preserved.
   setPanorama(canvas) {
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
-    // Linear (no mipmaps) avoids a seam at the equirectangular wrap; anisotropy
-    // keeps the ground/buildings sharp when viewed at a grazing angle.
+    // No mipmaps avoids a seam at the wrap; anisotropy keeps grazing angles sharp.
     tex.minFilter = THREE.LinearFilter;
     tex.generateMipmaps = false;
     tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
@@ -102,9 +95,7 @@ export class PanoViewer {
     this.material.needsUpdate = true;
   }
 
-  // Drops the whole current panorama's tiles at once. Called at the start of
-  // each round load, so the previous location's tiles are freed the instant the
-  // next one comes in.
+  // Drop all tiles for the current pano. Called at each round load.
   clearTileSource() {
     this._tileSourceSeq++;
     this.tileSource = null;
@@ -117,9 +108,8 @@ export class PanoViewer {
     this.tileCache.clear();
   }
 
-  // Add a high-resolution tiled overlay above the low-res panorama texture.
-  // The scheduler loads only tiles near the current camera direction, giving the
-  // Street View/GeoGuessr-style "sharpens where you look" behavior.
+  // High-res tiled overlay above the base texture. Only tiles near the camera
+  // direction load, so the view sharpens where you look.
   setTileSource({ loc, zoom, urlForTile, tileSize = CONFIG.TILE_SIZE }) {
     this.clearTileSource();
     if (!loc || !urlForTile || !Number.isFinite(zoom)) return;
@@ -137,16 +127,13 @@ export class PanoViewer {
       cols: Math.ceil(width / tileSize),
       rows: Math.ceil(height / tileSize)
     };
-    // Hold the entire current panorama in cache so looking around never refetches
-    // a tile. It's bounded to one location and wiped by clearTileSource() on the
-    // next round, so memory can't grow past a single pano.
+    // Cache the whole pano so panning never refetches; bounded and cleared per round.
     this.tileCacheLimit = this.tileSource.cols * this.tileSource.rows;
     this._updateTileVisibility(true);
   }
 
-  // Map between true compass heading and internal azimuth. `panoNorth` removes
-  // the per-pano car-direction offset; HEADING_SIGN/HEADING_OFFSET (config) are
-  // the one global calibration for the texture convention.
+  // Convert between compass heading and internal azimuth. panoNorth removes the
+  // per-pano offset; HEADING_SIGN/HEADING_OFFSET are the global calibration.
   _headingToLon(h) {
     return CONFIG.HEADING_SIGN * (h - this.panoNorth - CONFIG.HEADING_OFFSET);
   }
@@ -154,8 +141,7 @@ export class PanoViewer {
     return norm360(this.panoNorth + CONFIG.HEADING_SIGN * lon + CONFIG.HEADING_OFFSET);
   }
 
-  // The view this location starts at (and that 'R' returns to). `north` is the
-  // panorama's heading from metadata; `heading` is the desired true bearing.
+  // Starting view for this location (and where R returns to).
   setDefaultView(heading = 0, pitch = 0, north = 0) {
     this.panoNorth = north;
     this.defaultLon = this._headingToLon(heading);
@@ -174,7 +160,7 @@ export class PanoViewer {
     return this._lonToHeading(this.lon);
   }
 
-  // Enable/disable drag-to-look. When off, any in-flight drag + inertia is dropped.
+  // When off, drop any in-flight drag and inertia.
   setPanEnabled(on) {
     this.panEnabled = !!on;
     if (!this.panEnabled) {
@@ -184,17 +170,17 @@ export class PanoViewer {
     this.renderer.domElement.style.cursor = this.panEnabled ? 'pointer' : 'default';
   }
 
-  // Enable/disable scroll-to-zoom. When off, any zoom momentum is dropped.
+  // When off, drop any zoom momentum.
   setZoomEnabled(on) {
     this.zoomEnabled = !!on;
     if (!this.zoomEnabled) this.zoomVel = 0;
   }
 
-  // Smoothly animate to an absolute heading/pitch (deg). fov optional.
+  // Ease to an absolute heading/pitch (deg).
   animateTo(heading, pitch, fov = this.fov) {
     const desiredLon = this._headingToLon(heading);
     this.velLon = this.velLat = 0;
-    this.zoomVel = 0; // a programmatic move shouldn't fight leftover zoom momentum
+    this.zoomVel = 0;
     this.target = {
       lon: this.lon + shortestAngle(desiredLon - this.lon), // shortest path
       lat: clampPitch(pitch),
@@ -205,8 +191,7 @@ export class PanoViewer {
   faceNorth() { this.animateTo(0, 0); }
   faceNorthDown() { this.animateTo(0, -85); }
 
-  // Zoom all the way to a cap in one go. direction > 0 zooms fully in (MIN_FOV),
-  // < 0 fully out (MAX_FOV). Eases to the cap; respects the Zooming setting.
+  // Ease fully in (direction > 0) or out (< 0).
   zoomFull(direction) {
     if (!this.zoomEnabled || !direction) return;
     this.animateTo(this.getHeading(), this.lat, direction > 0 ? MIN_FOV : MAX_FOV);
@@ -257,8 +242,7 @@ export class PanoViewer {
       const k = 0.1 * (this.fov / MAX_FOV);
       const newLon = -dx * k + plon;
       const newLat = clampPitch(dy * k + plat);
-      // The first post-deadzone movement positions the view, but only later
-      // movement samples represent actual release velocity for inertia.
+      // First move past the deadzone positions the view; later moves set inertia.
       this.velLon = wasMoved ? newLon - this.lon : 0;
       this.velLat = wasMoved ? newLat - this.lat : 0;
       this.lon = newLon;
@@ -282,13 +266,11 @@ export class PanoViewer {
       if (!this.zoomEnabled) return;
       this.target = null;
       const rect = dom.getBoundingClientRect();
-      // A notch adds a fixed amount of zoom (deltaY * ZOOM_SENS), delivered as
-      // velocity so it eases to a soft stop instead of snapping. The (1 - friction)
-      // factor keeps the *total* travel per notch constant at any friction, so
-      // ZOOM_FRICTION tunes only the float — never how far one scroll zooms.
+      // Each notch adds zoom velocity that eases to a stop. The (1 - friction)
+      // factor keeps travel per notch constant regardless of ZOOM_FRICTION.
       const impulse = e.deltaY * ZOOM_SENS * (1 - ZOOM_FRICTION);
       this.zoomVel = Math.max(-ZOOM_VEL_MAX, Math.min(ZOOM_VEL_MAX, this.zoomVel + impulse));
-      // Remember the cursor (normalised screen coords) so the glide zooms toward it.
+      // Cursor in normalised coords, so the glide zooms toward it.
       this.zoomAnchor = {
         ux: (e.clientX - rect.left - rect.width / 2) / (rect.width / 2),
         uy: (rect.height / 2 - (e.clientY - rect.top)) / (rect.height / 2)
@@ -298,7 +280,7 @@ export class PanoViewer {
 
   _animate() {
     if (this.target && !this.dragging) {
-      // Ease toward an animateTo() target (N key, etc.).
+      // Ease toward an animateTo target.
       this.lon += (this.target.lon - this.lon) * EASE;
       this.lat += (this.target.lat - this.lat) * EASE;
       this.fov += (this.target.fov - this.fov) * EASE;
@@ -313,7 +295,7 @@ export class PanoViewer {
     } else {
       if (!this.dragging &&
           (Math.abs(this.velLon) > VEL_EPS || Math.abs(this.velLat) > VEL_EPS)) {
-        // Apply inertial glide after a drag release.
+        // Inertial glide after release.
         this.lon += this.velLon;
         this.lat = clampPitch(this.lat + this.velLat);
         this.velLon *= FRICTION;
@@ -322,7 +304,7 @@ export class PanoViewer {
           this.velLon = this.velLat = 0;
         }
       }
-      this._applyZoomMomentum(); // glide the zoom with momentum + friction
+      this._applyZoomMomentum();
     }
 
     const phi = THREE.MathUtils.degToRad(90 - this.lat);
@@ -348,9 +330,7 @@ export class PanoViewer {
     }
   }
 
-  // Glide the FOV under its own momentum: each wheel notch adds velocity, which
-  // decays with friction so the zoom keeps moving briefly after you stop scrolling
-  // (the buttery deceleration). The point under the cursor stays fixed throughout.
+  // Glide the FOV with decaying momentum, keeping the cursor point fixed.
   _applyZoomMomentum() {
     if (Math.abs(this.zoomVel) < ZOOM_VEL_EPS) { this.zoomVel = 0; return; }
     let fovNew = this.fov + this.zoomVel;
@@ -477,10 +457,8 @@ export class PanoViewer {
 
     const texture = new THREE.Texture(img);
     texture.colorSpace = THREE.SRGBColorSpace;
-    // Trilinear + anisotropy tame the shimmer/aliasing while panning. Safe here:
-    // each tile is its own 512px (power-of-two) image with clamped edges, so
-    // mipmapping never samples across the equirect wrap seam — that's why the
-    // single wrapping *base* texture still has to skip mipmaps.
+    // Mipmaps are safe per-tile (clamped 512px images) and reduce shimmer while
+    // panning; the wrapping base texture can't use them without a seam.
     texture.minFilter = THREE.LinearMipmapLinearFilter;
     texture.magFilter = THREE.LinearFilter;
     texture.generateMipmaps = true;
@@ -490,8 +468,7 @@ export class PanoViewer {
     const material = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.DoubleSide,
-      // Always paint over the low-res sphere (no depth compare) so the two layers
-      // can share a radius without z-fighting.
+      // Paint over the base sphere with no depth test so equal radii don't z-fight.
       depthWrite: false,
       depthTest: false
     });

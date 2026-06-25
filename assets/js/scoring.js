@@ -1,9 +1,8 @@
-// Distance + scoring helpers.
 import { CONFIG } from './config.js';
 
 const rad = (d) => (d * Math.PI) / 180;
 
-// Great-circle distance in kilometres.
+// Great-circle distance in km.
 export function haversineKm(a, b) {
   const R = 6371;
   const dLat = rad(b.lat - a.lat);
@@ -14,7 +13,7 @@ export function haversineKm(a, b) {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-// Exponential falloff, GeoGuessr-style: perfect guess ~5000, decaying with km.
+// SCORE_MAX at zero distance, decaying exponentially with km.
 export function scoreFor(distKm) {
   return Math.round(CONFIG.SCORE_MAX * Math.exp(-distKm / CONFIG.SCORE_SCALE_KM));
 }

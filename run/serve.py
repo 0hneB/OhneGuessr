@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """Local dev server for OhneGuessr.
 
-Serves the repo over http:// (browsers block ES modules + fetch over file://) and
-adds a tiny write API so maps uploaded in Settings are saved as real files under
-data/ — not just IndexedDB — making them git-committable and reload-proof.
+Serves the repo over http:// and adds a write API so uploaded maps are saved as
+files under data/. Standard library only. Started by run/serve.bat, stopped by
+run/stop.bat.
 
-Standard library only, no dependencies. Launched windowless by run/serve.bat;
-stop it with run/stop.bat. Routes:
-    GET    /api/health        -> {"ok": true}        (capability probe)
-    POST   /api/maps          -> create a map        body {name, locations}
-    PATCH  /api/maps/<id>      -> rename a map (+file) body {name}
-    DELETE /api/maps/<id>      -> delete a map (+file)
-    GET    /*                 -> static files
+    GET    /api/health    -> {"ok": true}
+    POST   /api/maps      -> create a map   body {name, locations}
+    PATCH  /api/maps/<id> -> rename a map   body {name}
+    DELETE /api/maps/<id> -> delete a map
+    GET    /*             -> static files
 """
 
 import json
@@ -34,7 +32,7 @@ LOGFILE = os.path.join(tempfile.gettempdir(), "ohneguessr-serve.log")
 
 
 def log(msg):
-    # Windowless (pythonw) has no console, so errors go to a temp log file.
+    # pythonw has no console, so log to a temp file.
     try:
         with open(LOGFILE, "a", encoding="utf-8") as f:
             f.write(msg + "\n")
@@ -58,7 +56,7 @@ def read_manifest():
 
 
 def write_json(path, data):
-    # Atomic: write a temp file in the same dir, then replace.
+    # Atomic write: temp file in the same dir, then replace.
     os.makedirs(os.path.dirname(path), exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), suffix=".tmp")
     try:
@@ -90,7 +88,6 @@ class Handler(SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         log("%s - %s" % (self.address_string(), fmt % args))
 
-    # ---- helpers ----
     def _send_json(self, obj, status=200):
         body = json.dumps(obj).encode("utf-8")
         self.send_response(status)
@@ -113,7 +110,6 @@ class Handler(SimpleHTTPRequestHandler):
         parts = self._path().rstrip("/").split("/")
         return parts[-1] if len(parts) >= 4 else None
 
-    # ---- routes ----
     def do_GET(self):
         if self._path() == "/api/health":
             self._send_json({"ok": True})
@@ -138,7 +134,6 @@ class Handler(SimpleHTTPRequestHandler):
         else:
             self.send_error(404)
 
-    # ---- map CRUD ----
     def _create_map(self):
         try:
             body = self._read_body()
@@ -160,7 +155,7 @@ class Handler(SimpleHTTPRequestHandler):
             entries.append(entry)
             write_json(MANIFEST, entries)
             self._send_json(entry)
-        except Exception as e:  # noqa: BLE001 - report any failure as 500
+        except Exception as e:  # noqa: BLE001
             log("create error: %r" % e)
             self._send_json({"error": "create failed"}, 500)
 
@@ -221,7 +216,7 @@ def port_in_use(port):
 
 def main():
     url = "http://localhost:%d/" % PORT
-    # Already running? Just (re)open the browser and bow out.
+    # Already running: reopen the browser and exit.
     if port_in_use(PORT):
         webbrowser.open(url)
         return
