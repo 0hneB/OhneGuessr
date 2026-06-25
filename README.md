@@ -2,32 +2,38 @@
 
 A completely free, debloated and local GeoGuessr alternative.
 
-> [!NOTE]
-> You need a small local server running (Python, included via `run/serve.bat`). Opening `index.html` straight from your file manager won't work — browsers block ES modules and `fetch` over `file://`. See [Running it](#running-it).
-
 ## Features
 
 - Runs locally, no API keys or sign-in.
 - Multiple free map styles (OSM, Carto, Esri, satellite, terrain).
 - Distance-based scoring, per-round result screen, end-of-game summary map.
-- use your own maps either hand picked in [Map Making App](https://map-making.app/) or generated with [MapGenerator](https://map-g3nerator.vercel.app/)
 - Adjustable rounds per game and per-location time limit.
 
-## Requirements
+## Setup
 
-- **Python 3.7+** (`run/serve.py` uses `ThreadingHTTPServer`, added in 3.7.)
-- A browser (Chrome, Firefox, Edge, anything current with ES modules).
-- An internet connection.
+You need Python 3.7+:
 
-## Running it
+**Windows:**
+
+```powershell
+winget install python3
+```
+
+**macOS:**
+
+```bash
+brew install python
+```
+
+Clone the repo, or download the [ZIP](https://github.com/0hneB/OhneGuessr/archive/refs/heads/main.zip) and unzip it:
+
+```bash
+git clone https://github.com/0hneB/OhneGuessr.git
+```
 
 ### Windows
 
-Double-click **`run\serve.bat`**.
-
-It starts the local server, opens your browser at `http://localhost:8000`
-
-To stop it, run **`run\stop.bat`**
+Double-click **`run\serve.bat`**. It starts the local server and opens your browser at `http://localhost:8000`; run **`run\stop.bat`** to stop it.
 
 ### macOS / Linux / manual
 
@@ -83,7 +89,9 @@ Settings open from the gear icon and are saved in your browser's `localStorage`,
 
 A map is just a JSON file of locations. They live in [`data/`](data/), and [`data/maps.json`](data/maps.json) is the index that tells the game which maps exist.
 
-### Adding a map in the app
+### Adding a map
+
+Bring your own maps ([Map Making App](https://map-making.app/) / [MapGenerator](https://map-g3nerator.vercel.app/)).
 
 Open **Settings → Maps → Add a map** and drop a `.json` file onto the box (or click to browse). The file is saved into `data/` + an entry is added to `data/maps.json`.
 
@@ -95,42 +103,13 @@ Each row in the map list has a rename (✎) and delete (×) button:
 > [!CAUTION]
 > Deleting a map removes its file from `data/` permanently. There's no undo — keep a copy if you might want it back.
 
-> [!WARNING]
-> Uploading, renaming, and deleting all go through `run/serve.py`. If you opened the game some other way (a different static server, or `file://`), you'll see *"Could not save the map. Is the local server (run/serve.bat) running?"* start it with `run/serve.bat` / `python run/serve.py`.
-
-### Adding a map by hand
-
-You can also drop a `.json` straight into `data/` and add a matching entry to `data/maps.json`:
-
-```json
-[
-  {
-    "id": "a-stunning-world",
-    "name": "A Stunning World",
-    "file": "a-stunning-world.json",
-    "count": 250
-  }
-]
-```
-
 ### Map file format
 
-The map file itself is a JSON array of location objects. Two shapes are accepted:
-
-**Minimal**
+A JSON array of location objects. Each needs `lat`, `lng`, and a `panoid`; `heading` and `pitch` (the starting view) are optional.
 
 ```json
 [
-  { "lat": 48.8584, "lng": 2.2945 },
-  { "lat": 40.6892, "lng": -74.0445 }
-]
-```
-
-**Normal**
-
-```json
-[
-  { "lat": 48.8584, "lng": 2.2945, "panoid": "…", "w": 16384, "h": 8192, "north": 31.4, "heading": 0, "pitch": 0 }
+  { "lat": 48.8584, "lng": 2.2945, "panoid": "…", "heading": 0, "pitch": 0 }
 ]
 ```
 
