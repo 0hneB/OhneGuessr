@@ -6,6 +6,7 @@ export const settings = loadSettings();
 
 export const state = {
   all: [],          // locations of the selected map
+  mapDiagonalKm: 0, // loaded map's bbox diagonal (km); Country scale
   maps: [],         // map library
   currentKey: null, // selected map key
   deck: [],         // shuffled locations for this game

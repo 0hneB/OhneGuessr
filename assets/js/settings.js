@@ -63,7 +63,7 @@ const KEY = 'ohneguessr.settings';
 // rounds: 'unlimited' or a count. timer: 'unlimited' or seconds per location.
 const DEFAULTS = {
   mapStyle: 'osm', quality: 'high', rounds: '5', timer: 'unlimited',
-  panning: true, zooming: true
+  panning: true, zooming: true, scoring: 'world' // 'world' fixed scale, 'country' per-map
 };
 
 export function loadSettings() {
