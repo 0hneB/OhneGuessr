@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 import { PanoViewer } from './pano.js';
 import { GuessMap, ResultMap, SummaryMap } from './map.js';
 import { buildPanoCanvas, tileUrl } from './streetview.js';
-import { haversineKm, scoreFor, formatDistance } from './scoring.js';
+import { haversineKm, scoreFor, formatDistance, mapDiagonalKm } from './scoring.js';
 import { QUALITY_ZOOM } from './settings.js';
 import { CompassHUD } from './compass.js';
 import { listMaps } from './maps.js';
@@ -16,6 +16,11 @@ import { createMapLibrary } from './map-library.js';
 import { setupSettingsUI } from './settings-panel.js';
 
 const zoomForQuality = () => QUALITY_ZOOM[settings.quality] ?? 4;
+// World: fixed scale. Country: the loaded map's bbox diagonal.
+const effectiveScaleKm = () =>
+  settings.scoring === 'country' && state.mapDiagonalKm > 0
+    ? state.mapDiagonalKm
+    : CONFIG.WORLD_SCALE_KM;
 // 'unlimited' -> Infinity (the game never ends on its own).
 const roundsPerGame = () =>
   settings.rounds === 'unlimited' ? Infinity : (parseInt(settings.rounds, 10) || CONFIG.ROUNDS);
@@ -84,6 +89,7 @@ async function startGame() {
   $('resultScreen').classList.add('hidden');
   $('final').classList.add('hidden');
   const n = roundsPerGame();
+  state.mapDiagonalKm = mapDiagonalKm(state.all);
   state.unlimited = !Number.isFinite(n);
   state.deck = state.unlimited ? shuffle(state.all) : shuffle(state.all).slice(0, n);
   state.rounds = state.unlimited ? Infinity : Math.min(n, state.deck.length);
@@ -290,7 +296,7 @@ function finishRound() {
 
   const guess = gmap.guess;
   const distKm = guess ? haversineKm(guess, state.current) : null;
-  const points = distKm == null ? 0 : scoreFor(distKm);
+  const points = distKm == null ? 0 : scoreFor(distKm, effectiveScaleKm());
   state.total += points;
   state.results.push({
     guess: guess ? { lat: guess.lat, lng: guess.lng } : null,

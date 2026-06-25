@@ -182,6 +182,13 @@ export function setupSettingsUI({
       else { roundTimer.stop(); $('timerBox').classList.add('hidden'); }
     }
   });
+  // Read at guess time, so a change only affects later rounds.
+  setupChoiceSegmented({
+    segId: 'scoringSeg',
+    read: () => settings.scoring,
+    write: (v) => { settings.scoring = v; saveSettings(settings); },
+    onCommit: () => {}
+  });
 
   const panel = $('settings');
   $('settingsBtn').addEventListener('click', () => {

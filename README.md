@@ -80,6 +80,7 @@ Settings open from the gear icon and are saved in your browser's `localStorage`,
 | Application fullscreen | On / off | Puts the whole app into browser fullscreen |
 | Rounds per game | Unlimited, 5, 10, Custom | Custom takes any whole number |
 | Time limit | Unlimited, 2 min, 5 min, Custom | Per **location**. Custom is in minutes |
+| Scoring | World, Country | World uses a fixed world-map scale; Country scales to the loaded map's location bounds (stricter) |
 | Maps | — | Add, select, rename, or delete maps (see below) |
 
 > [!WARNING]
