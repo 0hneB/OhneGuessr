@@ -2,13 +2,13 @@
 import { CONFIG, KEYBINDINGS } from './config.js';
 import { PanoViewer } from './pano.js';
 import { GuessMap, ResultMap, SummaryMap } from './map.js';
-import { buildPanoCanvas, resolvePano, tileUrl } from './streetview.js';
+import { buildPanoCanvas, tileUrl } from './streetview.js';
 import { haversineKm, scoreFor, formatDistance } from './scoring.js';
 import { loadSettings, saveSettings, MAP_STYLES, QUALITY_ZOOM } from './settings.js';
 import { CompassHUD } from './compass.js';
 import { listMaps, getLocations, addUserMap, deleteUserMap, renameUserMap } from './maps.js';
-
-const $ = (id) => document.getElementById(id);
+import { $, setLoading, setEmptyState, setUploadMessage } from './dom.js';
+import { normalizeLocations, mapNameFrom, ensureRenderable, shuffle, randomLocation } from './locations.js';
 
 let settings = loadSettings();
 const zoomForQuality = () => QUALITY_ZOOM[settings.quality] ?? 4;
@@ -35,68 +35,6 @@ let selectSettingsTab = () => {}; // set up in setupSettingsTabs()
 let currentPanoCanvas = null;
 const timer = { id: null, remaining: 0 };
 const panoLoad = { seq: 0, controller: null };
-
-const randomLocation = () => state.all[Math.floor(Math.random() * state.all.length)];
-
-// Accepts a GeoGuessr export ({customCoordinates:[...]}) or a plain array in
-// either GeoGuessr or OhneGuessr shape. Missing panoid/dimensions/north are
-// resolved lazily at round load; built-ins already carry them.
-function normalizeLocations(json) {
-  const arr = Array.isArray(json) ? json : (json && json.customCoordinates) || [];
-  return arr
-    .map((e) => ({
-      lat: e.lat, lng: e.lng,
-      heading: e.heading, // kept if provided; otherwise the view faces north
-      pitch: e.pitch,
-      panoid: e.panoid || e.panoId || null,
-      w: e.w, h: e.h,
-      north: e.north
-    }))
-    .filter((e) => Number.isFinite(e.lat) && Number.isFinite(e.lng));
-}
-
-function mapNameFrom(json, filename) {
-  const named = (!Array.isArray(json) && json && typeof json.name === 'string') ? json.name.trim() : '';
-  if (named) return named;
-  return filename.replace(/\.json$/i, '').trim() || 'Untitled map';
-}
-
-// Ensure a location has a tile-servable panoid + dimensions + north (resolving
-// uploaded coords on demand). Returns false if no panorama could be found.
-async function ensureRenderable(loc) {
-  if (loc.panoid && loc.w && loc.h && loc.north !== undefined) return true;
-  const r = await resolvePano(loc.lat, loc.lng);
-  if (!r) return false;
-  loc.panoid = r.panoid;
-  loc.w = r.w;
-  loc.h = r.h;
-  if (loc.north === undefined) loc.north = r.north;
-  return true;
-}
-
-function shuffle(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function setLoading(on, msg) {
-  $('loading').classList.toggle('hidden', !on);
-  if (msg) $('loadingText').textContent = msg;
-}
-
-function setEmptyState(on) {
-  $('emptyState').classList.toggle('hidden', !on);
-  document.body.classList.toggle('empty-mode', on);
-}
-
-function setUploadMessage(message) {
-  $('uploadInfo').textContent = message;
-  $('emptyUploadInfo').textContent = message;
-}
 
 function beginPanoLoad() {
   if (panoLoad.controller) panoLoad.controller.abort();
@@ -451,7 +389,7 @@ async function loadRound() {
   let renderable = await ensureRenderable(state.current);
   while (isPanoLoadActive(load) && !renderable && tries < 8) {
     tries++;
-    state.current = state.deck[state.round] = randomLocation();
+    state.current = state.deck[state.round] = randomLocation(state.all);
     renderable = await ensureRenderable(state.current);
   }
   if (!isPanoLoadActive(load)) return;
