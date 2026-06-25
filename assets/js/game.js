@@ -1,7 +1,4 @@
-// Game orchestration and the hub that ties the modules together. It owns the
-// panorama/guess-map view singletons and the round lifecycle, and wires in the
-// split modules: shared state, the round timer, keybindings, the map library, and
-// the settings panel.
+// Game hub: owns the view singletons and round lifecycle, wires the modules together.
 import { CONFIG } from './config.js';
 import { PanoViewer } from './pano.js';
 import { GuessMap, ResultMap, SummaryMap } from './map.js';
@@ -19,7 +16,7 @@ import { createMapLibrary } from './map-library.js';
 import { setupSettingsUI } from './settings-panel.js';
 
 const zoomForQuality = () => QUALITY_ZOOM[settings.quality] ?? 4;
-// 'unlimited' rounds -> Infinity (the game never ends on its own).
+// 'unlimited' -> Infinity (the game never ends on its own).
 const roundsPerGame = () =>
   settings.rounds === 'unlimited' ? Infinity : (parseInt(settings.rounds, 10) || CONFIG.ROUNDS);
 
@@ -27,13 +24,12 @@ let viewer, gmap, resultMap, summaryMap, compass;
 let currentPanoCanvas = null;
 const panoLoad = { seq: 0, controller: null };
 
-// Per-location countdown. RoundTimer owns the ticking + HUD; the game supplies the
-// policy (how long, when paused, when already scored, what to do on timeout).
+// Countdown policy for the current round; RoundTimer handles the ticking.
 const roundTimer = new RoundTimer({
   getSeconds: () => (settings.timer === 'unlimited' ? 0 : (parseInt(settings.timer, 10) || 0)),
   isPaused: () => !$('settings').classList.contains('hidden'),
   isGuessed: () => state.guessed,
-  onExpire: () => finishRound() // auto-submit / forfeit
+  onExpire: () => finishRound() // forfeit
 });
 
 function beginPanoLoad() {
@@ -83,8 +79,6 @@ function updateRoundLimitDisplay() {
   el.appendChild(icon);
 }
 
-// ---- Rounds ---------------------------------------------------------------
-
 async function startGame() {
   roundTimer.stop();
   $('resultScreen').classList.add('hidden');
@@ -99,10 +93,8 @@ async function startGame() {
   await loadRound();
 }
 
-// React to a "rounds per game" change. Outside a live game this just (re)starts.
-// Mid-game it adjusts the limit in place — extending or trimming the upcoming
-// deck while keeping the played + current rounds — so the current panorama
-// keeps playing instead of the whole game reloading.
+// Apply a rounds-per-game change. Outside a game it restarts; mid-game it grows or
+// trims the upcoming deck in place, keeping the played and current rounds.
 function applyRoundLimitChange() {
   if (!state.all.length) return;
   const inGame = state.current && $('final').classList.contains('hidden');
@@ -117,19 +109,19 @@ function applyRoundLimitChange() {
     const n = Math.min(nRaw, state.all.length);
     const keep = Math.min(state.deck.length, state.round + 1); // played + current
     if (n > keep) {
-      // Need more rounds: append fresh locations not already in the kept deck.
+      // Grow: append locations not already in the kept deck.
       const have = new Set(state.deck.slice(0, keep));
       let deck = state.deck.slice(0, keep).concat(shuffle(state.all).filter((l) => !have.has(l)));
       while (deck.length < n) deck = deck.concat(shuffle(state.all)); // map smaller than n
       state.deck = deck.slice(0, n);
     } else {
-      state.deck = state.deck.slice(0, Math.max(n, keep)); // fewer rounds: trim the tail
+      state.deck = state.deck.slice(0, Math.max(n, keep)); // trim the tail
     }
     state.rounds = Math.min(n, state.deck.length);
   }
 
   updateRoundLimitDisplay();
-  // If a result screen is up, its Next/See-results label may have flipped.
+  // Result screen open: its Next/See-results label may have flipped.
   if (!$('resultScreen').classList.contains('hidden')) {
     $('nextBtn').textContent =
       state.unlimited || state.round + 1 < state.rounds ? 'Next' : 'See results';
@@ -142,7 +134,7 @@ async function loadRound() {
   viewer.clearTileSource();
   setMapFullscreen(false);
   state.guessed = false;
-  // Endless mode: when the shuffled deck runs out, reshuffle and keep going.
+  // Endless mode: reshuffle when the deck runs out.
   if (state.unlimited && state.round >= state.deck.length) {
     state.deck = state.deck.concat(shuffle(state.all));
   }
@@ -157,8 +149,7 @@ async function loadRound() {
   gmap.refresh();
 
   setLoading(true, 'Loading panorama…');
-  // For uploaded lists, resolve a tile-servable panorama on demand; if a spot
-  // has no coverage, swap in another and try again.
+  // Resolve a renderable pano on demand; skip spots with no coverage.
   let tries = 0;
   let renderable = await ensureRenderable(state.current);
   while (isPanoLoadActive(load) && !renderable && tries < 8) {
@@ -179,16 +170,15 @@ async function loadRound() {
   const canvas = await buildPanoCanvas(loc, previewZoom, { signal: load.signal });
   if (!isPanoLoadActive(load, loc)) return;
   showPanoramaCanvas(canvas);
-  // Imported spots carry the author's heading; otherwise face down the road.
+  // Imported spots carry a heading; otherwise face north.
   viewer.setDefaultView(loc.heading ?? north, loc.pitch ?? 0, north);
   viewer.resetView();
   setTiledPanorama(loc, targetZoom);
   setLoading(false);
-  roundTimer.start(); // only after the pano is up, so loading time isn't counted
+  roundTimer.start(); // start after load so loading time isn't counted
 }
 
-// Quality now controls the high-res viewport tile level. The low-res sphere
-// stays visible so changing quality does not block interaction.
+// Quality sets the high-res tile level; the base sphere stays visible meanwhile.
 async function applyQuality() {
   if (!state.current) return;
   const loc = state.current;
@@ -261,15 +251,14 @@ function toggleMapFullscreen() {
   setMapFullscreen(!$('guessPanel').classList.contains('map-fullscreen'));
 }
 
-// The behavior behind each shortcut. Keys match keybindings.js's labels; the
-// Keybindings instance maps physical keys (KeyboardEvent.code) to these names.
+// What each shortcut does; names match keybindings.js.
 const KEY_ACTIONS = {
   submitOrNext: () => { if (state.guessed) nextRound(); else if (gmap.guess) submitGuess(); },
   zoomIn: () => viewer.zoomFull(1),
   zoomOut: () => viewer.zoomFull(-1),
   resetView: () => viewer.resetView(),
   faceNorth: () => {
-    // First press faces north; pressing again (while north) looks straight down.
+    // Press once to face north; again while north to look straight down.
     const h = viewer.getHeading();
     const atNorth = Math.min(h, 360 - h) < 1.5;
     if (atNorth && Math.abs(viewer.lat) < 2) viewer.faceNorthDown();
@@ -284,7 +273,6 @@ const keybindings = new Keybindings({
   isPanelOpen: () => !$('settings').classList.contains('hidden')
 });
 
-// The map library reaches back here to start a round once a map is chosen.
 const { renderMapList, selectMap, showNoMaps, setupUpload } = createMapLibrary({ startGame });
 
 function submitGuess() {
@@ -293,8 +281,7 @@ function submitGuess() {
   finishRound();
 }
 
-// Score and reveal the round. `gmap.guess` may be null when the timer runs out
-// with no guess placed — that's a forfeit (0 points, no guess pin).
+// Score and reveal the round. A null guess (timeout) is a forfeit, 0 points.
 function finishRound() {
   if (state.guessed) return;
   state.guessed = true;
@@ -346,7 +333,7 @@ function showFinal() {
   $('finalScore').textContent = `${state.total} / ${max}`;
   renderFinalRounds();
   $('final').classList.remove('hidden');
-  summaryMap.show(state.results); // after un-hiding so Leaflet sizes correctly
+  summaryMap.show(state.results); // after un-hiding so Leaflet measures correctly
 }
 
 async function init() {
@@ -366,7 +353,7 @@ async function init() {
   });
   setupUpload();
 
-  // Expand/collapse the guess panel.
+  // Relayout the guess map when the panel expands.
   $('guessPanel').addEventListener('mouseenter', () => scheduleGuessMapLayout());
   $('guessPanel').addEventListener('transitionend', (e) => {
     if (e.propertyName === 'opacity') {

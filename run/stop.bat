@@ -1,6 +1,5 @@
 @echo off
-rem Stops the windowless OhneGuessr server started by serve.bat. serve.py writes
-rem its PID to a temp file on start; we kill just that process (not every pythonw).
+rem Stops the server started by serve.bat, using the PID serve.py wrote on start.
 set "PIDFILE=%TEMP%\ohneguessr-serve.pid"
 if not exist "%PIDFILE%" (
   echo No running OhneGuessr server found.

@@ -1,20 +1,17 @@
-// Fetches Google Street View panorama tiles (keyless internal endpoint) and
-// stitches them into a single equirectangular canvas usable as a texture.
+// Fetches keyless Street View tiles and stitches them into an equirectangular canvas.
 import { CONFIG } from './config.js';
 
 const TILE = CONFIG.TILE_SIZE;
 
-// Tile URL by panorama id + tile coords + zoom. Works from a browser because
-// the browser sends a normal User-Agent (curl/no-UA gets a 403). CORS headers
-// are returned, so the resulting canvas is not tainted (safe for WebGL).
+// Keyless tile endpoint. Needs a browser User-Agent (no-UA gets a 403); returns
+// CORS headers, so the canvas stays untainted for WebGL.
 export function tileUrl(panoid, x, y, zoom) {
   return `https://streetviewpixels-pa.googleapis.com/v1/tile` +
     `?cb_client=maps_sv.tactile&panoid=${encodeURIComponent(panoid)}` +
     `&x=${x}&y=${y}&zoom=${zoom}&nbt=1&fover=2`;
 }
 
-// Largest texture the GPU can hold (cached). A panorama wider than this would
-// fail to upload as a WebGL texture, so we step the zoom down until it fits.
+// Max WebGL texture size; wider panos step down a zoom level until they fit.
 let _maxTex;
 function maxTextureSize() {
   if (_maxTex) return _maxTex;
@@ -54,12 +51,13 @@ function loadImage(url, signal) {
       done(null);
     };
     img.onload = () => done(img);
-    img.onerror = () => done(null); // missing/edge tiles -> skip
+    img.onerror = () => done(null); // skip missing/edge tiles
     signal?.addEventListener?.('abort', abort, { once: true });
     img.src = url;
   });
 }
 
+// Run worker over items with a concurrency limit.
 async function runLimited(items, limit, worker, signal) {
   let next = 0;
   const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
@@ -71,9 +69,8 @@ async function runLimited(items, limit, worker, signal) {
   await Promise.all(workers);
 }
 
-// Resolve the nearest panorama (id + dimensions + exact coords) for a lat/lng,
-// in the browser. SingleImageSearch is JSONP, so a <script> injection sidesteps
-// CORS. Used for uploaded location lists that lack w/h.
+// Look up the nearest pano (id, dimensions, coords, north) for a lat/lng.
+// SingleImageSearch is JSONP, injected via <script> to sidestep CORS.
 let _jsonpId = 0;
 export function resolvePano(lat, lng, radius = 50) {
   const pb = `!1m5!1sapiv3!5sUS!11m2!1m1!1b0!2m4!1m2!3d${lat}!4d${lng}!2d${radius}` +
@@ -94,8 +91,7 @@ export function resolvePano(lat, lng, radius = 50) {
         const id = txt.match(/\[2,"([\w-]{18,})"\]/);
         const coord = txt.match(/null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/);
         const dims = txt.match(/\[2,2,\[(\d+),(\d+)\]/); // [height, width] at max zoom
-        // Orientation triple after the coords; col0 is the panorama heading.
-        const ori = txt.match(/null,null,-?\d[\d.]*,-?\d[\d.]*\],\[[^\]]*\],\[(-?\d[\d.]*),/);
+        const ori = txt.match(/null,null,-?\d[\d.]*,-?\d[\d.]*\],\[[^\]]*\],\[(-?\d[\d.]*),/); // first value is the pano heading
         if (id && coord) {
           finish({
             panoid: id[1],
@@ -114,8 +110,8 @@ export function resolvePano(lat, lng, radius = 50) {
   });
 }
 
-// Builds an equirectangular canvas for a location at the given tile zoom.
-// loc.w / loc.h are the full panorama dimensions at CONFIG.MAX_PANO_ZOOM.
+// Build an equirectangular canvas at the given tile zoom. loc.w/loc.h are the
+// full pano size at MAX_PANO_ZOOM.
 export async function buildPanoCanvas(loc, zoom, options = {}) {
   const {
     baseCanvas = null,
@@ -131,8 +127,7 @@ export async function buildPanoCanvas(loc, zoom, options = {}) {
   const cols = Math.ceil(width / TILE);
   const rows = Math.ceil(height / TILE);
 
-  // Draw directly into the true pano canvas. Edge tiles are clipped by the
-  // canvas bounds, preserving the exact aspect ratio without a second crop pass.
+  // Edge tiles clip to the canvas bounds, keeping the exact aspect ratio.
   const out = document.createElement('canvas');
   out.width = width;
   out.height = height;

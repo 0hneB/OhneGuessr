@@ -1,9 +1,7 @@
-// User settings (persisted to localStorage) + the catalogue of free map styles.
+// Settings (localStorage) and the free, keyless map-tile styles.
 
-// All of these tile providers are free and require no API key. `maxNativeZoom`
-// is set where a provider stops earlier than the map's max zoom, so Leaflet
-// upscales rather than showing blank tiles. Attributions are required by the
-// providers' usage policies.
+// maxNativeZoom is set where a provider stops early so Leaflet upscales instead
+// of blanking. Attributions are required by the providers.
 export const MAP_STYLES = {
   osm: {
     name: 'OpenStreetMap',
@@ -17,7 +15,7 @@ export const MAP_STYLES = {
   },
   osmLiberty: {
     name: 'OSM Liberty',
-    type: 'vector', // GL style rendered via MapLibre (keyless, OpenFreeMap)
+    type: 'vector', // MapLibre GL style (OpenFreeMap)
     url: 'https://tiles.openfreemap.org/styles/liberty',
     attribution: '&copy; OpenMapTiles &copy; OpenStreetMap contributors'
   },
@@ -58,12 +56,11 @@ export const MAP_STYLES = {
   }
 };
 
-// Quality preset -> Street View tile zoom level (higher = sharper, more tiles).
+// Quality preset -> Street View tile zoom.
 export const QUALITY_ZOOM = { low: 2, medium: 3, high: 4, max: 5 };
 
 const KEY = 'ohneguessr.settings';
-// rounds: 'unlimited' | a count ('5','10', or a custom integer).
-// timer:  'unlimited' | seconds per location ('120','300', or a custom value).
+// rounds: 'unlimited' or a count. timer: 'unlimited' or seconds per location.
 const DEFAULTS = {
   mapStyle: 'osm', quality: 'high', rounds: '5', timer: 'unlimited',
   panning: true, zooming: true
@@ -80,5 +77,5 @@ export function loadSettings() {
 export function saveSettings(s) {
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
-  } catch { /* ignore storage errors (private mode etc.) */ }
+  } catch { /* private mode, etc. */ }
 }

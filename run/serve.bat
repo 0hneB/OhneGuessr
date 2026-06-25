@@ -1,10 +1,6 @@
 @echo off
-rem Double-click this to play locally. It serves the folder over http://
-rem (browsers block ES modules + fetch over file://), opens your browser, and
-rem lets maps you upload in Settings be saved as real files under data\.
-rem
-rem Runs windowless via pythonw, so no console window stays open. Use stop.bat
-rem to stop the server (or close it from Task Manager).
+rem Double-click to play. Serves the folder over http:// and opens the browser.
+rem Runs windowless via pythonw; use stop.bat to stop it.
 cd /d "%~dp0.."
 where pythonw >nul 2>nul
 if %errorlevel%==0 (

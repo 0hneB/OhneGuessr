@@ -1,19 +1,14 @@
-// The settings panel: tab switching, the segmented controls (quality, rounds,
-// timer), the on/off toggles, and the map-style picker. Wires DOM widgets to the
-// shared `settings` and calls back into the game for the side effects (apply
-// quality, restart on a round-count change, re-arm the timer, swap pano controls).
+// Settings panel: tabs, segmented controls, toggles, and the map-style picker.
+// Wires widgets to `settings` and calls back into the game for side effects.
 import { $, setUploadMessage } from './dom.js';
 import { saveSettings, MAP_STYLES, QUALITY_ZOOM } from './settings.js';
 import { state, settings } from './state.js';
 
-// Set up by setupSettingsTabs(); imported by the map-library error flow so it can
-// jump to the Maps panel. Live binding: it points at the real switcher after init.
+// Assigned by setupSettingsTabs; lets the map-library error flow jump to Maps.
 export let selectSettingsTab = () => {};
 
-// Wire a segmented switch (buttons with data-value, one being "custom") to a
-// stored string setting. read/write get and persist the value; toInput/fromInput
-// convert between the stored value and the custom number box (e.g. seconds<->min);
-// onCommit runs after a deliberate change (button click or committing the box).
+// Wire a segmented switch (with a "custom" number box) to a stored string setting.
+// toInput/fromInput convert to and from the box; onCommit runs after a real change.
 function setupSegmented({ segId, inputId, presets, customDefault, read, write, toInput, fromInput, onCommit }) {
   const seg = $(segId);
   const input = $(inputId);
@@ -42,8 +37,7 @@ function setupSegmented({ segId, inputId, presets, customDefault, read, write, t
     }
     onCommit();
   });
-  // Live-save while typing (no re-render, so the cursor isn't disturbed); the
-  // side effect (restart / re-arm) only fires once editing is committed.
+  // Save while typing without re-rendering; the side effect waits for commit.
   input.addEventListener('input', () => {
     const v = fromInput(input.value);
     if (v != null) { write(v); paint(); }
@@ -102,8 +96,7 @@ function setupAppFullscreenToggle(scheduleGuessMapLayout) {
   sync();
 }
 
-// Tabbed settings (Display / Game / Maps / Controls). Toggles the active tab +
-// panel and exposes selectSettingsTab so map-error flows can jump to the Maps panel.
+// Tabbed settings; assigns selectSettingsTab.
 function setupSettingsTabs() {
   const tabs = [...document.querySelectorAll('.settings-tab')];
   const panels = [...document.querySelectorAll('.settings-panel')];
@@ -122,8 +115,7 @@ function setupSettingsTabs() {
   for (const t of tabs) t.addEventListener('click', () => selectSettingsTab(t.dataset.tab));
 }
 
-// Wire a plain on/off switch to a boolean setting, applying it immediately and
-// on every change. `apply` runs the side effect (e.g. toggling pano controls).
+// Wire an on/off switch to a boolean setting; apply runs the side effect.
 function setupBoolToggle(id, key, apply) {
   const toggle = $(id);
   toggle.checked = settings[key] !== false;
@@ -167,7 +159,7 @@ export function setupSettingsUI({
   setupBoolToggle('zoomToggle', 'zooming', (on) => views.viewer.setZoomEnabled(on));
   keybindings.setupUI();
 
-  // Changing the round count restarts the game (it redefines the deck).
+  // Round count change restarts the game (it redefines the deck).
   setupSegmented({
     segId: 'roundsSeg', inputId: 'roundsCustom',
     presets: ['unlimited', '5', '10'], customDefault: '7',
@@ -177,7 +169,7 @@ export function setupSettingsUI({
     fromInput: (raw) => { const n = parseInt(raw, 10); return n >= 1 ? String(n) : null; },
     onCommit: applyRoundLimitChange
   });
-  // Time limit is per location; custom is entered in minutes, stored as seconds.
+  // Per-location limit; custom is entered in minutes, stored as seconds.
   setupSegmented({
     segId: 'timerSeg', inputId: 'timerCustom',
     presets: ['unlimited', '120', '300'], customDefault: '180',
@@ -186,7 +178,7 @@ export function setupSettingsUI({
     toInput: (sec) => String(+(parseInt(sec, 10) / 60).toFixed(2)),
     fromInput: (raw) => { const m = parseFloat(raw); return m > 0 ? String(Math.round(m * 60)) : null; },
     onCommit: () => {
-      if (state.current && !state.guessed) roundTimer.start(); // re-arm for the live round
+      if (state.current && !state.guessed) roundTimer.start(); // re-arm the live round
       else { roundTimer.stop(); $('timerBox').classList.add('hidden'); }
     }
   });
@@ -195,7 +187,7 @@ export function setupSettingsUI({
   $('settingsBtn').addEventListener('click', () => {
     const opening = panel.classList.contains('hidden');
     panel.classList.toggle('hidden');
-    if (opening) setUploadMessage(''); // drop any stale error/info
+    if (opening) setUploadMessage(''); // drop any stale message
   });
   $('settingsClose').addEventListener('click', () => panel.classList.add('hidden'));
   panel.addEventListener('click', (e) => {
@@ -203,7 +195,7 @@ export function setupSettingsUI({
   });
   $('emptySettingsBtn').addEventListener('click', () => {
     setUploadMessage('');
-    selectSettingsTab('maps'); // no maps yet -> drop them on the Maps tab
+    selectSettingsTab('maps'); // no maps yet, open Maps
     panel.classList.remove('hidden');
   });
 }

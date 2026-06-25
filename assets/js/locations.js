@@ -1,17 +1,13 @@
-// Location-list helpers: parsing/normalizing uploaded maps, resolving a
-// renderable panorama on demand, and deck shuffling. Pure aside from the single
-// resolvePano lookup in ensureRenderable.
 import { resolvePano } from './streetview.js';
 
-// Accepts a GeoGuessr export ({customCoordinates:[...]}) or a plain array in
-// either GeoGuessr or OhneGuessr shape. Missing panoid/dimensions/north are
-// resolved lazily at round load; built-ins already carry them.
+// Accepts a GeoGuessr export ({ customCoordinates }) or a plain array.
+// Missing panoid/dimensions/north are resolved later at round load.
 export function normalizeLocations(json) {
   const arr = Array.isArray(json) ? json : (json && json.customCoordinates) || [];
   return arr
     .map((e) => ({
       lat: e.lat, lng: e.lng,
-      heading: e.heading, // kept if provided; otherwise the view faces north
+      heading: e.heading,
       pitch: e.pitch,
       panoid: e.panoid || e.panoId || null,
       w: e.w, h: e.h,
@@ -26,8 +22,7 @@ export function mapNameFrom(json, filename) {
   return filename.replace(/\.json$/i, '').trim() || 'Untitled map';
 }
 
-// Ensure a location has a tile-servable panoid + dimensions + north (resolving
-// uploaded coords on demand). Returns false if no panorama could be found.
+// Resolve panoid/dimensions/north on demand. False if no pano was found.
 export async function ensureRenderable(loc) {
   if (loc.panoid && loc.w && loc.h && loc.north !== undefined) return true;
   const r = await resolvePano(loc.lat, loc.lng);
@@ -39,6 +34,7 @@ export async function ensureRenderable(loc) {
   return true;
 }
 
+// Fisher-Yates copy.
 export function shuffle(arr) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
@@ -48,6 +44,5 @@ export function shuffle(arr) {
   return a;
 }
 
-// Pick a random entry from a locations array.
 export const randomLocation = (locations) =>
   locations[Math.floor(Math.random() * locations.length)];
