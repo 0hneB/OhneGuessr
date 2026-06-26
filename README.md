@@ -6,6 +6,10 @@
 
 <p align="center">A completely free, debloated and local GeoGuessr alternative.</p>
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-22c55e" alt="License: PolyForm Noncommercial" /></a>
+</p>
+
 ## Features
 
 - Runs locally, no API keys or sign-in.
