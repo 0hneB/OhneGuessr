@@ -626,12 +626,15 @@ body.empty-mode #guessPanel { display: none !important; }
   width: 32px;
   display: grid;
   place-items: center;
+  padding-left: 8px; /* nudge the pencil slightly right */
   background: none;
   border: none;
   color: #8a8a8a;
   cursor: pointer;
+  transition: color 0.15s ease;
 }
 .map-row-edit svg { width: 14px; height: 14px; }
+.map-row-edit:hover { color: var(--accent); }
 .map-row-rename-input {
   position: absolute;
   left: 4px;
