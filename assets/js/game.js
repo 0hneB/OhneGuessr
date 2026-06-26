@@ -139,6 +139,7 @@ async function loadRound() {
   currentPanoCanvas = null;
   viewer.clearTileSource();
   setMapFullscreen(false);
+  setMapPinned(false);
   state.guessed = false;
   // Endless mode: reshuffle when the deck runs out.
   if (state.unlimited && state.round >= state.deck.length) {
@@ -252,6 +253,14 @@ function setMapFullscreen(on) {
   scheduleGuessMapLayout();
 }
 
+// Pin the guess map open: hold the hovered (expanded) size until toggled off or
+// the player guesses. loadRound/finishRound clear it.
+function setMapPinned(on) {
+  $('guessPanel').classList.toggle('pinned', on);
+  $('mapPinBtn').setAttribute('aria-pressed', on ? 'true' : 'false');
+  scheduleGuessMapLayout();
+}
+
 function toggleMapFullscreen() {
   if (!isNormalGuessScreen()) return;
   setMapFullscreen(!$('guessPanel').classList.contains('map-fullscreen'));
@@ -292,6 +301,7 @@ function finishRound() {
   if (state.guessed) return;
   state.guessed = true;
   setMapFullscreen(false);
+  setMapPinned(false);
   roundTimer.stop();
 
   const guess = gmap.guess;
@@ -365,6 +375,11 @@ async function init() {
     if (e.propertyName === 'opacity') {
       scheduleGuessMapLayout();
     }
+  });
+  $('mapPinBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setMapPinned(!$('guessPanel').classList.contains('pinned'));
+    e.currentTarget.blur();
   });
 
   $('guessBtn').addEventListener('click', (e) => { submitGuess(); e.currentTarget.blur(); });
