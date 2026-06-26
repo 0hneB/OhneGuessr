@@ -1,6 +1,6 @@
 import { resolvePano } from './streetview.js';
 
-// Accepts a GeoGuessr export ({ customCoordinates }) or a plain array.
+// Accepts a Map Making App .json ({ customCoordinates }) or a plain array.
 // Missing panoid/dimensions/north are resolved later at round load.
 export function normalizeLocations(json) {
   const arr = Array.isArray(json) ? json : (json && json.customCoordinates) || [];
