@@ -1,6 +1,10 @@
-# OhneGuessr
+<p align="center">
+  <img src="assets/images/ohneguessr-logo.svg" width="128" alt="OhneGuessr logo" />
+</p>
 
-A completely free, debloated and local GeoGuessr alternative.
+<h1 align="center">OhneGuessr</h1>
+
+<p align="center">A completely free, debloated and local GeoGuessr alternative.</p>
 
 ## Features
 
