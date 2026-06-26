@@ -7,7 +7,7 @@
 <p align="center">A completely free, debloated and local GeoGuessr alternative.</p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-22c55e" alt="License: PolyForm Noncommercial" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e" alt="License: MIT" /></a>
 </p>
 
 ## Features
@@ -155,13 +155,11 @@ When it runs windowless there's no console, so errors go to `ohneguessr-serve.lo
 
 ## License
 
-Required Notice: Copyright © 2026 OhneB
+Copyright © 2026 OhneB
 
-This project is source-available for non-commercial use only under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+Released under the [MIT License](LICENSE).
 
-Commercial use is not permitted without explicit written permission. This includes paid hosting, ad-supported hosting, resale, paid bundles, SaaS use, or using this project as part of a monetized product or service.
-
-This license only covers this project's own code and assets. It does not grant rights to Google Street View imagery, map tiles, third-party data, provider trademarks, or external services used by the project.
+This license covers only this project's own code and assets. It does not grant rights to Google Street View imagery, map tiles, third-party data, provider trademarks, or external services used by the project.
 
 ## Notes
 
