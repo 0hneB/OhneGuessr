@@ -155,9 +155,4 @@ Copyright © 2026 OhneB
 
 Released under the [MIT License](LICENSE).
 
-This license covers only this project's own code and assets. It does not grant rights to Google Street View imagery, map tiles, third-party data, provider trademarks, or external services used by the project.
-
-## Notes
-
-- **What's stored where:** maps are files in `data/` (indexed by `data/maps.json`); your settings live in the browser's `localStorage` under `ohneguessr.settings`.
-- **Map tile attribution:** the base map styles come from OpenStreetMap, CartoDB, Esri, and OpenTopoMap and carry the attribution their usage policies require — leave it visible.
+This license covers only this project's own code and assets.
