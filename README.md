@@ -168,4 +168,4 @@ This license covers only this project's own code and assets. It does not grant r
 - An older version kept uploaded maps in the browser's IndexedDB; that's gone now and is cleared automatically on first load. Maps live on disk only.
 
 > [!CAUTION]
-> Panoramas are loaded directly from Google’s Street View tile endpoint instead of the paid official Street View API. Hitting it like this is against [Google's Terms of Service](https://www.google.com/help/terms_maps/). It works today, but it can break or get blocked at any time — use it at your own risk.
+> Panoramas are loaded directly from Google’s Street View tile endpoint instead of the paid official Street View API. Hitting it like this is against [Google's Terms of Service](https://www.google.com/help/terms_maps/). Use at your own risk.
