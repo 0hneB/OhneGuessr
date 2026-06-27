@@ -47,6 +47,14 @@ html, body {
   display: none !important;
 }
 
+/* opensv draws a blue focus ring when the pano is focused on each round load. */
+#pano .mapsImagerySceneScene__focusOutline {
+  display: none !important;
+}
+#pano *:focus {
+  outline: none !important;
+}
+
 .svg-icon {
   display: inline-block;
   width: 1em;
