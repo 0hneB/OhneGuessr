@@ -1,5 +1,5 @@
 // Shared game state and persisted settings. View singletons stay in game.js.
-import { CONFIG } from './config.js';
+import { CONFIG } from '../config.js';
 import { loadSettings } from './settings.js';
 
 export const settings = loadSettings();

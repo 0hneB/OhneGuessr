@@ -1,8 +1,8 @@
 // Settings panel: tabs, segmented controls, toggles, and the map-style picker.
 // Wires widgets to `settings` and calls back into the game for side effects.
-import { $, setUploadMessage, isSettingsOpen, openSettings, closeSettings } from './dom.js';
-import { saveSettings, MAP_STYLES } from './settings.js';
-import { state, settings } from './state.js';
+import { $, setUploadMessage, isSettingsOpen, openSettings, closeSettings } from '../core/dom.js';
+import { saveSettings, MAP_STYLES } from '../core/settings.js';
+import { state, settings } from '../core/state.js';
 
 // Assigned by setupSettingsTabs; lets the map-library error flow jump to Maps.
 export let selectSettingsTab = () => {};

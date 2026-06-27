@@ -1,10 +1,10 @@
 // Settings → Maps: list, select, rename, delete, upload, and recovery when a
 // chosen map can't load. Calls back into the game to start a round.
-import { $, setLoading, setEmptyState, setUploadMessage, openSettings, closeSettings } from './dom.js';
-import { state, settings } from './state.js';
-import { saveSettings } from './settings.js';
-import { listMaps, getLocations, addUserMap, deleteUserMap, renameUserMap } from './maps.js';
-import { normalizeLocations, mapNameFrom } from './locations.js';
+import { $, setLoading, setEmptyState, setUploadMessage, openSettings, closeSettings } from '../core/dom.js';
+import { state, settings } from '../core/state.js';
+import { saveSettings } from '../core/settings.js';
+import { listMaps, getLocations, addUserMap, deleteUserMap, renameUserMap } from '../core/maps.js';
+import { normalizeLocations, mapNameFrom } from '../core/locations.js';
 import { selectSettingsTab } from './settings-panel.js';
 
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) =>

@@ -1,9 +1,9 @@
 // Keyboard shortcuts: KeyboardEvent.code -> action dispatch and the rebinding UI.
 // The game supplies the actions; this stores overrides and routes key events.
-import { $ } from './dom.js';
-import { KEYBINDINGS } from './config.js';
-import { saveSettings } from './settings.js';
-import { settings } from './state.js';
+import { $ } from '../core/dom.js';
+import { KEYBINDINGS } from '../config.js';
+import { saveSettings } from '../core/settings.js';
+import { settings } from '../core/state.js';
 
 // Display names and order for the Controls list; keys match the action map.
 const ACTION_LABELS = {
