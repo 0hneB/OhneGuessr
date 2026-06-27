@@ -1,6 +1,6 @@
 // Settings → Maps: list, select, rename, delete, upload, and recovery when a
 // chosen map can't load. Calls back into the game to start a round.
-import { $, setLoading, setEmptyState, setUploadMessage } from './dom.js';
+import { $, setLoading, setEmptyState, setUploadMessage, openSettings, closeSettings } from './dom.js';
 import { state, settings } from './state.js';
 import { saveSettings } from './settings.js';
 import { listMaps, getLocations, addUserMap, deleteUserMap, renameUserMap } from './maps.js';
@@ -37,7 +37,7 @@ export function createMapLibrary({ startGame, tryResume }) {
         `<span class="map-row-name">${escapeHtml(m.name)}</span>` +
         (m.count != null ? `<span class="map-row-count">${m.count}</span>` : '');
       main.addEventListener('click', () => {
-        $('settings').classList.add('hidden');
+        closeSettings();
         selectMap(m.key);
       });
       row.appendChild(main);
@@ -129,7 +129,7 @@ export function createMapLibrary({ startGame, tryResume }) {
     state.currentKey = null;
     state.maps = await listMaps();
     renderMapList();
-    $('settings').classList.remove('hidden');
+    openSettings();
     selectSettingsTab('maps');
     setUploadMessage(message);
   }
@@ -150,7 +150,7 @@ export function createMapLibrary({ startGame, tryResume }) {
     setLoading(false);
     state.currentKey = null;
     renderMapList();
-    $('settings').classList.add('hidden');
+    closeSettings();
     setEmptyState(true);
     setUploadMessage('');
   }
@@ -170,7 +170,7 @@ export function createMapLibrary({ startGame, tryResume }) {
     }
     state.maps = await listMaps();
     setUploadMessage('');
-    $('settings').classList.add('hidden');
+    closeSettings();
     setEmptyState(false);
     await selectMap(item.key);
   }

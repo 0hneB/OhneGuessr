@@ -1,6 +1,6 @@
 // Settings panel: tabs, segmented controls, toggles, and the map-style picker.
 // Wires widgets to `settings` and calls back into the game for side effects.
-import { $, setUploadMessage } from './dom.js';
+import { $, setUploadMessage, isSettingsOpen, openSettings, closeSettings } from './dom.js';
 import { saveSettings, MAP_STYLES } from './settings.js';
 import { state, settings } from './state.js';
 
@@ -178,17 +178,17 @@ export function setupSettingsUI({
 
   const panel = $('settings');
   $('settingsBtn').addEventListener('click', () => {
-    const opening = panel.classList.contains('hidden');
-    panel.classList.toggle('hidden');
-    if (opening) setUploadMessage(''); // drop any stale message
+    if (isSettingsOpen()) { closeSettings(); return; }
+    openSettings();
+    setUploadMessage(''); // drop any stale message
   });
-  $('settingsClose').addEventListener('click', () => panel.classList.add('hidden'));
+  $('settingsClose').addEventListener('click', closeSettings);
   panel.addEventListener('click', (e) => {
-    if (e.target === panel) panel.classList.add('hidden');
+    if (e.target === panel) closeSettings();
   });
   $('emptySettingsBtn').addEventListener('click', () => {
     setUploadMessage('');
     selectSettingsTab('maps'); // no maps yet, open Maps
-    panel.classList.remove('hidden');
+    openSettings();
   });
 }
