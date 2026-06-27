@@ -21,8 +21,9 @@ function svgIcon(name) {
     ICON_PATHS[name] + '</svg>';
 }
 
-// startGame runs once a map's locations are loaded.
-export function createMapLibrary({ startGame }) {
+// startGame runs once a map's locations are loaded; tryResume restores a saved
+// game for that map (used on page load) and returns true when it resumed.
+export function createMapLibrary({ startGame, tryResume }) {
   function renderMapList() {
     const list = $('mapList');
     list.innerHTML = '';
@@ -93,7 +94,7 @@ export function createMapLibrary({ startGame }) {
     input.addEventListener('blur', commit);
   }
 
-  async function selectMap(key) {
+  async function selectMap(key, opts = {}) {
     const item = state.maps.find((m) => m.key === key) || state.maps[0];
     if (!item) { showNoMaps(); return; }
     setEmptyState(false);
@@ -115,6 +116,8 @@ export function createMapLibrary({ startGame }) {
       return;
     }
     state.all = locs;
+    // On page load, resume a saved game for this map; otherwise start fresh.
+    if (opts.resume && tryResume && await tryResume()) return;
     await startGame();
   }
 

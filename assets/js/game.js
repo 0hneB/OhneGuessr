@@ -12,6 +12,7 @@ import { RoundTimer } from './round-timer.js';
 import { Keybindings } from './keybindings.js';
 import { createMapLibrary } from './map-library.js';
 import { setupSettingsUI } from './settings-panel.js';
+import { saveGame, loadGame, clearGame } from './persist.js';
 
 // World: fixed scale. Country: the loaded map's bbox diagonal.
 const effectiveScaleKm = () =>
@@ -77,6 +78,45 @@ async function startGame() {
   state.total = 0;
   state.results = [];
   await loadRound();
+}
+
+// Snapshot the in-progress game so a refresh resumes the current round.
+function saveProgress() {
+  if (!state.currentKey || !state.deck.length) return;
+  saveGame({
+    map: state.currentKey,
+    deck: state.deck,
+    round: state.round,
+    total: state.total,
+    results: state.results,
+    unlimited: state.unlimited,
+    rounds: state.unlimited ? null : state.rounds
+  });
+}
+
+// Restore a saved game for the loaded map and show its current round. False if
+// there's nothing valid to resume (caller then starts fresh).
+async function tryResume() {
+  const snap = loadGame();
+  if (!snap || snap.map !== state.currentKey) return false;
+  if (!Array.isArray(snap.deck) || !snap.deck.length) return false;
+  const unlimited = !!snap.unlimited;
+  const rounds = unlimited ? Infinity : (Number(snap.rounds) || 0);
+  const round = snap.round | 0;
+  if (round < 0) return false;
+  if (!unlimited && (round >= rounds || round >= snap.deck.length)) return false; // done / out of range
+
+  state.mapDiagonalKm = mapDiagonalKm(state.all);
+  state.unlimited = unlimited;
+  state.deck = snap.deck;
+  state.rounds = rounds;
+  state.round = round;
+  state.total = Number(snap.total) || 0;
+  state.results = Array.isArray(snap.results) ? snap.results : [];
+  state.guessed = false;
+  $('final').classList.add('hidden');
+  await loadRound();
+  return true;
 }
 
 // Apply a rounds-per-game change. Outside a game it restarts; mid-game it grows or
@@ -150,6 +190,7 @@ async function loadRound() {
   // Imported spots carry a heading; otherwise face north.
   viewer.setDefaultView(state.current.heading ?? 0, state.current.pitch ?? 0);
   setLoading(false);
+  saveProgress(); // persist the (resolved) round so a refresh resumes here
   roundTimer.start(); // start after load so loading time isn't counted
 }
 
@@ -230,7 +271,7 @@ const keybindings = new Keybindings({
   isPanelOpen: () => !$('settings').classList.contains('hidden')
 });
 
-const { renderMapList, selectMap, showNoMaps, setupUpload } = createMapLibrary({ startGame });
+const { renderMapList, selectMap, showNoMaps, setupUpload } = createMapLibrary({ startGame, tryResume });
 
 function submitGuess() {
   if (state.guessed) { nextRound(); return; }
@@ -287,6 +328,7 @@ function renderFinalRounds() {
 }
 
 function showFinal() {
+  clearGame(); // game over: nothing left to resume
   const max = state.rounds * CONFIG.SCORE_MAX;
   $('finalScore').textContent = `${state.total} / ${max}`;
   renderFinalRounds();
@@ -336,7 +378,7 @@ async function init() {
     renderMapList();
     const saved = state.maps.find((m) => m.key === settings.currentMap);
     const start = saved || state.maps[0];
-    if (start) await selectMap(start.key);
+    if (start) await selectMap(start.key, { resume: true });
     else showNoMaps();
   } catch (err) {
     setLoading(true, `Could not load maps: ${err.message}. ` +
