@@ -39,6 +39,14 @@ html, body {
   inset: 0;
 }
 
+/* Hide Street View's chrome: the Google logo (bottom-left) and the copyright /
+   Terms / Report / keyboard-shortcuts bar (bottom-right). */
+#pano img[alt="Google"],
+#pano .gm-style-cc,
+#pano button[aria-label="Keyboard shortcuts"] {
+  display: none !important;
+}
+
 .svg-icon {
   display: inline-block;
   width: 1em;
