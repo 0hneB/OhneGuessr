@@ -15,13 +15,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
-    }
-  }
-  </script>
 </head>
 <body>
   <div id="pano"></div>
@@ -61,15 +54,6 @@
             <span>Map style</span>
             <select id="mapStyleSel"></select>
           </label>
-          <div class="setting">
-            <span>Image quality</span>
-            <div class="segmented" id="qualitySeg">
-              <button type="button" data-value="low">Low</button>
-              <button type="button" data-value="medium">Medium</button>
-              <button type="button" data-value="high">High</button>
-              <button type="button" data-value="max">Max</button>
-            </div>
-          </div>
           <label class="setting setting-toggle">
             <span>Fullscreen</span>
             <input id="appFullscreenToggle" type="checkbox" />
@@ -112,16 +96,14 @@
               <button type="button" data-value="country">Country</button>
             </div>
           </div>
-          <label class="setting setting-toggle">
-            <span>Panning</span>
-            <input id="panToggle" type="checkbox" />
-            <span class="switch" aria-hidden="true"></span>
-          </label>
-          <label class="setting setting-toggle">
-            <span>Zooming</span>
-            <input id="zoomToggle" type="checkbox" />
-            <span class="switch" aria-hidden="true"></span>
-          </label>
+          <div class="setting">
+            <span>Movement</span>
+            <div class="segmented" id="moveSeg">
+              <button type="button" data-value="moving" title="Move, pan, and zoom">Moving</button>
+              <button type="button" data-value="nm" title="No moving; pan and zoom allowed">NM</button>
+              <button type="button" data-value="nmpz" title="No move, pan, or zoom">NMPZ</button>
+            </div>
+          </div>
         </section>
 
         <section class="settings-panel" id="panel-controls"
