@@ -1,8 +1,8 @@
 // The in-game guess map's panel: its expanded/fullscreen/pinned states and the
 // Leaflet relayout passes that keep the map sized correctly across the CSS
 // transitions. Owns the #guessPanel element and drives the supplied GuessMap.
-import { $ } from './dom.js';
-import { rafBurst } from './raf.js';
+import { $ } from '../core/dom.js';
+import { rafBurst } from '../core/raf.js';
 
 export function createGuessPanel(gmap) {
   let cancelLayout = () => {};

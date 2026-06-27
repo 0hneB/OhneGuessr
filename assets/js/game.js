@@ -1,19 +1,19 @@
 // Game hub: owns the view singletons and round lifecycle, wires the modules together.
 import { CONFIG } from './config.js';
-import { OpenSvViewer, loadOpenSV } from './pano.js';
-import { GuessMap, ResultMap, SummaryMap } from './map.js';
-import { haversineKm, scoreFor, formatDistance, mapDiagonalKm } from './scoring.js';
-import { CompassHUD } from './compass.js';
-import { listMaps } from './maps.js';
-import { $, setLoading, isSettingsOpen, isHidden, setHidden } from './dom.js';
-import { shuffle, randomLocation } from './locations.js';
-import { state, settings } from './state.js';
-import { RoundTimer } from './round-timer.js';
-import { Keybindings } from './keybindings.js';
-import { createMapLibrary } from './map-library.js';
-import { setupSettingsUI } from './settings-panel.js';
-import { createGuessPanel } from './guess-panel.js';
-import { saveGame, loadGame, clearGame } from './persist.js';
+import { OpenSvViewer, loadOpenSV } from './ui/pano.js';
+import { GuessMap, ResultMap, SummaryMap } from './ui/map.js';
+import { haversineKm, scoreFor, formatDistance, mapDiagonalKm } from './core/scoring.js';
+import { CompassHUD } from './ui/compass.js';
+import { listMaps } from './core/maps.js';
+import { $, setLoading, isSettingsOpen, isHidden, setHidden } from './core/dom.js';
+import { shuffle, randomLocation } from './core/locations.js';
+import { state, settings } from './core/state.js';
+import { RoundTimer } from './ui/round-timer.js';
+import { Keybindings } from './ui/keybindings.js';
+import { createMapLibrary } from './ui/map-library.js';
+import { setupSettingsUI } from './ui/settings-panel.js';
+import { createGuessPanel } from './ui/guess-panel.js';
+import { saveGame, loadGame, clearGame } from './core/persist.js';
 
 // World: fixed scale. Country: the loaded map's bbox diagonal.
 const effectiveScaleKm = () =>

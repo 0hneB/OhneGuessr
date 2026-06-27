@@ -1,5 +1,5 @@
 // Per-location countdown in the HUD. The game supplies the policy via callbacks.
-import { $ } from './dom.js';
+import { $ } from '../core/dom.js';
 
 export class RoundTimer {
   constructor({ getSeconds, isPaused, isGuessed, onExpire }) {

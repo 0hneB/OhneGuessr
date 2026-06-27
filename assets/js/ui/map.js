@@ -2,8 +2,8 @@
 //   GuessMap   - small in-game map for dropping a guess
 //   ResultMap  - per-round reveal with guess/answer pins
 //   SummaryMap - end-of-game overview of every round
-import { MAP_STYLES } from './settings.js';
-import { rafBurst } from './raf.js';
+import { MAP_STYLES } from '../core/settings.js';
+import { rafBurst } from '../core/raf.js';
 
 function addBaseLayer(map, key, current) {
   const style = MAP_STYLES[key] || MAP_STYLES.osm;
