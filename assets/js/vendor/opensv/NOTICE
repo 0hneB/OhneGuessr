@@ -1,15 +1,8 @@
 opensv.js
 
-This file is Google's Maps JavaScript API (v3.63), patched to load without an
-API key. It is Google's copyrighted code: it is NOT authored by this project,
-is NOT covered by this project's MIT license, and is provided with no warranty.
-Use at your own risk.
-
-The keyless Street View approach, and this vendored file, come from ccmdi/mma:
 https://github.com/ccmdi/mma
 
-ccmdi/mma is MIT-licensed. That license covers ccmdi's own work (the keyless
-loading approach), not Google's underlying Maps JavaScript API code above.
+ccmdi/mma is MIT-licensed.
 
 ---
 
