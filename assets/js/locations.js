@@ -7,9 +7,7 @@ export function normalizeLocations(json) {
       lat: e.lat, lng: e.lng,
       heading: e.heading,
       pitch: e.pitch,
-      panoid: e.panoid || e.panoId || null,
-      w: e.w, h: e.h,
-      north: e.north
+      panoid: e.panoid || e.panoId || null
     }))
     .filter((e) => Number.isFinite(e.lat) && Number.isFinite(e.lng));
 }
