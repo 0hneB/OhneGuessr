@@ -110,7 +110,6 @@ html, body {
   z-index: 500;
   white-space: nowrap;
 }
-.hud-pill .brand { font-weight: 800; color: var(--accent); letter-spacing: 0.3px; }
 .hud-pill b { color: #fff; font-weight: 800; }
 #topLeft { left: 54px; }
 #scoreBox { right: 14px; }
@@ -183,7 +182,6 @@ body.empty-mode #guessPanel { display: none !important; }
   transition: opacity 0.08s ease;
 }
 #guessPanel:hover,
-#guessPanel.revealed,
 #guessPanel.pinned { opacity: 1; }
 #guessPanel:hover,
 #guessPanel.pinned {
