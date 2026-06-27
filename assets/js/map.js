@@ -206,15 +206,30 @@ export class ResultMap {
     this.baseLayer = addBaseLayer(this.map, key, this.baseLayer);
   }
 
-  show(guess, actual) {
+  show(guess, actual, trail = null) {
     invalidateSizeBurst(this.map);
     for (const l of this.layers) this.map.removeLayer(l);
     this.layers = [];
 
     const pts = drawGuessPair(this.map, this.layers, guess, actual);
+    this.drawTrail(trail, pts);
     if (pts.length > 1) this.map.fitBounds(L.latLngBounds(pts).pad(0.35), { animate: false });
     else this.map.setView(pts[0], 5, { animate: false }); // forfeit: only the answer
     invalidateSizeBurst(this.map);
+  }
+
+  // The path the player walked from the spawn (Moving mode). A single point means
+  // they never moved, so nothing to draw. Extends pts so the walk fits in view.
+  drawTrail(trail, pts) {
+    if (!trail || trail.length < 2) return;
+    const line = trail.map((p) => [p.lat, p.lng]);
+    this.layers.push(L.polyline(line, {
+      color: '#f59e0b', weight: 3, opacity: 0.9, lineJoin: 'round'
+    }).addTo(this.map));
+    this.layers.push(L.circleMarker(line[line.length - 1], {
+      radius: 4, color: '#f59e0b', weight: 2, fillColor: '#ffffff', fillOpacity: 1
+    }).addTo(this.map));
+    for (const p of line) pts.push(p);
   }
 }
 

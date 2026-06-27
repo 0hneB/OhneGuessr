@@ -262,7 +262,7 @@ function finishRound() {
   $('nextBtn').textContent = state.round + 1 >= state.rounds ? 'See results' : 'Next';
 
   $('resultScreen').classList.remove('hidden');
-  resultMap.show(guess, state.current);
+  resultMap.show(guess, state.current, viewer.getTrail());
 }
 
 function nextRound() {
