@@ -5,7 +5,7 @@ import { GuessMap, ResultMap, SummaryMap } from './map.js';
 import { haversineKm, scoreFor, formatDistance, mapDiagonalKm } from './scoring.js';
 import { CompassHUD } from './compass.js';
 import { listMaps } from './maps.js';
-import { $, setLoading, isSettingsOpen } from './dom.js';
+import { $, setLoading, isSettingsOpen, isHidden, setHidden } from './dom.js';
 import { shuffle, randomLocation } from './locations.js';
 import { state, settings } from './state.js';
 import { RoundTimer } from './round-timer.js';
@@ -65,8 +65,8 @@ function updateRoundLimitDisplay() {
 
 async function startGame() {
   roundTimer.stop();
-  $('resultScreen').classList.add('hidden');
-  $('final').classList.add('hidden');
+  setHidden('resultScreen', true);
+  setHidden('final', true);
   const n = roundsPerGame();
   state.mapDiagonalKm = mapDiagonalKm(state.all);
   state.unlimited = !Number.isFinite(n);
@@ -112,7 +112,7 @@ async function tryResume() {
   state.total = Number(snap.total) || 0;
   state.results = Array.isArray(snap.results) ? snap.results : [];
   state.guessed = false;
-  $('final').classList.add('hidden');
+  setHidden('final', true);
   await loadRound();
   return true;
 }
@@ -121,7 +121,7 @@ async function tryResume() {
 // trims the upcoming deck in place, keeping the played and current rounds.
 function applyRoundLimitChange() {
   if (!state.all.length) return;
-  const inGame = state.current && $('final').classList.contains('hidden');
+  const inGame = state.current && isHidden('final');
   if (!inGame) { startGame(); return; }
 
   const nRaw = roundsPerGame();
@@ -146,7 +146,7 @@ function applyRoundLimitChange() {
 
   updateRoundLimitDisplay();
   // Result screen open: its Next/See-results label may have flipped.
-  if (!$('resultScreen').classList.contains('hidden')) {
+  if (!isHidden('resultScreen')) {
     $('nextBtn').textContent =
       state.unlimited || state.round + 1 < state.rounds ? 'Next' : 'See results';
   }
@@ -165,7 +165,7 @@ async function loadRound() {
   $('round').textContent = String(state.round + 1);
   updateRoundLimitDisplay();
   $('total').textContent = String(state.total);
-  $('resultScreen').classList.add('hidden');
+  setHidden('resultScreen', true);
   $('guessBtn').disabled = true;
   $('guessBtn').textContent = 'Guess';
   gmap.reset();
@@ -200,10 +200,10 @@ function isNormalGuessScreen() {
   return !state.guessed &&
     state.current &&
     !isSettingsOpen() &&
-    $('emptyState').classList.contains('hidden') &&
-    $('resultScreen').classList.contains('hidden') &&
-    $('final').classList.contains('hidden') &&
-    $('loading').classList.contains('hidden');
+    isHidden('emptyState') &&
+    isHidden('resultScreen') &&
+    isHidden('final') &&
+    isHidden('loading');
 }
 
 // What each shortcut does; names match keybindings.js.
@@ -261,12 +261,12 @@ function finishRound() {
   $('resultPoints').textContent = String(points);
   $('nextBtn').textContent = state.round + 1 >= state.rounds ? 'See results' : 'Next';
 
-  $('resultScreen').classList.remove('hidden');
+  setHidden('resultScreen', false);
   resultMap.show(guess, state.current, viewer.getTrail());
 }
 
 function nextRound() {
-  $('resultScreen').classList.add('hidden');
+  setHidden('resultScreen', true);
   if (!state.unlimited && state.round + 1 >= state.rounds) { showFinal(); return; }
   state.round++;
   loadRound();
@@ -291,7 +291,7 @@ function showFinal() {
   const max = state.rounds * CONFIG.SCORE_MAX;
   $('finalScore').textContent = `${state.total} / ${max}`;
   renderFinalRounds();
-  $('final').classList.remove('hidden');
+  setHidden('final', false);
   summaryMap.show(state.results); // after un-hiding so Leaflet measures correctly
 }
 
