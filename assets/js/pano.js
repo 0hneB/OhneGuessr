@@ -133,34 +133,40 @@ export class OpenSvViewer {
   // Load a location by stored panoid (falls back to lat/lng). Resolves true once
   // imagery is up, false on no-coverage / error / timeout / abort.
   showLocation(loc, { signal } = {}) {
+    const prevPano = this.pano.getPano?.() || null;
     return new Promise((resolve) => {
       let done = false;
       const finish = (ok) => { if (done) return; done = true; cleanup(); resolve(ok); };
 
-      // status_changed and pano_changed can fire in either order (notably on the very
-      // first load), so resolve from whichever reflects the new pano's status.
+      // Polled, not just event-driven: status_changed doesn't fire when the status
+      // stays OK across rounds, and event order isn't guaranteed, so the events alone
+      // miss successful loads. Success = a *new* pano showing with status OK.
       const check = () => {
-        const s = this.pano.getStatus();
-        if (s === 'OK') {
-          this._startPanoId = this.pano.getPano(); // remember the origin for resetView
+        const s = this.pano.getStatus?.();
+        if (s === 'ZERO_RESULTS' || s === 'UNKNOWN_ERROR') { finish(false); return; }
+        if (s !== 'OK') return;
+        const cur = this.pano.getPano?.() || null;
+        if (cur && (cur !== prevPano || cur === loc.panoid)) {
+          this._startPanoId = cur; // origin for resetView
           finish(true);
-        } else if (s === 'ZERO_RESULTS' || s === 'UNKNOWN_ERROR') {
-          finish(false);
         }
       };
       const panoListener = this.pano.addListener('pano_changed', check);
       const statusListener = this.pano.addListener('status_changed', check);
-      const timer = setTimeout(() => finish(false), 8000);
+      const poll = setInterval(check, 150);
+      const timer = setTimeout(() => finish(false), 12000);
       const onAbort = () => finish(false);
       signal?.addEventListener('abort', onAbort, { once: true });
 
       const cleanup = () => {
+        clearInterval(poll);
         clearTimeout(timer);
         panoListener?.remove?.();
         statusListener?.remove?.();
         signal?.removeEventListener('abort', onAbort);
       };
 
+      this._trail = []; // fresh round; the spawn is recorded by position_changed
       this.pano.setPov({ heading: loc.heading ?? 0, pitch: loc.pitch ?? 0 });
       this.pano.setZoom(1);
       if (loc.panoid) this.pano.setPano(loc.panoid);
