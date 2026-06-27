@@ -84,15 +84,11 @@ Settings open from the gear icon and are saved in your browser's `localStorage`,
 | Setting | Options | Notes |
 | --- | --- | --- |
 | Map style | OpenStreetMap, OSM Humanitarian, OSM Liberty, CartoDB Light/Voyager/Dark, Esri Light/Dark Gray, Satellite, Terrain | The base layer for the guess map |
-| Image quality | Low, Medium, High, Max | Street View tile resolution.|
 | Application fullscreen | On / off | Puts the whole app into browser fullscreen |
 | Rounds per game | Unlimited, 5, 10, Custom | Custom takes any whole number |
 | Time limit | Unlimited, 2 min, 5 min, Custom | Per **location**. Custom is in minutes |
 | Scoring | World, Country | World uses a fixed world-map scale; Country scales to the loaded map's location bounds (stricter) |
 | Maps | — | Add, select, rename, or delete maps (see below) |
-
-> [!WARNING]
-> **Max** quality loads the full-resolution panorama (up to ~16384 px wide) — that's a lot of tiles. If panoramas feel slow to sharpen, drop to **High** or **Medium**.
 
 ## Maps
 
@@ -165,7 +161,3 @@ This license covers only this project's own code and assets. It does not grant r
 
 - **What's stored where:** maps are files in `data/` (indexed by `data/maps.json`); your settings live in the browser's `localStorage` under `ohneguessr.settings`.
 - **Map tile attribution:** the base map styles come from OpenStreetMap, CartoDB, Esri, and OpenTopoMap and carry the attribution their usage policies require — leave it visible.
-- An older version kept uploaded maps in the browser's IndexedDB; that's gone now and is cleared automatically on first load. Maps live on disk only.
-
-> [!CAUTION]
-> Panoramas are loaded directly from Google’s Street View tile endpoint instead of the paid official Street View API. Hitting it like this is against [Google's Terms of Service](https://www.google.com/help/terms_maps/). Use at your own risk.
