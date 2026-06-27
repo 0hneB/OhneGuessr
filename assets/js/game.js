@@ -12,6 +12,7 @@ import { RoundTimer } from './round-timer.js';
 import { Keybindings } from './keybindings.js';
 import { createMapLibrary } from './map-library.js';
 import { setupSettingsUI } from './settings-panel.js';
+import { createGuessPanel } from './guess-panel.js';
 import { saveGame, loadGame, clearGame } from './persist.js';
 
 // World: fixed scale. Country: the loaded map's bbox diagonal.
@@ -23,7 +24,7 @@ const effectiveScaleKm = () =>
 const roundsPerGame = () =>
   settings.rounds === 'unlimited' ? Infinity : (parseInt(settings.rounds, 10) || CONFIG.ROUNDS);
 
-let viewer, gmap, resultMap, summaryMap, compass;
+let viewer, gmap, resultMap, summaryMap, compass, guessPanel;
 const panoLoad = { seq: 0, controller: null };
 
 // Countdown policy for the current round; RoundTimer handles the ticking.
@@ -156,8 +157,8 @@ function applyRoundLimitChange() {
 
 async function loadRound() {
   const load = beginPanoLoad();
-  setMapFullscreen(false);
-  setMapPinned(false);
+  guessPanel.setFullscreen(false);
+  guessPanel.setPinned(false);
   state.guessed = false;
   // Endless mode: reshuffle when the deck runs out.
   if (state.unlimited && state.round >= state.deck.length) {
@@ -208,47 +209,6 @@ function isNormalGuessScreen() {
     $('loading').classList.contains('hidden');
 }
 
-const guessMapLayout = { raf: 0, timers: [] };
-
-function scheduleGuessMapLayout() {
-  cancelAnimationFrame(guessMapLayout.raf);
-  for (const id of guessMapLayout.timers) clearTimeout(id);
-  guessMapLayout.timers = [];
-
-  const pass = () => {
-    gmap.applyLayout($('guessPanel').classList.contains('map-fullscreen'));
-  };
-
-  guessMapLayout.raf = requestAnimationFrame(pass);
-  guessMapLayout.timers.push(setTimeout(pass, 50));
-  guessMapLayout.timers.push(setTimeout(pass, 140));
-}
-
-function setMapFullscreen(on) {
-  const panel = $('guessPanel');
-  const wasFullscreen = panel.classList.contains('map-fullscreen');
-  if (wasFullscreen === on) {
-    scheduleGuessMapLayout();
-    return;
-  }
-
-  panel.classList.toggle('map-fullscreen', on);
-  scheduleGuessMapLayout();
-}
-
-// Pin the guess map open: hold the hovered (expanded) size until toggled off or
-// the player guesses. loadRound/finishRound clear it.
-function setMapPinned(on) {
-  $('guessPanel').classList.toggle('pinned', on);
-  $('mapPinBtn').setAttribute('aria-pressed', on ? 'true' : 'false');
-  scheduleGuessMapLayout();
-}
-
-function toggleMapFullscreen() {
-  if (!isNormalGuessScreen()) return;
-  setMapFullscreen(!$('guessPanel').classList.contains('map-fullscreen'));
-}
-
 // What each shortcut does; names match keybindings.js.
 const KEY_ACTIONS = {
   submitOrNext: () => { if (state.guessed) nextRound(); else if (gmap.guess) submitGuess(); },
@@ -262,7 +222,9 @@ const KEY_ACTIONS = {
     if (atNorth && Math.abs(viewer.lat) < 2) viewer.faceNorthDown();
     else viewer.faceNorth();
   },
-  toggleMapFullscreen: () => toggleMapFullscreen(),
+  toggleMapFullscreen: () => {
+    if (isNormalGuessScreen()) guessPanel.setFullscreen(!guessPanel.isFullscreen());
+  },
   hideHud: () => { if (!state.guessed) document.body.classList.toggle('ui-hidden'); }
 };
 
@@ -283,8 +245,8 @@ function submitGuess() {
 function finishRound() {
   if (state.guessed) return;
   state.guessed = true;
-  setMapFullscreen(false);
-  setMapPinned(false);
+  guessPanel.setFullscreen(false);
+  guessPanel.setPinned(false);
   roundTimer.stop();
 
   const guess = gmap.guess;
@@ -345,33 +307,21 @@ async function init() {
   gmap = new GuessMap('map', onPlaceGuess, settings.mapStyle);
   resultMap = new ResultMap('resultMap', settings.mapStyle);
   summaryMap = new SummaryMap('finalMap', settings.mapStyle);
+  guessPanel = createGuessPanel(gmap);
+  guessPanel.setup();
   setupSettingsUI({
     views: { viewer, gmap, resultMap, summaryMap },
     applyRoundLimitChange,
     roundTimer,
     keybindings,
-    scheduleGuessMapLayout
+    scheduleGuessMapLayout: guessPanel.schedule
   });
   setupUpload();
-
-  // Relayout the guess map when the panel expands.
-  $('guessPanel').addEventListener('mouseenter', () => scheduleGuessMapLayout());
-  $('guessPanel').addEventListener('transitionend', (e) => {
-    if (e.propertyName === 'opacity') {
-      scheduleGuessMapLayout();
-    }
-  });
-  $('mapPinBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    setMapPinned(!$('guessPanel').classList.contains('pinned'));
-    e.currentTarget.blur();
-  });
 
   $('guessBtn').addEventListener('click', (e) => { submitGuess(); e.currentTarget.blur(); });
   $('nextBtn').addEventListener('click', (e) => { nextRound(); e.currentTarget.blur(); });
   $('playAgain').addEventListener('click', startGame);
   window.addEventListener('keydown', keybindings.onKeyDown);
-  window.addEventListener('resize', () => scheduleGuessMapLayout());
 
   try {
     state.maps = await listMaps();
