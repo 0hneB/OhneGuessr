@@ -2,9 +2,10 @@
 // Leaflet relayout passes that keep the map sized correctly across the CSS
 // transitions. Owns the #guessPanel element and drives the supplied GuessMap.
 import { $ } from './dom.js';
+import { rafBurst } from './raf.js';
 
 export function createGuessPanel(gmap) {
-  const layout = { raf: 0, timers: [] };
+  let cancelLayout = () => {};
 
   const isFullscreen = () => $('guessPanel').classList.contains('map-fullscreen');
   const isPinned = () => $('guessPanel').classList.contains('pinned');
@@ -12,14 +13,8 @@ export function createGuessPanel(gmap) {
   // Relayout the map a few times: once next frame, then after the panel's CSS
   // transition so Leaflet measures the final size instead of a mid-animation one.
   function schedule() {
-    cancelAnimationFrame(layout.raf);
-    for (const id of layout.timers) clearTimeout(id);
-    layout.timers = [];
-
-    const pass = () => gmap.applyLayout(isFullscreen());
-    layout.raf = requestAnimationFrame(pass);
-    layout.timers.push(setTimeout(pass, 50));
-    layout.timers.push(setTimeout(pass, 140));
+    cancelLayout();
+    cancelLayout = rafBurst(() => gmap.applyLayout(isFullscreen()), { delays: [50, 140] });
   }
 
   function setFullscreen(on) {

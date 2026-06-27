@@ -3,6 +3,7 @@
 //   ResultMap  - per-round reveal with guess/answer pins
 //   SummaryMap - end-of-game overview of every round
 import { MAP_STYLES } from './settings.js';
+import { rafBurst } from './raf.js';
 
 function addBaseLayer(map, key, current) {
   const style = MAP_STYLES[key] || MAP_STYLES.osm;
@@ -37,10 +38,7 @@ function invalidateSizeNow(map) {
 }
 
 function invalidateSizeBurst(map) {
-  invalidateSizeNow(map);
-  requestAnimationFrame(() => invalidateSizeNow(map));
-  setTimeout(() => invalidateSizeNow(map), 90);
-  setTimeout(() => invalidateSizeNow(map), 180);
+  rafBurst(() => invalidateSizeNow(map), { now: true, delays: [90, 180] });
 }
 
 function minZoomToFillHeight(map) {
