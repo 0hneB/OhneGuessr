@@ -146,22 +146,36 @@ export class OpenSvViewer {
   // Load a location by stored panoid (falls back to lat/lng). Resolves true once
   // imagery is up, false on no-coverage / error / timeout / abort.
   showLocation(loc, { signal } = {}) {
-    const prevPano = this.pano.getPano?.() || null;
+    const startPano = this.pano.getPano?.() || null;
     return new Promise((resolve) => {
       let done = false;
+      let failTimer = 0;
       const finish = (ok) => { if (done) return; done = true; cleanup(); resolve(ok); };
-
-      // Polled, not just event-driven: status_changed doesn't fire when the status
-      // stays OK across rounds, and event order isn't guaranteed, so the events alone
-      // miss successful loads. Success = a *new* pano showing with status OK.
-      const check = () => {
+      const isError = () => {
         const s = this.pano.getStatus?.();
-        if (s === 'ZERO_RESULTS' || s === 'UNKNOWN_ERROR') { finish(false); return; }
-        if (s !== 'OK') return;
+        return s === 'ZERO_RESULTS' || s === 'UNKNOWN_ERROR';
+      };
+
+      // Success = status OK with a fresh pano: it changed, or it's the panoid we asked
+      // for (a redirect may hand back a different id, so don't require an exact match).
+      const trySucceed = () => {
+        if (this.pano.getStatus?.() !== 'OK') return;
         const cur = this.pano.getPano?.() || null;
-        if (cur && (cur !== prevPano || cur === loc.panoid)) {
-          this._startPanoId = cur; // origin for resetView
-          finish(true);
+        if (!cur || (cur === startPano && cur !== loc.panoid)) return;
+        this._startPanoId = cur; // origin for resetView
+        finish(true);
+      };
+
+      // Polled because status_changed doesn't refire when status stays OK across
+      // rounds. Street View blips through ZERO_RESULTS/UNKNOWN_ERROR mid-load, so a
+      // bad status only fails the load once it sticks past a short grace.
+      const check = () => {
+        trySucceed();
+        if (done) return;
+        if (isError()) {
+          if (!failTimer) failTimer = setTimeout(() => { if (isError()) finish(false); }, 800);
+        } else if (failTimer) {
+          clearTimeout(failTimer); failTimer = 0;
         }
       };
       const panoListener = this.pano.addListener('pano_changed', check);
@@ -174,6 +188,7 @@ export class OpenSvViewer {
       const cleanup = () => {
         clearInterval(poll);
         clearTimeout(timer);
+        clearTimeout(failTimer);
         panoListener?.remove?.();
         statusListener?.remove?.();
         signal?.removeEventListener('abort', onAbort);
