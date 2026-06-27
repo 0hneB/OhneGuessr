@@ -190,7 +190,9 @@ function drawGuessPair(map, layers, guess, actual) {
   return pts;
 }
 
-export class ResultMap {
+// Shared base for the reveal maps: a non-interactive Leaflet map that draws
+// guess pins above answer badges. Subclasses implement show().
+class RevealMap {
   constructor(elId, styleKey = 'osm') {
     this.map = L.map(elId, { worldCopyJump: true, zoomControl: false, maxZoom: 19 })
       .setView([20, 0], 2);
@@ -206,11 +208,18 @@ export class ResultMap {
     this.baseLayer = addBaseLayer(this.map, key, this.baseLayer);
   }
 
-  show(guess, actual, trail = null) {
+  // Resync size and clear the previous draw's pins/lines before redrawing.
+  clear() {
     invalidateSizeBurst(this.map);
     for (const l of this.layers) this.map.removeLayer(l);
     this.layers = [];
+  }
+}
 
+// Per-round reveal: guess + answer pins, the dashed link, and the walked path.
+export class ResultMap extends RevealMap {
+  show(guess, actual, trail = null) {
+    this.clear();
     const pts = drawGuessPair(this.map, this.layers, guess, actual);
     this.drawTrail(trail, pts);
     if (pts.length > 1) this.map.fitBounds(L.latLngBounds(pts).pad(0.35), { animate: false });
@@ -233,29 +242,12 @@ export class ResultMap {
   }
 }
 
-export class SummaryMap {
-  constructor(elId, styleKey = 'osm') {
-    this.map = L.map(elId, { worldCopyJump: true, zoomControl: false, maxZoom: 19 })
-      .setView([20, 0], 2);
-    this.baseLayer = addBaseLayer(this.map, styleKey);
-    // Keep guess pins above the answer badges (default marker pane is 600).
-    this.map.createPane('guessPane').style.zIndex = 650;
-    bindDragCursor(this.map);
-    autoResize(this.map);
-    this.layers = [];
-  }
-
-  setStyle(key) {
-    this.baseLayer = addBaseLayer(this.map, key, this.baseLayer);
-  }
-
+// End-of-game overview: every round's guess/answer pair on one map.
+export class SummaryMap extends RevealMap {
   // results: [{ guess: {lat,lng}, actual: {lat,lng} }, ...]
   show(results) {
-    invalidateSizeBurst(this.map);
-    for (const l of this.layers) this.map.removeLayer(l);
-    this.layers = [];
+    this.clear();
     if (!results.length) return;
-
     const pts = [];
     for (const r of results) {
       pts.push(...drawGuessPair(this.map, this.layers, r.guess, r.actual));
