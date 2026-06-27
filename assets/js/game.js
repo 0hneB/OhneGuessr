@@ -25,7 +25,7 @@ const roundsPerGame = () =>
   settings.rounds === 'unlimited' ? Infinity : (parseInt(settings.rounds, 10) || CONFIG.ROUNDS);
 
 let viewer, gmap, resultMap, summaryMap, compass, guessPanel;
-const panoLoad = { seq: 0, controller: null };
+const panoLoad = { controller: null };
 
 // Countdown policy for the current round; RoundTimer handles the ticking.
 const roundTimer = new RoundTimer({
@@ -35,19 +35,16 @@ const roundTimer = new RoundTimer({
   onExpire: () => finishRound() // forfeit
 });
 
+// Begin a fresh pano load, cancelling any in-flight one. The returned signal
+// goes stale (aborted) the moment the next load starts.
 function beginPanoLoad() {
-  if (panoLoad.controller) panoLoad.controller.abort();
-  panoLoad.seq += 1;
-  panoLoad.controller = typeof AbortController !== 'undefined'
-    ? new AbortController()
-    : null;
-  return { seq: panoLoad.seq, signal: panoLoad.controller?.signal || null };
+  panoLoad.controller?.abort();
+  panoLoad.controller = new AbortController();
+  return { signal: panoLoad.controller.signal };
 }
 
 function isPanoLoadActive(load, loc = null) {
-  return load.seq === panoLoad.seq &&
-    !load.signal?.aborted &&
-    (!loc || state.current === loc);
+  return !load.signal.aborted && (!loc || state.current === loc);
 }
 
 function updateRoundLimitDisplay() {
