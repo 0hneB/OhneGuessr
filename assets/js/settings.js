@@ -56,14 +56,12 @@ export const MAP_STYLES = {
   }
 };
 
-// Quality preset -> Street View tile zoom.
-export const QUALITY_ZOOM = { low: 2, medium: 3, high: 4, max: 5 };
-
 const KEY = 'ohneguessr.settings';
 // rounds: 'unlimited' or a count. timer: 'unlimited' or seconds per location.
 const DEFAULTS = {
-  mapStyle: 'osm', quality: 'high', rounds: '5', timer: 'unlimited',
-  panning: true, zooming: true, scoring: 'world' // 'world' fixed scale, 'country' per-map
+  mapStyle: 'osm', rounds: '5', timer: 'unlimited',
+  movement: 'moving', // 'moving' | 'nm' (no move) | 'nmpz' (no move/pan/zoom)
+  scoring: 'world' // 'world' fixed scale, 'country' per-map
 };
 
 export function loadSettings() {

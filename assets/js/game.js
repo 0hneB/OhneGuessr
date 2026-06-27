@@ -1,21 +1,18 @@
 // Game hub: owns the view singletons and round lifecycle, wires the modules together.
 import { CONFIG } from './config.js';
-import { PanoViewer } from './pano.js';
+import { OpenSvViewer, loadOpenSV } from './pano.js';
 import { GuessMap, ResultMap, SummaryMap } from './map.js';
-import { buildPanoCanvas, tileUrl } from './streetview.js';
 import { haversineKm, scoreFor, formatDistance, mapDiagonalKm } from './scoring.js';
-import { QUALITY_ZOOM } from './settings.js';
 import { CompassHUD } from './compass.js';
 import { listMaps } from './maps.js';
 import { $, setLoading } from './dom.js';
-import { shuffle, randomLocation, ensureRenderable } from './locations.js';
+import { shuffle, randomLocation } from './locations.js';
 import { state, settings } from './state.js';
 import { RoundTimer } from './round-timer.js';
 import { Keybindings } from './keybindings.js';
 import { createMapLibrary } from './map-library.js';
 import { setupSettingsUI } from './settings-panel.js';
 
-const zoomForQuality = () => QUALITY_ZOOM[settings.quality] ?? 4;
 // World: fixed scale. Country: the loaded map's bbox diagonal.
 const effectiveScaleKm = () =>
   settings.scoring === 'country' && state.mapDiagonalKm > 0
@@ -26,7 +23,6 @@ const roundsPerGame = () =>
   settings.rounds === 'unlimited' ? Infinity : (parseInt(settings.rounds, 10) || CONFIG.ROUNDS);
 
 let viewer, gmap, resultMap, summaryMap, compass;
-let currentPanoCanvas = null;
 const panoLoad = { seq: 0, controller: null };
 
 // Countdown policy for the current round; RoundTimer handles the ticking.
@@ -50,22 +46,6 @@ function isPanoLoadActive(load, loc = null) {
   return load.seq === panoLoad.seq &&
     !load.signal?.aborted &&
     (!loc || state.current === loc);
-}
-
-function showPanoramaCanvas(canvas) {
-  currentPanoCanvas = canvas;
-  viewer.setPanorama(canvas);
-}
-
-function setTiledPanorama(loc, targetZoom) {
-  const previewZoom = Math.min(targetZoom, CONFIG.PREVIEW_ZOOM);
-  viewer.clearTileSource();
-  if (targetZoom <= previewZoom) return;
-  viewer.setTileSource({
-    loc,
-    zoom: targetZoom,
-    urlForTile: (x, y, z) => tileUrl(loc.panoid, x, y, z)
-  });
 }
 
 function updateRoundLimitDisplay() {
@@ -136,8 +116,6 @@ function applyRoundLimitChange() {
 
 async function loadRound() {
   const load = beginPanoLoad();
-  currentPanoCanvas = null;
-  viewer.clearTileSource();
   setMapFullscreen(false);
   setMapPinned(false);
   state.guessed = false;
@@ -156,59 +134,23 @@ async function loadRound() {
   gmap.refresh();
 
   setLoading(true, 'Loading panorama…');
-  // Resolve a renderable pano on demand; skip spots with no coverage.
+  // Let Street View resolve and render the pano; skip spots with no coverage.
   let tries = 0;
-  let renderable = await ensureRenderable(state.current);
-  while (isPanoLoadActive(load) && !renderable && tries < 8) {
+  let ok = await viewer.showLocation(state.current, { signal: load.signal });
+  while (isPanoLoadActive(load) && !ok && tries < 8) {
     tries++;
     state.current = state.deck[state.round] = randomLocation(state.all);
-    renderable = await ensureRenderable(state.current);
+    ok = await viewer.showLocation(state.current, { signal: load.signal });
   }
-  if (!isPanoLoadActive(load)) return;
-  if (!renderable) {
+  if (!isPanoLoadActive(load, state.current)) return;
+  if (!ok) {
     setLoading(true, 'Could not find Street View coverage for this round.');
     return;
   }
-
-  const loc = state.current;
-  const north = loc.north ?? 0;
-  const targetZoom = zoomForQuality();
-  const previewZoom = Math.min(targetZoom, CONFIG.PREVIEW_ZOOM);
-  const canvas = await buildPanoCanvas(loc, previewZoom, { signal: load.signal });
-  if (!isPanoLoadActive(load, loc)) return;
-  showPanoramaCanvas(canvas);
   // Imported spots carry a heading; otherwise face north.
-  viewer.setDefaultView(loc.heading ?? north, loc.pitch ?? 0, north);
-  viewer.resetView();
-  setTiledPanorama(loc, targetZoom);
+  viewer.setDefaultView(state.current.heading ?? 0, state.current.pitch ?? 0);
   setLoading(false);
   roundTimer.start(); // start after load so loading time isn't counted
-}
-
-// Quality sets the high-res tile level; the base sphere stays visible meanwhile.
-async function applyQuality() {
-  if (!state.current) return;
-  const loc = state.current;
-  const load = beginPanoLoad();
-  const targetZoom = zoomForQuality();
-  const previewZoom = Math.min(targetZoom, CONFIG.PREVIEW_ZOOM);
-
-  try {
-    if (!currentPanoCanvas) {
-      setLoading(true, 'Reloading panorama…');
-      const canvas = await buildPanoCanvas(loc, previewZoom, { signal: load.signal });
-      if (!isPanoLoadActive(load, loc)) return;
-      showPanoramaCanvas(canvas);
-      setLoading(false);
-    }
-    if (!isPanoLoadActive(load, loc)) return;
-    setTiledPanorama(loc, targetZoom);
-    setLoading(false);
-  } catch (err) {
-    if (!isPanoLoadActive(load, loc)) return;
-    console.error(err);
-    setLoading(true, 'Could not reload panorama quality.');
-  }
 }
 
 function onPlaceGuess() {
@@ -354,14 +296,15 @@ function showFinal() {
 
 async function init() {
   compass = new CompassHUD($('compass-hud'));
-  viewer = new PanoViewer($('pano'));
+  await loadOpenSV();
+  viewer = new OpenSvViewer($('pano'));
   viewer.onChange = (heading) => compass.setHeading(heading);
+  viewer.setMode(settings.movement);
   gmap = new GuessMap('map', onPlaceGuess, settings.mapStyle);
   resultMap = new ResultMap('resultMap', settings.mapStyle);
   summaryMap = new SummaryMap('finalMap', settings.mapStyle);
   setupSettingsUI({
     views: { viewer, gmap, resultMap, summaryMap },
-    applyQuality,
     applyRoundLimitChange,
     roundTimer,
     keybindings,

@@ -1,7 +1,7 @@
 // Settings panel: tabs, segmented controls, toggles, and the map-style picker.
 // Wires widgets to `settings` and calls back into the game for side effects.
 import { $, setUploadMessage } from './dom.js';
-import { saveSettings, MAP_STYLES, QUALITY_ZOOM } from './settings.js';
+import { saveSettings, MAP_STYLES } from './settings.js';
 import { state, settings } from './state.js';
 
 // Assigned by setupSettingsTabs; lets the map-library error flow jump to Maps.
@@ -115,20 +115,8 @@ function setupSettingsTabs() {
   for (const t of tabs) t.addEventListener('click', () => selectSettingsTab(t.dataset.tab));
 }
 
-// Wire an on/off switch to a boolean setting; apply runs the side effect.
-function setupBoolToggle(id, key, apply) {
-  const toggle = $(id);
-  toggle.checked = settings[key] !== false;
-  apply(toggle.checked);
-  toggle.addEventListener('change', () => {
-    settings[key] = toggle.checked;
-    saveSettings(settings);
-    apply(toggle.checked);
-  });
-}
-
 export function setupSettingsUI({
-  views, applyQuality, applyRoundLimitChange, roundTimer, keybindings, scheduleGuessMapLayout
+  views, applyRoundLimitChange, roundTimer, keybindings, scheduleGuessMapLayout
 }) {
   setupSettingsTabs();
   const styleSel = $('mapStyleSel');
@@ -148,15 +136,13 @@ export function setupSettingsUI({
     views.summaryMap.setStyle(settings.mapStyle);
   });
 
-  setupChoiceSegmented({
-    segId: 'qualitySeg',
-    read: () => QUALITY_ZOOM[settings.quality] ? settings.quality : 'high',
-    write: (v) => { settings.quality = v; saveSettings(settings); },
-    onCommit: applyQuality
-  });
   setupAppFullscreenToggle(scheduleGuessMapLayout);
-  setupBoolToggle('panToggle', 'panning', (on) => views.viewer.setPanEnabled(on));
-  setupBoolToggle('zoomToggle', 'zooming', (on) => views.viewer.setZoomEnabled(on));
+  setupChoiceSegmented({
+    segId: 'moveSeg',
+    read: () => settings.movement,
+    write: (v) => { settings.movement = v; saveSettings(settings); },
+    onCommit: () => views.viewer.setMode(settings.movement)
+  });
   keybindings.setupUI();
 
   // Round count change restarts the game (it redefines the deck).
