@@ -54,6 +54,7 @@ export class OpenSvViewer {
     this.defaultPitch = 0;
     this._tweenId = 0;
     this._startPanoId = null;   // the round's origin pano, so resetView can walk back
+    this._trail = [];           // {lat,lng} positions walked this round (Moving mode)
     this.mode = 'moving';       // 'moving' | 'nm' | 'nmpz'; set via setMode()
 
     // Street View mutates the inline style of the element it's given (position, etc.),
@@ -85,6 +86,15 @@ export class OpenSvViewer {
     // Live heading for the compass.
     this.pano.addListener('pov_changed', () => {
       if (this.onChange) this.onChange(this.pano.getPov().heading);
+    });
+    // Record each step so the result map can show where the player walked.
+    this.pano.addListener('position_changed', () => {
+      const p = this.pano.getPosition?.();
+      if (!p) return;
+      const point = { lat: p.lat(), lng: p.lng() };
+      const last = this._trail[this._trail.length - 1];
+      if (last && last.lat === point.lat && last.lng === point.lng) return;
+      this._trail.push(point);
     });
     // Keyboard walking only in moving mode.
     host.addEventListener('keydown', (e) => {
@@ -120,6 +130,9 @@ export class OpenSvViewer {
 
   getHeading() { return this.pano.getPov().heading; }
   get lat() { return this.pano.getPov().pitch; }
+
+  // Positions walked this round (≥2 points only when the player actually moved).
+  getTrail() { return this._trail.slice(); }
 
   // faceNorth/zoom pan or zoom the view, so they no-op in nmpz (the locked mode).
   faceNorth() { if (this.mode !== 'nmpz') this._tweenPov(0, 0); }
