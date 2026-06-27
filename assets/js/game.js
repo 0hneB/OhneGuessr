@@ -5,7 +5,7 @@ import { GuessMap, ResultMap, SummaryMap } from './map.js';
 import { haversineKm, scoreFor, formatDistance, mapDiagonalKm } from './scoring.js';
 import { CompassHUD } from './compass.js';
 import { listMaps } from './maps.js';
-import { $, setLoading } from './dom.js';
+import { $, setLoading, isSettingsOpen } from './dom.js';
 import { shuffle, randomLocation } from './locations.js';
 import { state, settings } from './state.js';
 import { RoundTimer } from './round-timer.js';
@@ -30,7 +30,7 @@ const panoLoad = { seq: 0, controller: null };
 // Countdown policy for the current round; RoundTimer handles the ticking.
 const roundTimer = new RoundTimer({
   getSeconds: () => (settings.timer === 'unlimited' ? 0 : (parseInt(settings.timer, 10) || 0)),
-  isPaused: () => !$('settings').classList.contains('hidden'),
+  isPaused: isSettingsOpen,
   isGuessed: () => state.guessed,
   onExpire: () => finishRound() // forfeit
 });
@@ -202,7 +202,7 @@ function onPlaceGuess() {
 function isNormalGuessScreen() {
   return !state.guessed &&
     state.current &&
-    $('settings').classList.contains('hidden') &&
+    !isSettingsOpen() &&
     $('emptyState').classList.contains('hidden') &&
     $('resultScreen').classList.contains('hidden') &&
     $('final').classList.contains('hidden') &&
@@ -230,7 +230,7 @@ const KEY_ACTIONS = {
 
 const keybindings = new Keybindings({
   actions: KEY_ACTIONS,
-  isPanelOpen: () => !$('settings').classList.contains('hidden')
+  isPanelOpen: isSettingsOpen
 });
 
 const { renderMapList, selectMap, showNoMaps, setupUpload } = createMapLibrary({ startGame, tryResume });
