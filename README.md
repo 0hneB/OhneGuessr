@@ -65,12 +65,12 @@ That serves the folder at `http://localhost:8000` and opens your browser. Stop i
 
 | Key | Action |
 | --- | --- |
-| <kbd>Space<kbd> | Submit your guess, or go to the next round once you've guessed |
-| <kbd>E<kbd> / <kbd>Q<kbd> | Zoom the panorama in / out |
-| <kbd>N<kbd> | Face north. Press again while already facing north to look straight down |
-| <kvd>R<kbd> | Reset the view |
-| <kbd>F<kbd> | Toggle the fullscreen guess map |
-| <kbd>H<kbd> | Hide the HUD for an unobstructed view (guess screen only; the map and button stay) |
+| <kbd>Space</kbd> | Submit your guess, or go to the next round once you've guessed |
+| <kbd>E</kbd> / <kbd>Q</kbd> | Zoom the panorama in / out |
+| <kbd>N</kbd> | Face north. Press again while already facing north to look straight down |
+| <kbd>R</kbd> | Reset the view |
+| <kbd>F</kbd> | Toggle the fullscreen guess map |
+| <kbd>H</kbd> | Hide the HUD for an unobstructed view (guess screen only; the map and button stay) |
 
 You can also drag to look around and scroll to zoom the panorama, and click/drag/scroll the guess map as usual.
 
