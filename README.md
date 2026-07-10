@@ -7,7 +7,7 @@
 <p align="center">A completely free, debloated and local GeoGuessr alternative.</p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e" alt="License: MIT" /></a>
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-PolyForm_Noncommercial_1.0.0-6b7280" alt="License: PolyForm Noncommercial 1.0.0" /></a>
 </p>
 
 ## Features
@@ -155,6 +155,6 @@ When it runs windowless there's no console, so errors go to `ohneguessr-serve.lo
 
 Copyright © 2026 OhneB
 
-Released under the [MIT License](LICENSE).
+Released under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
 
 This license covers only this project's own code and assets.
