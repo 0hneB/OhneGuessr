@@ -208,7 +208,11 @@ function isNormalGuessScreen() {
 
 // What each shortcut does; names match keybindings.js.
 const KEY_ACTIONS = {
-  submitOrNext: () => { if (state.guessed) nextRound(); else if (gmap.guess) submitGuess(); },
+  submitOrNext: () => {
+    if (!isHidden('final')) startGame();
+    else if (state.guessed) nextRound();
+    else if (gmap.guess) submitGuess();
+  },
   zoomIn: () => viewer.zoomFull(1),
   zoomOut: () => viewer.zoomFull(-1),
   resetView: () => viewer.resetView(),
