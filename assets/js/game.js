@@ -296,9 +296,11 @@ function showFinal() {
 }
 
 async function init() {
-  compass = new CompassHUD($('compass-hud'));
+  const compassCanvas = $('compass-hud');
+  compass = new CompassHUD(compassCanvas);
   await loadOpenSV();
   viewer = new OpenSvViewer($('pano'));
+  compassCanvas.addEventListener('click', () => viewer.faceNorth());
   viewer.onChange = (heading) => compass.setHeading(heading);
   viewer.setMode(settings.movement);
   gmap = new GuessMap('map', onPlaceGuess, settings.mapStyle);
