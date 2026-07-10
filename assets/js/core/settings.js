@@ -50,10 +50,61 @@ export const MAP_STYLES = {
   }
 };
 
+export const DEFAULT_ACCENT_COLOR = '#22c55e';
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+let logoSvgPromise = null;
+
+export function normalizeAccentColor(value) {
+  return HEX_COLOR.test(value || '') ? value.toLowerCase() : DEFAULT_ACCENT_COLOR;
+}
+
+const channelHex = (value) => Math.round(value).toString(16).padStart(2, '0');
+
+function applyFaviconAccent(color) {
+  logoSvgPromise ||= fetch('assets/images/ohneguessr-logo.svg').then((res) => {
+    if (!res.ok) throw new Error(`logo ${res.status}`);
+    return res.text();
+  });
+  logoSvgPromise.then((source) => {
+    const themed = source.replace(/#22c55e/gi, color);
+    const href = `data:image/svg+xml,${encodeURIComponent(themed)}`;
+    for (const link of document.querySelectorAll('link[rel~="icon"]')) {
+      link.type = 'image/svg+xml';
+      link.href = href;
+    }
+  }).catch(() => { /* keep the default favicon */ });
+}
+
+export function applyAccentColor(value) {
+  const color = normalizeAccentColor(value);
+  const rgb = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
+  const linear = rgb.map((channel) => {
+    const c = channel / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  const target = luminance < 0.08 ? 255 : 0;
+  const strong = color === DEFAULT_ACCENT_COLOR
+    ? '#16a34a'
+    : '#' + rgb.map((channel) => channelHex(channel + (target - channel) * 0.18)).join('');
+  const ink = color === DEFAULT_ACCENT_COLOR
+    ? '#06240f'
+    : (luminance > 0.179 ? '#000000' : '#ffffff');
+
+  const root = document.documentElement.style;
+  root.setProperty('--accent', color);
+  root.setProperty('--accent-strong', strong);
+  root.setProperty('--accent-ink', ink);
+  root.setProperty('--accent-rgb', rgb.join(', '));
+  applyFaviconAccent(color);
+  return color;
+}
+
 const KEY = 'ohneguessr.settings';
 // rounds: 'unlimited' or a count. timer: 'unlimited' or seconds per location.
 const DEFAULTS = {
   mapStyle: 'osm', rounds: '5', timer: 'unlimited',
+  accentColor: DEFAULT_ACCENT_COLOR,
   movement: 'moving', // 'moving' | 'nm' (no move) | 'nmpz' (no move/pan/zoom)
   scoring: 'world' // 'world' fixed scale, 'country' per-map
 };
@@ -62,6 +113,7 @@ export function loadSettings() {
   try {
     const loaded = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY)) || {}) };
     if (!MAP_STYLES[loaded.mapStyle]) loaded.mapStyle = DEFAULTS.mapStyle;
+    loaded.accentColor = normalizeAccentColor(loaded.accentColor);
     return loaded;
   } catch {
     return { ...DEFAULTS };

@@ -1,7 +1,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Single source of truth for the accent. Change these four to re-theme. */
+  /* Default accent; the Display picker overrides these four at runtime. */
   --accent: #22c55e;        /* base accent */
   --accent-strong: #16a34a; /* hover / pressed */
   --accent-ink: #06240f;    /* text/icon on top of the accent */
@@ -403,6 +403,23 @@ body.empty-mode #guessPanel { display: none !important; }
 }
 .setting-sub { font-size: 11px; font-weight: 400; opacity: 0.6; }
 
+.setting-color {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+.setting-color input {
+  width: 46px;
+  height: 30px;
+  padding: 3px;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.setting-color input::-webkit-color-swatch { border: none; border-radius: 5px; }
+.setting-color input::-moz-color-swatch { border: none; border-radius: 5px; }
+
 .setting-toggle {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -474,7 +491,7 @@ body.empty-mode #guessPanel { display: none !important; }
 }
 .segmented button:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
 .segmented button.active { background: var(--accent); color: var(--accent-ink); }
-.segmented button.active .svg-icon { background: #000; }
+.segmented button.active .svg-icon { background: var(--accent-ink); }
 .segmented .unlimited-icon {
   width: 19px;
   height: 19px;

@@ -2,8 +2,11 @@
 //   GuessMap   - small in-game map for dropping a guess
 //   ResultMap  - per-round reveal with guess/answer pins
 //   SummaryMap - end-of-game overview of every round
-import { MAP_STYLES } from '../core/settings.js';
+import { DEFAULT_ACCENT_COLOR, MAP_STYLES } from '../core/settings.js';
 import { rafBurst } from '../core/raf.js';
+
+const currentAccentColor = () =>
+  getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || DEFAULT_ACCENT_COLOR;
 
 function addBaseLayer(map, key, current) {
   const style = MAP_STYLES[key] || MAP_STYLES.osm;
@@ -84,6 +87,7 @@ export class GuessMap {
     autoResize(this.map);
     this.guessMarker = null;
     this.guess = null;
+    this.accentColor = currentAccentColor();
     this.isFullscreen = false;
     this.isConstraining = false;
 
@@ -136,12 +140,17 @@ export class GuessMap {
     this.baseLayer = addBaseLayer(this.map, key, this.baseLayer);
   }
 
+  setAccentColor(color) {
+    this.accentColor = color;
+    if (this.guessMarker) this.guessMarker.setStyle({ fillColor: color });
+  }
+
   setGuess(latlng) {
     this.guess = { lat: latlng.lat, lng: latlng.lng };
     if (!this.guessMarker) {
       this.guessMarker = L.circleMarker(latlng, {
         radius: 8, color: '#ffffff', weight: 2,
-        fillColor: '#22c55e', fillOpacity: 1
+        fillColor: this.accentColor, fillOpacity: 1
       }).addTo(this.map);
     } else {
       this.guessMarker.setLatLng(latlng);

@@ -84,6 +84,7 @@ Settings open from the gear icon and are saved in your browser's `localStorage`,
 | Setting | Options | Notes |
 | --- | --- | --- |
 | Map style | OpenStreetMap, OSM Humanitarian, CartoDB Light/Voyager/Dark, Esri Light/Dark Gray, Satellite, Terrain | The base layer for the guess map |
+| Accent color | Any color | Changes the UI highlights and is saved locally |
 | Application fullscreen | On / off | Puts the whole app into browser fullscreen |
 | Rounds per game | Unlimited, 5, 10, Custom | Custom takes any whole number |
 | Time limit | Unlimited, 2 min, 5 min, Custom | Per **location**. Custom is in minutes |

@@ -1,8 +1,9 @@
 // Shared game state and persisted settings. View singletons stay in game.js.
 import { CONFIG } from '../config.js';
-import { loadSettings } from './settings.js';
+import { applyAccentColor, loadSettings } from './settings.js';
 
 export const settings = loadSettings();
+applyAccentColor(settings.accentColor);
 
 export const state = {
   all: [],          // locations of the selected map
