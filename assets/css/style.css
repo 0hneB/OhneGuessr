@@ -138,13 +138,19 @@ html, body {
 #timerBox.low { color: #fca5a5; }
 #timerBox.low b { color: #f87171; }
 
-/* 'H' on the guess page hides the HUD, leaving only the panorama, guess map and
-   button for an unobstructed view. */
+/* 'H' on the guess page leaves only the panorama. */
 body.ui-hidden #settingsBtn,
 body.ui-hidden #topLeft,
 body.ui-hidden #compass-hud,
 body.ui-hidden #timerBox,
-body.ui-hidden #scoreBox { display: none !important; }
+body.ui-hidden #scoreBox,
+body.ui-hidden #guessPanel { display: none !important; }
+
+/* OpenSV injects Street View navigation arrows as SVG paths. */
+body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
+  display: none !important;
+  pointer-events: none !important;
+}
 
 body.empty-mode #topLeft,
 body.empty-mode #compass-hud,
