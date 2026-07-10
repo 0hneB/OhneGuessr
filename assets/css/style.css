@@ -88,6 +88,7 @@ html, body {
 
 /* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
 .leaflet-container { cursor: crosshair; background: #1b1b1b; }
+.guess-marker { fill: var(--accent); }
 
 /* Top HUD pills — same recipe as the compass HUD: 32px tall, the gradient HUD
    background and drop shadow, no blur. */
@@ -773,6 +774,12 @@ body.empty-mode #guessPanel { display: none !important; }
 
 /* Result-map markers: stacked drop-shadows follow the asset alpha edge and give
    both marker types the same soft white outline. */
+.map-pin-guess {
+  background: var(--accent);
+  border: none;
+  -webkit-mask: url("../images/pin-guess.svg") center / contain no-repeat;
+  mask: url("../images/pin-guess.svg") center / contain no-repeat;
+}
 .map-pin,
 .map-pin-correct {
   filter:
