@@ -7,7 +7,7 @@ import { settings } from '../core/state.js';
 
 // Display names and order for the Controls list; keys match the action map.
 const ACTION_LABELS = {
-  submitOrNext: 'Submit / Next',
+  submitOrNext: 'Submit / Next / Replay',
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
   resetView: 'Reset view',
