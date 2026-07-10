@@ -40,6 +40,11 @@ export function createGuessPanel(gmap) {
     panel.addEventListener('transitionend', (e) => {
       if (e.propertyName === 'opacity') schedule();
     });
+    $('map').addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      setFullscreen(!isFullscreen());
+    }, true);
     $('mapPinBtn').addEventListener('click', (e) => {
       e.stopPropagation();
       setPinned(!isPinned());
