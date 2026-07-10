@@ -7,15 +7,12 @@ import { rafBurst } from '../core/raf.js';
 
 function addBaseLayer(map, key, current) {
   const style = MAP_STYLES[key] || MAP_STYLES.osm;
-  // Vector styles render via MapLibre GL; raster styles are Leaflet tile layers.
-  const layer = style.type === 'vector'
-    ? L.maplibreGL({ style: style.url, attribution: style.attribution })
-    : L.tileLayer(style.url, {
-      updateWhenIdle: false,
-      updateWhenZooming: false, // hold scaled tiles during zoom instead of blanking
-      keepBuffer: 8,
-      ...(style.options || {})
-    });
+  const layer = L.tileLayer(style.url, {
+    updateWhenIdle: false,
+    updateWhenZooming: false, // hold scaled tiles during zoom instead of blanking
+    keepBuffer: 8,
+    ...(style.options || {})
+  });
   layer.addTo(map);
   if (layer.bringToBack) layer.bringToBack();
   if (current) map.removeLayer(current);

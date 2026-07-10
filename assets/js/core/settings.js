@@ -13,12 +13,6 @@ export const MAP_STYLES = {
     url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
     options: { maxZoom: 19, subdomains: 'ab', attribution: '&copy; OpenStreetMap contributors, Humanitarian OSM Team' }
   },
-  osmLiberty: {
-    name: 'OSM Liberty',
-    type: 'vector', // MapLibre GL style (OpenFreeMap)
-    url: 'https://tiles.openfreemap.org/styles/liberty',
-    attribution: '&copy; OpenMapTiles &copy; OpenStreetMap contributors'
-  },
   cartoLight: {
     name: 'CartoDB Light',
     url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
@@ -66,7 +60,9 @@ const DEFAULTS = {
 
 export function loadSettings() {
   try {
-    return { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY)) || {}) };
+    const loaded = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY)) || {}) };
+    if (!MAP_STYLES[loaded.mapStyle]) loaded.mapStyle = DEFAULTS.mapStyle;
+    return loaded;
   } catch {
     return { ...DEFAULTS };
   }
