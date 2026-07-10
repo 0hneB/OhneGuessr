@@ -1,7 +1,7 @@
 // Settings panel: tabs, segmented controls, toggles, and the map-style picker.
 // Wires widgets to `settings` and calls back into the game for side effects.
 import { $, setUploadMessage, isSettingsOpen, openSettings, closeSettings } from '../core/dom.js';
-import { applyAccentColor, saveSettings, MAP_STYLES } from '../core/settings.js';
+import { applyAccentColor, DEFAULT_ACCENT_COLOR, saveSettings, MAP_STYLES } from '../core/settings.js';
 import { state, settings } from '../core/state.js';
 
 // Assigned by setupSettingsTabs; lets the map-library error flow jump to Maps.
@@ -145,6 +145,10 @@ export function setupSettingsUI({
   renderAccent(settings.accentColor);
   accentInput.addEventListener('input', () => {
     renderAccent(accentInput.value);
+    saveSettings(settings);
+  });
+  $('accentReset').addEventListener('click', () => {
+    renderAccent(DEFAULT_ACCENT_COLOR);
     saveSettings(settings);
   });
 
