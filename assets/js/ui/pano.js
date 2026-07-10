@@ -12,22 +12,11 @@ const MOVE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'K
 
 let loadPromise = null;
 
-// Force preserveDrawingBuffer so the pano canvas can be read back (thumbnails) and so
-// screenshots aren't a cleared/black buffer. Must run before the WebGL context exists.
-function patchPreserveDrawingBuffer() {
-  const orig = HTMLCanvasElement.prototype.getContext;
-  HTMLCanvasElement.prototype.getContext = function (type, attrs) {
-    if (type === 'webgl' || type === 'webgl2') attrs = { ...attrs, preserveDrawingBuffer: true };
-    return orig.call(this, type, attrs);
-  };
-}
-
 // Inject the vendored Maps JS API once. No tile-host rewrite => tiles hit Google
 // directly, which works in a plain browser (verified by the throwaway prototype).
 export function loadOpenSV() {
   if (window.google?.maps?.StreetViewPanorama) return Promise.resolve(window.google);
   if (loadPromise) return loadPromise;
-  patchPreserveDrawingBuffer();
   loadPromise = new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = OPENSV_SRC;
