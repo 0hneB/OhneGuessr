@@ -1,4 +1,4 @@
-// Settings → Maps: list, select, rename, delete, upload, and recovery when a
+// Settings → Maps: list, select, rename, delete, export, upload, and recovery when a
 // chosen map can't load. Calls back into the game to start a round.
 import { $, setLoading, setEmptyState, setUploadMessage, openSettings, closeSettings } from '../core/dom.js';
 import { state, settings } from '../core/state.js';
@@ -27,6 +27,7 @@ export function createMapLibrary({ startGame, tryResume }) {
   function renderMapList() {
     const list = $('mapList');
     list.innerHTML = '';
+    $('exportMapBtn').classList.toggle('hidden', !state.maps.some((m) => m.key === state.currentKey));
     for (const m of state.maps) {
       const row = document.createElement('div');
       row.className = 'map-row' + (m.key === state.currentKey ? ' selected' : '');
@@ -189,8 +190,20 @@ export function createMapLibrary({ startGame, tryResume }) {
     });
   }
 
+  function exportSelectedMap() {
+    const item = state.maps.find((m) => m.key === state.currentKey);
+    if (!item) return;
+    const link = document.createElement('a');
+    link.href = `data/${encodeURIComponent(item.file)}`;
+    link.download = item.file;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
   function setupUpload() {
     const fi = $('fileInput');
+    $('exportMapBtn').addEventListener('click', exportSelectedMap);
     bindUploadZone($('dropZone'), fi);
     bindUploadZone($('emptyDropZone'), fi);
     fi.addEventListener('change', () => { if (fi.files[0]) readUpload(fi.files[0]); fi.value = ''; });
