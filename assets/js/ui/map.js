@@ -167,9 +167,19 @@ const CORRECT_ICON = L.icon({
   iconSize: [28, 28], iconAnchor: [14, 14], className: 'map-pin-correct'
 });
 
+function streetViewUrl(actual) {
+  const params = new URLSearchParams({
+    api: '1',
+    map_action: 'pano',
+    viewpoint: `${actual.lat},${actual.lng}`
+  });
+  if (actual.panoid) params.set('pano', actual.panoid);
+  return `https://www.google.com/maps/@?${params}`;
+}
+
 // Draw a round's answer pin plus the guess pin and link (guess is null on a
 // forfeit). Pushes layers for later cleanup; returns the points for bounds fitting.
-function drawGuessPair(map, layers, guess, actual) {
+function drawGuessPair(map, layers, guess, actual, linkAnswer = false) {
   const a = [actual.lat, actual.lng];
   const pts = [];
   if (guess) {
@@ -180,7 +190,14 @@ function drawGuessPair(map, layers, guess, actual) {
     layers.push(L.marker(g, { icon: GUESS_ICON, pane: 'guessPane' }).addTo(map));
     pts.push(g);
   }
-  layers.push(L.marker(a, { icon: CORRECT_ICON }).addTo(map));
+  const answerMarker = L.marker(a, { icon: CORRECT_ICON }).addTo(map);
+  if (linkAnswer) {
+    answerMarker.bindTooltip('Open in Street View', { direction: 'top' });
+    answerMarker.on('click', () => {
+      window.open(streetViewUrl(actual), '_blank', 'noopener,noreferrer');
+    });
+  }
+  layers.push(answerMarker);
   pts.push(a);
   return pts;
 }
@@ -215,7 +232,7 @@ class RevealMap {
 export class ResultMap extends RevealMap {
   show(guess, actual, trail = null) {
     this.clear();
-    const pts = drawGuessPair(this.map, this.layers, guess, actual);
+    const pts = drawGuessPair(this.map, this.layers, guess, actual, true);
     this.drawTrail(trail, pts);
     if (pts.length > 1) this.map.fitBounds(L.latLngBounds(pts).pad(0.35), { animate: false });
     else this.map.setView(pts[0], 5, { animate: false }); // forfeit: only the answer
