@@ -183,6 +183,9 @@ export function setupSettingsUI({
     setUploadMessage(''); // drop any stale message
   });
   $('settingsClose').addEventListener('click', closeSettings);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isSettingsOpen()) closeSettings();
+  });
   panel.addEventListener('click', (e) => {
     if (e.target === panel) closeSettings();
   });
