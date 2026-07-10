@@ -137,10 +137,14 @@ export function setupSettingsUI({
   });
 
   const accentInput = $('accentColor');
-  accentInput.value = settings.accentColor;
-  accentInput.addEventListener('input', () => {
-    settings.accentColor = applyAccentColor(accentInput.value);
+  const renderAccent = (color) => {
+    settings.accentColor = applyAccentColor(color);
+    accentInput.value = settings.accentColor;
     views.gmap.setAccentColor(settings.accentColor);
+  };
+  renderAccent(settings.accentColor);
+  accentInput.addEventListener('input', () => {
+    renderAccent(accentInput.value);
     saveSettings(settings);
   });
 
