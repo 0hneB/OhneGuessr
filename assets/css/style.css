@@ -408,6 +408,7 @@ body.empty-mode #guessPanel { display: none !important; }
   grid-template-columns: 1fr auto;
   align-items: center;
 }
+.accent-color-actions { display: flex; align-items: center; gap: 6px; }
 .setting-color input {
   width: 46px;
   height: 30px;
@@ -419,6 +420,7 @@ body.empty-mode #guessPanel { display: none !important; }
 }
 .setting-color input::-webkit-color-swatch { border: none; border-radius: 5px; }
 .setting-color input::-moz-color-swatch { border: none; border-radius: 5px; }
+.settings-action.accent-reset { margin: 0; padding: 6px 10px; }
 
 .setting-toggle {
   display: grid;

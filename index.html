@@ -51,10 +51,13 @@
             <span>Map style</span>
             <select id="mapStyleSel"></select>
           </label>
-          <label class="setting setting-color">
+          <div class="setting setting-color">
             <span>Accent color</span>
-            <input id="accentColor" type="color" value="#22c55e" />
-          </label>
+            <div class="accent-color-actions">
+              <input id="accentColor" type="color" value="#22c55e" aria-label="Accent color" />
+              <button id="accentReset" type="button" class="settings-action accent-reset">Reset</button>
+            </div>
+          </div>
           <label class="setting setting-toggle">
             <span>Fullscreen</span>
             <input id="appFullscreenToggle" type="checkbox" />
