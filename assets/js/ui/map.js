@@ -188,7 +188,7 @@ function streetViewUrl(actual) {
 
 // Draw a round's answer pin plus the guess pin and link (guess is null on a
 // forfeit). Pushes layers for later cleanup; returns the points for bounds fitting.
-function drawGuessPair(map, layers, guess, actual, linkAnswer = false) {
+function drawGuessPair(map, layers, guess, actual) {
   const a = [actual.lat, actual.lng];
   const pts = [];
   if (guess) {
@@ -200,12 +200,9 @@ function drawGuessPair(map, layers, guess, actual, linkAnswer = false) {
     pts.push(g);
   }
   const answerMarker = L.marker(a, { icon: CORRECT_ICON }).addTo(map);
-  if (linkAnswer) {
-    answerMarker.bindTooltip('Open in Street View', { direction: 'top' });
-    answerMarker.on('click', () => {
-      window.open(streetViewUrl(actual), '_blank', 'noopener,noreferrer');
-    });
-  }
+  answerMarker.on('click', () => {
+    window.open(streetViewUrl(actual), '_blank', 'noopener,noreferrer');
+  });
   layers.push(answerMarker);
   pts.push(a);
   return pts;
@@ -241,7 +238,7 @@ class RevealMap {
 export class ResultMap extends RevealMap {
   show(guess, actual, trail = null) {
     this.clear();
-    const pts = drawGuessPair(this.map, this.layers, guess, actual, true);
+    const pts = drawGuessPair(this.map, this.layers, guess, actual);
     this.drawTrail(trail, pts);
     if (pts.length > 1) this.map.fitBounds(L.latLngBounds(pts).pad(0.35), { animate: false });
     else this.map.setView(pts[0], 5, { animate: false }); // forfeit: only the answer
@@ -265,7 +262,7 @@ export class ResultMap extends RevealMap {
 
 // End-of-game overview: every round's guess/answer pair on one map.
 export class SummaryMap extends RevealMap {
-  // results: [{ guess: {lat,lng}, actual: {lat,lng} }, ...]
+  // results: [{ guess: {lat,lng}, actual: {lat,lng,panoid?} }, ...]
   show(results) {
     this.clear();
     if (!results.length) return;

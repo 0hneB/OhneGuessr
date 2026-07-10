@@ -256,7 +256,11 @@ function finishRound() {
   state.total += points;
   state.results.push({
     guess: guess ? { lat: guess.lat, lng: guess.lng } : null,
-    actual: { lat: state.current.lat, lng: state.current.lng },
+    actual: {
+      lat: state.current.lat,
+      lng: state.current.lng,
+      panoid: state.current.panoid || null
+    },
     distKm, points
   });
 
