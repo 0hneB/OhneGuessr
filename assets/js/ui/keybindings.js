@@ -1,6 +1,6 @@
 // Keyboard shortcuts: KeyboardEvent.code -> action dispatch and the rebinding UI.
 // The game supplies the actions; this stores overrides and routes key events.
-import { $ } from '../core/dom.js';
+import { $, SETTINGS_CLOSED_EVENT } from '../core/dom.js';
 import { KEYBINDINGS } from '../config.js';
 import { saveSettings } from '../core/settings.js';
 import { settings } from '../core/state.js';
@@ -39,9 +39,12 @@ export class Keybindings {
     this.actions = actions;         // { action: fn }
     this.isPanelOpen = isPanelOpen; // don't hijack keys while settings is open
     this.capturingKeyFor = null;
+    this.captureHandler = null;
     this.map = {};
     this.rebuild();
     this.onKeyDown = this.onKeyDown.bind(this);
+    this.cancelCapture = this.cancelCapture.bind(this);
+    document.addEventListener(SETTINGS_CLOSED_EVENT, this.cancelCapture);
   }
 
   // Config defaults overlaid with saved overrides.
@@ -118,21 +121,31 @@ export class Keybindings {
     if (this.capturingKeyFor) return; // one at a time
     this.capturingKeyFor = action;
     this.render();
-    const onCapture = (e) => {
+    this.captureHandler = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      window.removeEventListener('keydown', onCapture, true);
-      this.capturingKeyFor = null;
-      if (e.code === 'Escape') { this.render(); return; }
+      this.cancelCapture();
+      if (e.code === 'Escape') return;
       if (e.code === 'Backspace' || e.code === 'Delete') { this.setBinding(action, null); return; }
       this.setBinding(action, e.code);
     };
-    window.addEventListener('keydown', onCapture, true);
+    window.addEventListener('keydown', this.captureHandler, true);
+  }
+
+  cancelCapture() {
+    if (this.captureHandler) {
+      window.removeEventListener('keydown', this.captureHandler, true);
+      this.captureHandler = null;
+    }
+    if (!this.capturingKeyFor) return;
+    this.capturingKeyFor = null;
+    this.render();
   }
 
   setupUI() {
     this.render();
     $('keyReset').addEventListener('click', () => {
+      this.cancelCapture();
       settings.keybindings = {}; // back to defaults
       saveSettings(settings);
       this.rebuild();
