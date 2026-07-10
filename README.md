@@ -7,7 +7,7 @@
 <p align="center">A completely free, debloated and local GeoGuessr alternative.</p>
 
 <p align="center">
-  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-PolyForm_Noncommercial_1.0.0-6b7280" alt="License: PolyForm Noncommercial 1.0.0" /></a>
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-PolyForm_Noncommercial_1.0.0-22c55e" alt="License: PolyForm Noncommercial 1.0.0" /></a>
 </p>
 
 ## Features
