@@ -340,7 +340,6 @@ async function init() {
   } catch (err) {
     setLoading(true, `Could not load maps: ${err.message}. ` +
       `Serve over http:// (use run/serve.bat) so data/ can be fetched.`);
-    console.error(err);
   }
 }
 

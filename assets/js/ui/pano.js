@@ -26,7 +26,6 @@ export function loadOpenSV() {
         if (Date.now() - t0 > 10000) return reject(new Error('opensv loaded but StreetViewPanorama missing'));
         await new Promise((r) => setTimeout(r, 50));
       }
-      console.log('[opensv] Street View API ready');
       resolve(window.google);
     };
     s.onerror = () => reject(new Error('failed to load opensv.js'));

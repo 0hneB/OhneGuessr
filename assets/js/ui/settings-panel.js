@@ -87,8 +87,7 @@ function setupAppFullscreenToggle(scheduleGuessMapLayout) {
       } else if (!toggle.checked && document.fullscreenElement) {
         await document.exitFullscreen();
       }
-    } catch (err) {
-      console.warn('Could not toggle fullscreen.', err);
+    } catch {
       sync();
     }
   });
