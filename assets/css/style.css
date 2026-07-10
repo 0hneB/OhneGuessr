@@ -159,7 +159,7 @@ body.empty-mode #guessPanel { display: none !important; }
   left: 50%;
   transform: translateX(-50%);
   z-index: 500;
-  pointer-events: none;
+  cursor: pointer;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
 }
 
