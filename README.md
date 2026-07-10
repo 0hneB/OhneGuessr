@@ -113,7 +113,7 @@ Use **Export selected map** beneath the list to download the active map's JSON f
 
 ### Map file format
 
-A JSON array of location objects. Each needs `lat`, `lng`, and a `panoid`; `heading` and `pitch` (the starting view) are optional.
+A JSON array of location objects. Each needs `lat` and `lng`; `panoid`, `heading`, and `pitch` are optional. Without a pano ID, the game asks Street View for imagery nearest the coordinates.
 
 ```json
 [
@@ -134,7 +134,7 @@ The upload went to a server that can't write files. Make sure you started the ga
 
 - Check your internet connection.
 - That particular location may be bugged or deleted
-- If it's just blurry, the higher-quality pass is still loading. Lower the **Image quality** setting if it's consistently slow.
+- If it's just blurry, the higher-quality pass is still loading. Give it a moment to sharpen.
 
 ### Browser opened but the page is blank or errors in the console
 
