@@ -28,16 +28,6 @@ BASE = os.path.dirname(SCRIPT_DIR)
 DATA_DIR = os.path.join(BASE, "data")
 MANIFEST = os.path.join(DATA_DIR, "maps.json")
 PIDFILE = os.path.join(tempfile.gettempdir(), "ohneguessr-serve.pid")
-LOGFILE = os.path.join(tempfile.gettempdir(), "ohneguessr-serve.log")
-
-
-def log(msg):
-    # pythonw has no console, so log to a temp file.
-    try:
-        with open(LOGFILE, "a", encoding="utf-8") as f:
-            f.write(msg + "\n")
-    except OSError:
-        pass
 
 
 def slugify(name):
@@ -86,7 +76,7 @@ class Handler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=BASE, **kwargs)
 
     def log_message(self, fmt, *args):
-        log("%s - %s" % (self.address_string(), fmt % args))
+        pass
 
     def _send_json(self, obj, status=200):
         body = json.dumps(obj).encode("utf-8")
@@ -155,8 +145,7 @@ class Handler(SimpleHTTPRequestHandler):
             entries.append(entry)
             write_json(MANIFEST, entries)
             self._send_json(entry)
-        except Exception as e:  # noqa: BLE001
-            log("create error: %r" % e)
+        except Exception:  # noqa: BLE001
             self._send_json({"error": "create failed"}, 500)
 
     def _rename_map(self):
@@ -184,8 +173,7 @@ class Handler(SimpleHTTPRequestHandler):
             entry["file"] = new_file
             write_json(MANIFEST, entries)
             self._send_json(entry)
-        except Exception as e:  # noqa: BLE001
-            log("rename error: %r" % e)
+        except Exception:  # noqa: BLE001
             self._send_json({"error": "rename failed"}, 500)
 
     def _delete_map(self):
@@ -203,8 +191,7 @@ class Handler(SimpleHTTPRequestHandler):
                         pass
                 write_json(MANIFEST, [e for e in entries if e is not entry])
             self._send_json({"ok": True})
-        except Exception as e:  # noqa: BLE001
-            log("delete error: %r" % e)
+        except Exception:  # noqa: BLE001
             self._send_json({"error": "delete failed"}, 500)
 
 
@@ -229,7 +216,6 @@ def main():
         pass
 
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    log("serving %s (pid %d)" % (url, os.getpid()))
     threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:
         server.serve_forever()

@@ -148,10 +148,6 @@ That usually means a server is already running. `run/serve.py` notices this and 
 
 `run/serve.bat` falls back to a minimized regular `python` window. Everything still works — there's just a small window you can leave minimized.
 
-### Where's the server log?
-
-When it runs windowless there's no console, so errors go to `ohneguessr-serve.log` in your system temp folder (`%TEMP%` on Windows).
-
 ## License
 
 Copyright © 2026 OhneB
