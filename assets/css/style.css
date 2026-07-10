@@ -522,7 +522,7 @@ body.empty-mode #guessPanel { display: none !important; }
   background: var(--accent);
   border-color: var(--accent);
 }
-.key-reset {
+.settings-action {
   align-self: flex-start;
   margin-top: 6px;
   padding: 8px 14px;
@@ -534,7 +534,8 @@ body.empty-mode #guessPanel { display: none !important; }
   border-radius: 8px;
   cursor: pointer;
 }
-.key-reset:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.settings-action:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.map-export { margin: 0 0 10px; }
 
 .settings-note { font-size: 12px; opacity: 0.55; line-height: 1.45; }
 
