@@ -289,8 +289,10 @@ async function loadRound(preparation = null) {
   roundTimer.start(); // start after load so loading time isn't counted
 }
 
-function onPlaceGuess() {
-  if (state.phase === GAME_PHASE.GUESSING) $('guessBtn').disabled = false;
+function onPlaceGuess(_guess, { submit = false } = {}) {
+  if (state.phase !== GAME_PHASE.GUESSING) return;
+  $('guessBtn').disabled = false;
+  if (submit) submitGuess();
 }
 
 const canInteractWithGuess = () =>
