@@ -306,6 +306,9 @@ const KEY_ACTIONS = {
   zoomIn: () => viewer.zoomFull(1),
   zoomOut: () => viewer.zoomFull(-1),
   resetView: () => viewer.resetView(),
+  checkpoint: (event) => {
+    if (!event.repeat && state.phase === GAME_PHASE.GUESSING) viewer.toggleCheckpoint();
+  },
   faceNorth: () => {
     // Press once to face north; again while north to look straight down.
     const h = viewer.getHeading();
