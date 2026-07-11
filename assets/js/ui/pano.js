@@ -122,6 +122,16 @@ export class OpenSvViewer {
   // Positions walked this round (≥2 points only when the player actually moved).
   getTrail() { return this._trail.slice(); }
 
+  // Turn a prepared panorama into the active round. Preparation may happen while
+  // the result screen covers the viewer, so reset the trail and focus only now.
+  beginRound(loc) {
+    this.setDefaultView(loc.heading ?? 0, loc.pitch ?? 0);
+    this._trail = [];
+    const p = this.pano.getPosition?.();
+    if (p) this._trail.push({ lat: p.lat(), lng: p.lng() });
+    if (this.mode !== 'nmpz') this.pano.focus?.();
+  }
+
   // faceNorth/zoom pan or zoom the view, so they no-op in nmpz (the locked mode).
   faceNorth() { if (this.mode !== 'nmpz') this._tweenPov(0, 0); }
   faceNorthDown() { if (this.mode !== 'nmpz') this._tweenPov(0, -90); }
@@ -133,7 +143,7 @@ export class OpenSvViewer {
 
   // Load a location by stored panoid (falls back to lat/lng). Resolves true once
   // imagery is up, false on no-coverage / error / timeout / abort.
-  showLocation(loc, { signal } = {}) {
+  showLocation(loc, { signal, focus = true } = {}) {
     const startPano = this.pano.getPano?.() || null;
     return new Promise((resolve) => {
       let done = false;
@@ -190,7 +200,7 @@ export class OpenSvViewer {
       this.pano.setVisible(true);
       // Focus so drag-look (and, in moving, keyboard walking) works. nmpz is locked,
       // so leave it unfocused; the overlay and key-block handle the rest.
-      if (this.mode !== 'nmpz') this.pano.focus?.();
+      if (focus && this.mode !== 'nmpz') this.pano.focus?.();
     });
   }
 

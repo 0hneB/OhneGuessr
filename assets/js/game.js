@@ -31,6 +31,8 @@ const ACTIVE_GAME_PHASES = new Set([
 
 let viewer, gmap, resultMap, summaryMap, compass, guessPanel;
 const panoLoad = { controller: null };
+let roundPreload = null;
+let preloadFrame = 0;
 
 // Countdown policy for the current round; RoundTimer handles the ticking.
 const roundTimer = new RoundTimer({
@@ -45,11 +47,104 @@ const roundTimer = new RoundTimer({
 function beginPanoLoad() {
   panoLoad.controller?.abort();
   panoLoad.controller = new AbortController();
-  return { signal: panoLoad.controller.signal };
+  return { controller: panoLoad.controller, signal: panoLoad.controller.signal };
 }
 
-function isPanoLoadActive(load, loc = null) {
-  return !load.signal.aborted && (!loc || state.current === loc);
+function isPanoLoadActive(load) {
+  return !load.signal.aborted;
+}
+
+function cancelRoundPreload() {
+  if (preloadFrame) cancelAnimationFrame(preloadFrame);
+  preloadFrame = 0;
+  const preload = roundPreload;
+  roundPreload = null;
+  if (preload && preload.status === 'loading') preload.load.controller.abort();
+}
+
+function hasNextRound() {
+  return state.unlimited || state.round + 1 < state.rounds;
+}
+
+function ensureDeckIndex(index) {
+  while (state.unlimited && index >= state.deck.length && state.all.length) {
+    state.deck = state.deck.concat(shuffle(state.all));
+  }
+  return state.deck[index] || null;
+}
+
+// Load and resolve a round without activating its UI, timer, state.current, or
+// walking trail. The same operation serves foreground loads and result preloads.
+function prepareRound(index) {
+  const firstLocation = ensureDeckIndex(index);
+  const load = beginPanoLoad();
+  const preparation = {
+    index,
+    mapKey: state.currentKey,
+    deck: state.deck,
+    locations: state.all,
+    load,
+    location: firstLocation,
+    status: firstLocation ? 'loading' : 'failed',
+    promise: null
+  };
+
+  if (!firstLocation) {
+    preparation.promise = Promise.resolve(preparation);
+    return preparation;
+  }
+
+  preparation.promise = (async () => {
+    let loc = firstLocation;
+    let tries = 0;
+    let ok = await viewer.showLocation(loc, { signal: load.signal, focus: false });
+    while (isPanoLoadActive(load) && !ok && tries < 8) {
+      tries++;
+      loc = randomLocation(preparation.locations);
+      preparation.deck[index] = loc;
+      ok = await viewer.showLocation(loc, { signal: load.signal, focus: false });
+    }
+
+    preparation.location = loc;
+    preparation.status = load.signal.aborted ? 'aborted' : (ok ? 'ready' : 'failed');
+    return preparation;
+  })();
+  return preparation;
+}
+
+function preparationMatches(preparation, index) {
+  return preparation &&
+    preparation.status !== 'aborted' &&
+    !preparation.load.signal.aborted &&
+    preparation.index === index &&
+    preparation.mapKey === state.currentKey &&
+    preparation.deck === state.deck;
+}
+
+function scheduleNextRoundPreload() {
+  cancelRoundPreload();
+  if (state.phase !== GAME_PHASE.RESULT || !hasNextRound()) return;
+
+  const index = state.round + 1;
+  const mapKey = state.currentKey;
+  preloadFrame = requestAnimationFrame(() => {
+    preloadFrame = 0;
+    if (state.phase !== GAME_PHASE.RESULT ||
+        state.round + 1 !== index ||
+        state.currentKey !== mapKey ||
+        !hasNextRound()) return;
+    roundPreload = prepareRound(index);
+  });
+}
+
+function takeRoundPreload(index) {
+  if (preloadFrame) cancelAnimationFrame(preloadFrame);
+  preloadFrame = 0;
+  const preload = roundPreload;
+  roundPreload = null;
+  if (preparationMatches(preload, index)) return preload;
+  if (preload && preload.status === 'loading') preload.load.controller.abort();
+  return null;
 }
 
 function updateRoundLimitDisplay() {
@@ -69,6 +164,7 @@ function updateRoundLimitDisplay() {
 }
 
 async function startGame() {
+  cancelRoundPreload();
   roundTimer.stop();
   state.phase = GAME_PHASE.LOADING;
   setHidden('resultScreen', true);
@@ -101,6 +197,7 @@ function saveProgress() {
 // Restore a saved game for the loaded map and show its current round. False if
 // there's nothing valid to resume (caller then starts fresh).
 async function tryResume() {
+  cancelRoundPreload();
   const snap = loadGame();
   if (!snap || snap.map !== state.currentKey) return false;
   if (!Array.isArray(snap.deck) || !snap.deck.length) return false;
@@ -155,19 +252,15 @@ function applyRoundLimitChange() {
   if (state.phase === GAME_PHASE.RESULT) {
     $('nextBtn').textContent =
       state.unlimited || state.round + 1 < state.rounds ? 'Next' : 'See results';
+    scheduleNextRoundPreload();
   }
 }
 
-async function loadRound() {
-  const load = beginPanoLoad();
+async function loadRound(preparation = null) {
   state.phase = GAME_PHASE.LOADING;
   guessPanel.setFullscreen(false);
   guessPanel.setPinned(false);
-  // Endless mode: reshuffle when the deck runs out.
-  if (state.unlimited && state.round >= state.deck.length) {
-    state.deck = state.deck.concat(shuffle(state.all));
-  }
-  state.current = state.deck[state.round];
+  ensureDeckIndex(state.round);
   $('round').textContent = String(state.round + 1);
   updateRoundLimitDisplay();
   $('total').textContent = String(state.total);
@@ -177,23 +270,19 @@ async function loadRound() {
   gmap.reset();
   gmap.refresh();
 
-  setLoading(true, 'Loading panorama…');
-  // Let Street View resolve and render the pano; skip spots with no coverage.
-  let tries = 0;
-  let ok = await viewer.showLocation(state.current, { signal: load.signal });
-  while (isPanoLoadActive(load) && !ok && tries < 8) {
-    tries++;
-    state.current = state.deck[state.round] = randomLocation(state.all);
-    ok = await viewer.showLocation(state.current, { signal: load.signal });
-  }
-  if (!isPanoLoadActive(load, state.current)) return;
-  if (!ok) {
+  let prepared = preparation;
+  if (!preparationMatches(prepared, state.round)) prepared = prepareRound(state.round);
+  if (prepared.status === 'loading') setLoading(true, 'Loading panorama…');
+  prepared = await prepared.promise;
+  if (!preparationMatches(prepared, state.round)) return;
+  if (prepared.status !== 'ready') {
     state.phase = GAME_PHASE.ERROR;
     setLoading(true, 'Could not find Street View coverage for this round.');
     return;
   }
-  // Imported spots carry a heading; otherwise face north.
-  viewer.setDefaultView(state.current.heading ?? 0, state.current.pitch ?? 0);
+
+  state.current = prepared.location;
+  viewer.beginRound(state.current);
   state.phase = GAME_PHASE.GUESSING;
   setLoading(false);
   saveProgress(); // persist the (resolved) round so a refresh resumes here
@@ -253,6 +342,7 @@ function finishRound() {
   guessPanel.setFullscreen(false);
   guessPanel.setPinned(false);
   roundTimer.stop();
+  const trail = viewer.getTrail();
 
   const guess = gmap.guess;
   const distKm = guess ? haversineKm(guess, state.current) : null;
@@ -274,15 +364,23 @@ function finishRound() {
   $('nextBtn').textContent = state.round + 1 >= state.rounds ? 'See results' : 'Next';
 
   setHidden('resultScreen', false);
-  resultMap.show(guess, state.current, viewer.getTrail());
+  resultMap.show(guess, state.current, trail);
+  scheduleNextRoundPreload();
 }
 
-function nextRound() {
+async function nextRound() {
   if (state.phase !== GAME_PHASE.RESULT) return;
-  setHidden('resultScreen', true);
-  if (!state.unlimited && state.round + 1 >= state.rounds) { showFinal(); return; }
-  state.round++;
-  loadRound();
+  if (!hasNextRound()) {
+    cancelRoundPreload();
+    setHidden('resultScreen', true);
+    showFinal();
+    return;
+  }
+
+  const nextIndex = state.round + 1;
+  const preload = takeRoundPreload(nextIndex);
+  state.round = nextIndex;
+  await loadRound(preload);
 }
 
 function renderFinalRounds() {
@@ -300,6 +398,7 @@ function renderFinalRounds() {
 }
 
 function showFinal() {
+  cancelRoundPreload();
   state.phase = GAME_PHASE.FINAL;
   clearGame(); // game over: nothing left to resume
   const max = state.rounds * CONFIG.SCORE_MAX;
