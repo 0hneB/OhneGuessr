@@ -33,6 +33,7 @@ let viewer, gmap, resultMap, summaryMap, compass, guessPanel;
 const panoLoad = { controller: null };
 let roundPreload = null;
 let preloadFrame = 0;
+let selectedFinalRound = null;
 
 // Countdown policy for the current round; RoundTimer handles the ticking.
 const roundTimer = new RoundTimer({
@@ -455,25 +456,47 @@ function renderFinalRounds() {
   const list = $('finalRounds');
   list.innerHTML = '';
   state.results.forEach((r, i) => {
-    const row = document.createElement('div');
+    const row = document.createElement('button');
+    row.type = 'button';
     row.className = 'final-round';
+    row.setAttribute('aria-pressed', 'false');
     row.innerHTML =
       `<span class="fr-no">${i + 1}</span>` +
       `<span class="fr-dist">${r.distKm == null ? '—' : formatDistance(r.distKm)}</span>` +
       `<span class="fr-pts">${r.points}</span>`;
+    row.addEventListener('keydown', (event) => event.stopPropagation());
+    row.addEventListener('click', (event) => {
+      if (event.detail) event.currentTarget.blur();
+      selectedFinalRound = selectedFinalRound === i ? null : i;
+      applyFinalRoundSelection();
+    });
     list.appendChild(row);
   });
+}
+
+function applyFinalRoundSelection() {
+  [...$('finalRounds').children].forEach((row, index) => {
+    const selected = index === selectedFinalRound;
+    row.classList.toggle('selected', selected);
+    row.setAttribute('aria-pressed', String(selected));
+    row.title = selected ? 'Show all rounds' : `Show round ${index + 1}`;
+  });
+  const results = selectedFinalRound == null
+    ? state.results
+    : [state.results[selectedFinalRound]];
+  summaryMap.show(results);
 }
 
 function showFinal() {
   cancelRoundPreload();
   state.phase = GAME_PHASE.FINAL;
+  selectedFinalRound = null;
   clearGame(); // game over: nothing left to resume
   const max = state.rounds * CONFIG.SCORE_MAX;
   $('finalScore').textContent = `${state.total} / ${max}`;
   renderFinalRounds();
   setHidden('final', false);
-  summaryMap.show(state.results); // after un-hiding so Leaflet measures correctly
+  applyFinalRoundSelection(); // after un-hiding so Leaflet measures correctly
 }
 
 async function init() {

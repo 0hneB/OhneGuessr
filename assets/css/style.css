@@ -971,13 +971,25 @@ body.empty-mode #guessPanel { display: none !important; }
   display: grid;
   grid-template-columns: 20px 1fr auto;
   align-items: center;
+  width: 100%;
   gap: 10px;
   padding: 7px 12px;
+  font-family: inherit;
+  color: inherit;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
+.final-round:hover { background: rgba(255, 255, 255, 0.08); }
+.final-round.selected {
+  background: rgba(var(--accent-rgb), 0.1);
+  border-color: rgba(var(--accent-rgb), 0.65);
+}
+.final-round:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.final-round.selected .fr-no { color: var(--accent); }
 .fr-no { color: #9aa3ad; font-weight: 700; text-align: left; }
 .fr-dist { color: #cbd2dd; text-align: left; }
 .fr-pts { color: var(--accent); font-weight: 800; }
