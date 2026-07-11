@@ -13,6 +13,7 @@ const ACTION_LABELS = {
   resetView: 'Reset view',
   checkpoint: 'Set / return checkpoint',
   checkpointPeek: 'Peek checkpoint',
+  lookBehind: 'Look behind',
   faceNorth: 'Face north',
   toggleMapPinned: 'Toggle pinned map',
   toggleMapFullscreen: 'Toggle map fullscreen',

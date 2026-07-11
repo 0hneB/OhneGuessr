@@ -61,6 +61,7 @@ export class OpenSvViewer {
     this._checkpointBusy = false;
     this._checkpointPeek = null;
     this._cancelCheckpointJump = null;
+    this._lookBehind = null;
     this._roundToken = 0;
     this.mode = 'moving';       // 'moving' | 'nm' | 'nmpz'; set via setMode()
 
@@ -119,6 +120,7 @@ export class OpenSvViewer {
     this.mode = mode === 'nm' || mode === 'nmpz' ? mode : 'moving';
     const moving = this.mode === 'moving';
     const nmpz = this.mode === 'nmpz';
+    if (nmpz) this.endLookBehind();
     if (!moving) {
       this._clearCheckpoint();
       this._trailActive = false;
@@ -155,6 +157,7 @@ export class OpenSvViewer {
   // the result screen covers the viewer, so reset the trail and focus only now.
   beginRound(loc) {
     this._clearCheckpoint();
+    this._clearLookBehind();
     this.setDefaultView(loc.heading ?? 0, loc.pitch ?? 0);
     this._trail = [];
     const p = this.pano.getPosition?.();
@@ -165,7 +168,8 @@ export class OpenSvViewer {
 
   // C alternates between saving the exact current view and returning to it once.
   toggleCheckpoint() {
-    if (this.mode !== 'moving' || !this._trailActive || this._checkpointBusy) return;
+    if (this.mode !== 'moving' || !this._trailActive ||
+        this._checkpointBusy || this._lookBehind) return;
 
     if (!this._checkpoint) {
       this._checkpoint = this._captureView();
@@ -194,7 +198,7 @@ export class OpenSvViewer {
   // V temporarily visits an armed checkpoint; releasing it restores this view.
   startCheckpointPeek() {
     if (this.mode !== 'moving' || !this._trailActive ||
-        !this._checkpoint || this._checkpointBusy) return false;
+        !this._checkpoint || this._checkpointBusy || this._lookBehind) return false;
     const source = this._captureView();
     if (!source) return false;
 
@@ -224,6 +228,34 @@ export class OpenSvViewer {
     else this._cancelCheckpointJump?.();
   }
 
+  startLookBehind() {
+    if (this.mode === 'nmpz' || this._checkpointBusy || this._lookBehind) return false;
+    const pov = this.pano.getPov?.();
+    if (!pov) return false;
+    this._cancelTween();
+    this._lookBehind = {
+      token: this._roundToken,
+      pov: { heading: pov.heading ?? 0, pitch: pov.pitch ?? 0 },
+      zoom: this.pano.getZoom?.() ?? 1
+    };
+    this.pano.setPov({
+      heading: (this._lookBehind.pov.heading + 180) % 360,
+      pitch: this._lookBehind.pov.pitch
+    });
+    return true;
+  }
+
+  endLookBehind() {
+    const view = this._lookBehind;
+    if (!view) return;
+    this._lookBehind = null;
+    if (view.token !== this._roundToken) return;
+    this._cancelTween();
+    this.pano.setPov(view.pov);
+    this.pano.setZoom(view.zoom);
+    if (this.mode !== 'nmpz') this.pano.focus?.();
+  }
+
   // faceNorth/zoom pan or zoom the view, so they no-op in nmpz (the locked mode).
   faceNorth() { if (this.mode !== 'nmpz') this._tweenPov(0, 0); }
   faceNorthDown() { if (this.mode !== 'nmpz') this._tweenPov(0, -90); }
@@ -237,6 +269,7 @@ export class OpenSvViewer {
   // finish late, but its promise can no longer move a newer replacement location.
   showLocation(loc, { signal, focus = true } = {}) {
     this._clearCheckpoint();
+    this._clearLookBehind();
     this._trailActive = false;
     this._trail = [];
 
@@ -315,6 +348,10 @@ export class OpenSvViewer {
     this._checkpointBusy = false;
     this._checkpointPeek = null;
     cancel?.();
+  }
+
+  _clearLookBehind() {
+    this._lookBehind = null;
   }
 
   _captureView() {
