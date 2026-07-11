@@ -13,6 +13,7 @@ const ACTION_LABELS = {
   resetView: 'Reset view',
   checkpoint: 'Set / return checkpoint',
   faceNorth: 'Face north',
+  toggleMapPinned: 'Toggle pinned map',
   toggleMapFullscreen: 'Toggle map fullscreen',
   hideHud: 'Hide HUD'
 };
@@ -50,7 +51,14 @@ export class Keybindings {
 
   // Config defaults overlaid with saved overrides.
   current() {
-    return { ...KEYBINDINGS, ...(settings.keybindings || {}) };
+    const overrides = settings.keybindings || {};
+    const bindings = { ...KEYBINDINGS, ...overrides };
+    const claimed = new Set(Object.values(overrides).flat());
+    for (const action of Object.keys(KEYBINDINGS)) {
+      if (Object.prototype.hasOwnProperty.call(overrides, action)) continue;
+      bindings[action] = (bindings[action] || []).filter((code) => !claimed.has(code));
+    }
+    return bindings;
   }
 
   // KeyboardEvent.code -> action name. Rebuilt whenever a binding changes.

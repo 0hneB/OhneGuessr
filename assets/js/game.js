@@ -316,6 +316,9 @@ const KEY_ACTIONS = {
     if (atNorth && Math.abs(viewer.lat) < 2) viewer.faceNorthDown();
     else viewer.faceNorth();
   },
+  toggleMapPinned: (event) => {
+    if (!event.repeat && canInteractWithGuess()) guessPanel.setPinned(!guessPanel.isPinned());
+  },
   toggleMapFullscreen: () => {
     if (canInteractWithGuess()) guessPanel.setFullscreen(!guessPanel.isFullscreen());
   },

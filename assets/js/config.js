@@ -13,6 +13,7 @@ export const KEYBINDINGS = {
   resetView: ['KeyR'],
   checkpoint: ['KeyC'],
   faceNorth: ['KeyN'],
+  toggleMapPinned: ['KeyM'],
   toggleMapFullscreen: ['KeyF'],
   hideHud: ['KeyH']
 };

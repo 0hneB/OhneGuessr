@@ -70,6 +70,7 @@ That serves the folder at `http://localhost:8000` and opens your browser. Stop i
 | <kbd>N</kbd> | Face north. Press again while already facing north to look straight down |
 | <kbd>R</kbd> | Reset the view |
 | <kbd>C</kbd> | Set a movement checkpoint, then return to it and clear it |
+| <kbd>M</kbd> | Toggle the expanded and pinned guess map |
 | <kbd>F</kbd> | Toggle the fullscreen guess map |
 | <kbd>H</kbd> | Hide all UI, including the guess map and Street View navigation arrows |
 

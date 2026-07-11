@@ -81,11 +81,6 @@ html, body {
   -webkit-mask-image: url("../icons/timer.svg");
   mask-image: url("../icons/timer.svg");
 }
-.pin-icon {
-  -webkit-mask-image: url("../icons/pin.svg");
-  mask-image: url("../icons/pin.svg");
-}
-
 /* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
 .leaflet-container { cursor: crosshair; background: #1b1b1b; }
 .guess-marker { fill: var(--accent); }
@@ -209,35 +204,6 @@ body.empty-mode #guessPanel { display: none !important; }
     border-color 0.11s ease,
     box-shadow 0.11s ease;
 }
-
-/* Pin button (top-left of the guess map): click to keep the map expanded even
-   when not hovering. Visible only while hovered or pinned; hidden in fullscreen. */
-#mapPinBtn {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 1000;
-  display: grid;
-  place-items: center;
-  width: 25px;
-  height: 25px;
-  padding: 0;
-  color: #fbfbfd;
-  background: var(--hud-bg);
-  border: none;
-  border-radius: 7px;
-  box-shadow: var(--hud-shadow);
-  cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.12s ease, background 0.15s ease, color 0.15s ease;
-}
-#mapPinBtn .pin-icon { width: 16px; height: 16px; }
-#guessPanel:hover #mapPinBtn,
-#guessPanel.pinned #mapPinBtn { opacity: 1; pointer-events: auto; }
-#mapPinBtn:hover { color: var(--accent); }
-#guessPanel.pinned #mapPinBtn { color: var(--accent-ink); background: var(--accent); }
-#guessPanel.map-fullscreen #mapPinBtn { display: none; }
 
 #guessBtn {
   width: 100%;
