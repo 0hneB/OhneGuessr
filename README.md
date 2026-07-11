@@ -56,30 +56,33 @@ That serves the folder at `http://localhost:8000` and opens your browser. Stop i
 
 ## Usage
 
-1. Start the server (above) and let the browser open.
-2. Upload and pick a map under **Maps**
-3. Look around the panorama, click the small map in the bottom corner to drop your guess, and press **Guess**.
-4. See how far off you were, press **Next**, and repeat until the game ends.
+1. Start the server and let the browser open.
+2. Add or select a map under **Settings → Maps**.
+3. Explore the panorama, place your guess on the map, and submit it.
+4. Review the result and continue to the next round.
 
 ### Controls
 
-| Key | Action |
+| Input | Action |
 | --- | --- |
-| <kbd>Space</kbd> | Submit your guess, go to the next round, or play again after game over |
-| <kbd>E</kbd> / <kbd>Q</kbd> | Zoom the panorama in / out |
-| <kbd>N</kbd> | Face north. Press again while already facing north to look straight down |
-| <kbd>R</kbd> | Reset the view |
-| <kbd>C</kbd> | Set a movement checkpoint, then return to it and clear it |
-| Hold <kbd>V</kbd> | Peek at the checkpoint; release to return without clearing it |
-| Hold <kbd>B</kbd> | Look directly behind; release to restore the previous view |
-| <kbd>M</kbd> | Toggle the expanded and pinned guess map |
-| <kbd>F</kbd> | Toggle the fullscreen guess map |
-| <kbd>H</kbd> | Hide all UI, including the guess map and Street View navigation arrows |
+| <kbd>Space</kbd> | Submit, continue, or replay |
+| <kbd>E</kbd> / <kbd>Q</kbd> | Zoom in / out |
+| <kbd>N</kbd> | Face north; press again to look down |
+| <kbd>R</kbd> | Reset the view; in Moving, return to the start |
+| <kbd>C</kbd> | Set a checkpoint; press again to return and clear it |
+| Hold <kbd>V</kbd> | Peek at the checkpoint; release to return |
+| Hold <kbd>B</kbd> | Look behind; release to return |
+| <kbd>M</kbd> | Pin / unpin the expanded map |
+| <kbd>F</kbd> | Toggle the fullscreen map |
+| <kbd>H</kbd> | Hide / show the interface |
+| Click map | Place or move a guess |
+| <kbd>Shift</kbd> + click map | Place and submit a guess |
+| Double-click map | Toggle the fullscreen map |
 
-You can also drag to look around and scroll to zoom the panorama, and click/drag/scroll the guess map as usual. Shift-click the guess map to place and submit in one step.
+Drag to look around. Scroll to zoom the panorama or map.
 
 > [!TIP]
-> All shortcuts are rebindable in **Settings → Controls** — click a key, then press the one you want (Esc cancels, Backspace clears). The defaults live in [`assets/js/config.js`](assets/js/config.js) under `KEYBINDINGS` (using [`KeyboardEvent.code`](https://developer.mozilla.org/docs/Web/API/KeyboardEvent/code) values like `KeyE`, `Space`, or `ArrowUp`); in-app changes are saved to your browser and override them.
+> Keyboard shortcuts are rebindable in **Settings → Controls** and saved in your browser. Press <kbd>Esc</kbd> to cancel or <kbd>Backspace</kbd> to clear a key.
 
 ## Settings
 
