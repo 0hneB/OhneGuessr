@@ -347,7 +347,17 @@ body.empty-mode #guessPanel { display: none !important; }
   height: clamp(340px, 62vh, 520px);
   overflow-y: auto;
   padding: 18px 22px 22px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
 }
+.settings-body::-webkit-scrollbar { width: 4px; }
+.settings-body::-webkit-scrollbar-track,
+.settings-body::-webkit-scrollbar-corner { background: transparent; }
+.settings-body::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 999px;
+}
+.settings-body::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 .settings-panel[hidden] { display: none; }
 .settings-panel .setting:last-child { margin-bottom: 0; }
 .settings-head h2 { font-size: 18px; }
