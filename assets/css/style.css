@@ -112,6 +112,7 @@ html, body {
 .info-icon { --icon-url: url("../icons/info.svg"); }
 .close-icon { --icon-url: url("../icons/close.svg"); }
 .chevron-icon { --icon-url: url("../icons/chevron.svg"); }
+.reset-icon { --icon-url: url("../icons/reset.svg"); }
 /* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
 .leaflet-container { cursor: crosshair; background: #1b1b1b; }
 .guess-marker { fill: var(--accent); }
@@ -527,6 +528,7 @@ body.empty-mode #guessPanel { display: none !important; }
 #panel-controls {
   position: relative;
   min-height: 100%;
+  padding-bottom: 28px;
 }
 .key-list { display: flex; flex-direction: column; gap: 6px; }
 .key-row {
@@ -571,6 +573,14 @@ body.empty-mode #guessPanel { display: none !important; }
   right: 0;
   bottom: 0;
 }
+.controls-reset {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+}
+.controls-reset .svg-icon { width: 20px; height: 20px; }
 .settings-action {
   align-self: flex-start;
   margin-top: 6px;
