@@ -23,7 +23,7 @@ import map_store
 
 API_BASE = "https://map-making.app"
 CONFIG_VERSION = 1
-MAX_WORKERS = 3
+MAX_WORKERS = 10
 
 
 def _sync_process_main(data_dir, manifest_path, config_path, api_key, token, messages):
@@ -405,29 +405,20 @@ class MapMakingSync:
         reserved.add(rel.casefold())
         return rel
 
-    def _download_map(self, plan, api_key, staging_dir):
-        locations = self._api_get_json("/api/maps/%s/locations" % plan["remote"]["id"], api_key)
+    def _download_map(self, map_id, api_key, staging_dir):
+        locations = self._api_get_json("/api/maps/%s/locations" % map_id, api_key)
         if not isinstance(locations, list):
-            raise ValueError("%s returned invalid locations" % plan["remote"].get("name", "Map"))
-        stage_rel = plan["target"].split("/", 1)[-1]
-        stage_path = os.path.join(staging_dir, *stage_rel.split("/"))
+            raise ValueError("Map %s returned invalid locations" % map_id)
+        stage_path = os.path.join(staging_dir, "%s.json" % map_id)
         map_store.atomic_write_json(stage_path, locations, compact=True)
         return {
-            "plan": plan,
             "stagePath": stage_path,
             "count": len(locations),
             "checksum": map_store.file_checksum(stage_path),
         }
 
     def _sync(self, api_key):
-        catalog = self._api_get_json("/api/maps", api_key)
-        if not isinstance(catalog, list):
-            raise ValueError("Map Making App returned an invalid map catalog")
-
-        remotes = [item for item in catalog if self._eligible_map(item)]
-        remotes.sort(key=lambda item: (str(item.get("folder") or "").casefold(), str(item.get("name") or "").casefold()))
-        self._update_runtime(phase="scanning", total=len(remotes), completed=0)
-
+        self._update_runtime(phase="scanning")
         scan = map_store.rescan(self.data_dir, self.manifest_path)
         manifest = scan["manifest"]
         local_entries = [
@@ -441,41 +432,76 @@ class MapMakingSync:
             and str(entry["source"].get("mapId", "")).isdigit()
         }
 
-        reserved = {entry["file"].casefold() for entry in local_entries}
-        plans = []
-        for remote in remotes:
-            existing = synced_entries.get(int(remote["id"]))
-            target = self._canonical_target(remote, existing, reserved)
-            source = dict((existing or {}).get("source") or {})
-            source.update({
-                "type": "map-making-app",
-                "mapId": int(remote["id"]),
-                "remoteName": remote.get("name") or "Untitled map",
-                "remoteFolder": remote.get("folder"),
-                "nameOverride": bool(source.get("nameOverride")),
-                "folderOverride": bool(source.get("folderOverride")),
-            })
-            plans.append({"remote": remote, "existing": existing, "target": target, "source": source})
-
         prefix = ".mma-sync-%s-" % self._staging_token if self._staging_token else ".mma-sync-"
         staging_dir = tempfile.mkdtemp(prefix=prefix, dir=self.data_dir)
         successes = {}
         failures = {}
-        completed = 0
-        self._update_runtime(phase="downloading")
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                future_map = {
-                    executor.submit(self._download_map, plan, api_key, staging_dir): plan
-                    for plan in plans
+                # Known IDs need no catalog metadata, so stage them while the
+                # slower catalog request discovers structural changes.
+                downloads = {
+                    map_id: executor.submit(self._download_map, map_id, api_key, staging_dir)
+                    for map_id in synced_entries
                 }
+
+                self._update_runtime(phase="catalog")
+                catalog = self._api_get_json("/api/maps", api_key)
+                if not isinstance(catalog, list):
+                    raise ValueError("Map Making App returned an invalid map catalog")
+
+                remotes = [item for item in catalog if self._eligible_map(item)]
+                remotes.sort(key=lambda item: (
+                    str(item.get("folder") or "").casefold(),
+                    str(item.get("name") or "").casefold(),
+                ))
+
+                reserved = {entry["file"].casefold() for entry in local_entries}
+                plans = []
+                for remote in remotes:
+                    map_id = int(remote["id"])
+                    existing = synced_entries.get(map_id)
+                    target = self._canonical_target(remote, existing, reserved)
+                    source = dict((existing or {}).get("source") or {})
+                    source.update({
+                        "type": "map-making-app",
+                        "mapId": map_id,
+                        "remoteName": remote.get("name") or "Untitled map",
+                        "remoteFolder": remote.get("folder"),
+                        "nameOverride": bool(source.get("nameOverride")),
+                        "folderOverride": bool(source.get("folderOverride")),
+                    })
+                    plans.append({
+                        "remote": remote,
+                        "existing": existing,
+                        "target": target,
+                        "source": source,
+                    })
+                    # First-sync and newly created maps become downloadable only
+                    # after the catalog reveals their IDs.
+                    if map_id not in downloads:
+                        downloads[map_id] = executor.submit(
+                            self._download_map, map_id, api_key, staging_dir
+                        )
+
+                active_ids = {int(plan["remote"]["id"]) for plan in plans}
+                for map_id, future in downloads.items():
+                    if map_id not in active_ids:
+                        future.cancel()
+
+                completed = 0
+                self._update_runtime(
+                    phase="downloading",
+                    total=len(plans),
+                    completed=completed,
+                )
+                future_map = {downloads[map_id]: map_id for map_id in active_ids}
                 for future in concurrent.futures.as_completed(future_map):
-                    plan = future_map[future]
+                    map_id = future_map[future]
                     try:
-                        result = future.result()
-                        successes[int(plan["remote"]["id"])] = result
+                        successes[map_id] = future.result()
                     except Exception as exc:  # keep other maps syncing
-                        failures[int(plan["remote"]["id"])] = str(exc)
+                        failures[map_id] = str(exc)
                     completed += 1
                     self._update_runtime(completed=completed)
 
