@@ -84,8 +84,6 @@ class Handler(SimpleHTTPRequestHandler):
             self._open_data_folder()
         elif self._path() == "/api/mma-sync/run":
             self._sync_run()
-        elif self._path() == "/api/mma-sync/cancel":
-            self._send_json(MMA_SYNC.cancel())
         else:
             self.send_error(404)
 

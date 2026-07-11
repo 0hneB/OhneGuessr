@@ -129,4 +129,3 @@ export const saveMmaSyncKey = (apiKey) => api('api/mma-sync/key', {
 });
 export const forgetMmaSyncKey = () => api('api/mma-sync/key', { method: 'DELETE' });
 export const runMmaSync = () => api('api/mma-sync/run', { method: 'POST' });
-export const cancelMmaSync = () => api('api/mma-sync/cancel', { method: 'POST' });
