@@ -75,7 +75,6 @@ export function createMapLibrary({ startGame, tryResume }) {
   function renderMapList() {
     const list = $('mapList');
     list.innerHTML = '';
-    $('exportMapBtn').classList.toggle('hidden', !state.maps.some((m) => m.key === state.currentKey));
 
     const folders = new Set(state.folders || []);
     for (const map of state.maps) {
@@ -309,31 +308,6 @@ export function createMapLibrary({ startGame, tryResume }) {
     });
   }
 
-  async function exportSelectedMap() {
-    const item = state.maps.find((map) => map.key === state.currentKey);
-    if (!item) return;
-    try {
-      const locations = normalizeLocations(await getLocations(item)).map((location) => ({
-        lat: location.lat,
-        lng: location.lng,
-        heading: location.heading,
-        pitch: location.pitch,
-        zoom: location.zoom,
-        panoid: location.panoid
-      }));
-      const blob = new Blob([JSON.stringify(locations, null, 2)], { type: 'application/json' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = item.file.split('/').pop();
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(link.href);
-    } catch {
-      setUploadMessage('Could not export that map.');
-    }
-  }
-
   async function refreshFromDisk() {
     const button = $('refreshMapsBtn');
     button.disabled = true;
@@ -358,7 +332,6 @@ export function createMapLibrary({ startGame, tryResume }) {
 
   function setupMapLibrary() {
     const fileInput = $('fileInput');
-    $('exportMapBtn').addEventListener('click', exportSelectedMap);
     $('openDataFolderBtn').addEventListener('click', async () => {
       try { await openDataFolder(); }
       catch (error) { setUploadMessage(error.message || 'Could not open the data folder.'); }

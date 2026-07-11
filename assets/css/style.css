@@ -567,7 +567,6 @@ body.empty-mode #guessPanel { display: none !important; }
 .settings-action:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
 .settings-action:disabled { opacity: 0.45; cursor: default; }
 .settings-action:disabled:hover { color: #cbd2dd; background: rgba(255, 255, 255, 0.06); }
-.map-export { margin: 0 0 10px; }
 .map-library-actions {
   display: flex;
   gap: 6px;
