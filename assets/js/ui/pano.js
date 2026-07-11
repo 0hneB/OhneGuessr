@@ -158,7 +158,12 @@ export class OpenSvViewer {
   beginRound(loc) {
     this._clearCheckpoint();
     this._clearLookBehind();
-    this.setDefaultView(loc.heading ?? 0, loc.pitch ?? 0);
+    this._cancelTween();
+    const heading = loc.heading ?? 0;
+    const pitch = loc.pitch ?? 0;
+    this.setDefaultView(heading, pitch);
+    this.pano.setPov({ heading, pitch });
+    this.pano.setZoom(1);
     this._trail = [];
     const p = this.pano.getPosition?.();
     if (p) this._trail.push([{ lat: p.lat(), lng: p.lng() }]);

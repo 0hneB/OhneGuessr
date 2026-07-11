@@ -305,9 +305,9 @@ const KEY_ACTIONS = {
     else if (state.phase === GAME_PHASE.RESULT) nextRound();
     else if (state.phase === GAME_PHASE.GUESSING && gmap.guess) submitGuess();
   },
-  zoomIn: () => viewer.zoomFull(1),
-  zoomOut: () => viewer.zoomFull(-1),
-  resetView: () => viewer.resetView(),
+  zoomIn: () => { if (canInteractWithGuess()) viewer.zoomFull(1); },
+  zoomOut: () => { if (canInteractWithGuess()) viewer.zoomFull(-1); },
+  resetView: () => { if (canInteractWithGuess()) viewer.resetView(); },
   checkpoint: (event) => {
     if (!event.repeat && state.phase === GAME_PHASE.GUESSING) viewer.toggleCheckpoint();
   },
@@ -318,6 +318,7 @@ const KEY_ACTIONS = {
     if (!event.repeat && state.phase === GAME_PHASE.GUESSING) viewer.startLookBehind();
   },
   faceNorth: () => {
+    if (!canInteractWithGuess()) return;
     // Press once to face north; again while north to look straight down.
     const h = viewer.getHeading();
     const atNorth = Math.min(h, 360 - h) < 1.5;
@@ -438,7 +439,9 @@ async function init() {
   compass = new CompassHUD(compassCanvas);
   await loadOpenSV();
   viewer = new OpenSvViewer($('pano'));
-  compassCanvas.addEventListener('click', () => viewer.faceNorth());
+  compassCanvas.addEventListener('click', () => {
+    if (canInteractWithGuess()) viewer.faceNorth();
+  });
   viewer.onChange = (heading) => compass.setHeading(heading);
   viewer.setMode(settings.movement);
   gmap = new GuessMap('map', onPlaceGuess, settings.mapStyle);
