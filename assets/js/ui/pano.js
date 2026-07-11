@@ -7,23 +7,36 @@
 const OPENSV_SRC = 'assets/js/vendor/opensv/opensv.js';
 const ZOOM_IN = 3;     // google SV zoom level for "zoomed in"
 const TWEEN_MS = 160;  // matches MMA's tweenPov feel
+const POSITION_EPSILON = 1e-5; // ~1 m; enough to bind a viewer event to its lookup
 // Keys Street View uses to walk; blocked outside moving mode.
 const MOVE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
 
 let loadPromise = null;
+const streetViewReady = () =>
+  Boolean(window.google?.maps?.StreetViewPanorama && window.google?.maps?.StreetViewService);
+
+function samePosition(a, b) {
+  if (!a || !b) return false;
+  const latA = typeof a.lat === 'function' ? a.lat() : a.lat;
+  const lngA = typeof a.lng === 'function' ? a.lng() : a.lng;
+  const latB = typeof b.lat === 'function' ? b.lat() : b.lat;
+  const lngB = typeof b.lng === 'function' ? b.lng() : b.lng;
+  const lngDelta = Math.abs(((lngA - lngB + 540) % 360) - 180);
+  return Math.abs(latA - latB) <= POSITION_EPSILON && lngDelta <= POSITION_EPSILON;
+}
 
 // Inject the vendored Maps JS API once. No tile-host rewrite => tiles hit Google
 // directly, which works in a plain browser (verified by the throwaway prototype).
 export function loadOpenSV() {
-  if (window.google?.maps?.StreetViewPanorama) return Promise.resolve(window.google);
+  if (streetViewReady()) return Promise.resolve(window.google);
   if (loadPromise) return loadPromise;
   loadPromise = new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = OPENSV_SRC;
     s.onload = async () => {
       const t0 = Date.now();
-      while (!window.google?.maps?.StreetViewPanorama) {
-        if (Date.now() - t0 > 10000) return reject(new Error('opensv loaded but StreetViewPanorama missing'));
+      while (!streetViewReady()) {
+        if (Date.now() - t0 > 10000) return reject(new Error('opensv loaded but Street View missing'));
         await new Promise((r) => setTimeout(r, 50));
       }
       resolve(window.google);
@@ -43,6 +56,7 @@ export class OpenSvViewer {
     this._tweenId = 0;
     this._startPanoId = null;   // the round's origin pano, so resetView can walk back
     this._trail = [];           // {lat,lng} positions walked this round (Moving mode)
+    this._trailActive = false;  // preparation must never look like player movement
     this.mode = 'moving';       // 'moving' | 'nm' | 'nmpz'; set via setMode()
 
     // Street View mutates the inline style of the element it's given (position, etc.),
@@ -62,6 +76,7 @@ export class OpenSvViewer {
     this._lock = lock;
 
     const g = window.google;
+    this.streetView = new g.maps.StreetViewService();
     this.pano = new g.maps.StreetViewPanorama(host, {
       disableDefaultUI: true,
       motionTracking: false,
@@ -77,6 +92,7 @@ export class OpenSvViewer {
     });
     // Record each step so the result map can show where the player walked.
     this.pano.addListener('position_changed', () => {
+      if (!this._trailActive) return;
       const p = this.pano.getPosition?.();
       if (!p) return;
       const point = { lat: p.lat(), lng: p.lng() };
@@ -129,6 +145,7 @@ export class OpenSvViewer {
     this._trail = [];
     const p = this.pano.getPosition?.();
     if (p) this._trail.push({ lat: p.lat(), lng: p.lng() });
+    this._trailActive = true;
     if (this.mode !== 'nmpz') this.pano.focus?.();
   }
 
@@ -141,66 +158,76 @@ export class OpenSvViewer {
     this.pano.setZoom(direction > 0 ? ZOOM_IN : 0);
   }
 
-  // Load a location by stored panoid (falls back to lat/lng). Resolves true once
-  // imagery is up, false on no-coverage / error / timeout / abort.
+  // Resolve one exact pano before touching the shared viewer. A failed lookup may
+  // finish late, but its promise can no longer move a newer replacement location.
   showLocation(loc, { signal, focus = true } = {}) {
-    const startPano = this.pano.getPano?.() || null;
+    this._trailActive = false;
+    this._trail = [];
+
     return new Promise((resolve) => {
       let done = false;
-      let failTimer = 0;
-      const finish = (ok) => { if (done) return; done = true; cleanup(); resolve(ok); };
-      const isError = () => {
-        const s = this.pano.getStatus?.();
-        return s === 'ZERO_RESULTS' || s === 'UNKNOWN_ERROR';
-      };
-
-      // Success = status OK with a fresh pano: it changed, or it's the panoid we asked
-      // for (a redirect may hand back a different id, so don't require an exact match).
-      const trySucceed = () => {
-        if (this.pano.getStatus?.() !== 'OK') return;
-        const cur = this.pano.getPano?.() || null;
-        if (!cur || (cur === startPano && cur !== loc.panoid)) return;
-        this._startPanoId = cur; // origin for resetView
-        finish(true);
-      };
-
-      // Polled because status_changed doesn't refire when status stays OK across
-      // rounds. Street View blips through ZERO_RESULTS/UNKNOWN_ERROR mid-load, so a
-      // bad status only fails the load once it sticks past a short grace.
-      const check = () => {
-        trySucceed();
-        if (done) return;
-        if (isError()) {
-          if (!failTimer) failTimer = setTimeout(() => { if (isError()) finish(false); }, 800);
-        } else if (failTimer) {
-          clearTimeout(failTimer); failTimer = 0;
-        }
-      };
-      const panoListener = this.pano.addListener('pano_changed', check);
-      const statusListener = this.pano.addListener('status_changed', check);
-      const poll = setInterval(check, 150);
-      const timer = setTimeout(() => finish(false), 12000);
-      const onAbort = () => finish(false);
-      signal?.addEventListener('abort', onAbort, { once: true });
+      let poll = 0;
+      let timer = 0;
+      let listeners = [];
+      let targetPano = null;
+      let targetPosition = null;
 
       const cleanup = () => {
         clearInterval(poll);
         clearTimeout(timer);
-        clearTimeout(failTimer);
-        panoListener?.remove?.();
-        statusListener?.remove?.();
+        for (const listener of listeners) listener?.remove?.();
         signal?.removeEventListener('abort', onAbort);
       };
+      const finish = (ok) => {
+        if (done) return;
+        done = true;
+        cleanup();
+        resolve(ok);
+      };
+      const isTarget = () =>
+        this.pano.getPano?.() === targetPano &&
+        (!targetPosition || samePosition(this.pano.getPosition?.(), targetPosition));
+      const check = () => {
+        if (!isTarget() || this.pano.getStatus?.() !== 'OK') return;
+        this._startPanoId = targetPano;
+        finish(true);
+      };
+      const onAbort = () => finish(false);
 
-      this._trail = []; // fresh round; the spawn is recorded by position_changed
-      this.pano.setPov({ heading: loc.heading ?? 0, pitch: loc.pitch ?? 0 });
-      this.pano.setZoom(1);
-      if (loc.panoid) this.pano.setPano(loc.panoid);
-      else this.pano.setPosition({ lat: loc.lat, lng: loc.lng });
-      this.pano.setVisible(true);
-      // Focus so drag-look (and, in moving, keyboard walking) works. nmpz is locked,
-      // so leave it unfocused; the overlay and key-block handle the rest.
-      if (focus && this.mode !== 'nmpz') this.pano.focus?.();
+      timer = setTimeout(() => finish(false), 12000);
+      signal?.addEventListener('abort', onAbort, { once: true });
+      if (signal?.aborted) { finish(false); return; }
+
+      const request = loc.panoid
+        ? { pano: loc.panoid }
+        : { location: { lat: loc.lat, lng: loc.lng } };
+
+      try {
+        this.streetView.getPanorama(request).then(({ data }) => {
+          if (done) return;
+          const location = data?.location;
+          if (!location?.pano) { finish(false); return; }
+
+          targetPano = location.pano;
+          targetPosition = location.latLng || null;
+          listeners = [
+            this.pano.addListener('pano_changed', check),
+            this.pano.addListener('position_changed', check),
+            this.pano.addListener('status_changed', check)
+          ];
+          // Some builds coalesce unchanged status events, so keep a cheap fallback.
+          poll = setInterval(check, 150);
+
+          this.pano.setPov({ heading: loc.heading ?? 0, pitch: loc.pitch ?? 0 });
+          this.pano.setZoom(1);
+          this.pano.setPano(targetPano);
+          this.pano.setVisible(true);
+          if (focus && this.mode !== 'nmpz') this.pano.focus?.();
+          check();
+        }).catch(() => finish(false));
+      } catch {
+        finish(false);
+      }
     });
   }
 
