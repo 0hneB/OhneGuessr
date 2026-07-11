@@ -242,10 +242,11 @@ export class ResultMap extends RevealMap {
     if (!trail || trail.length < 2) return;
     const line = trail.map((p) => [p.lat, p.lng]);
     this.layers.push(L.polyline(line, {
-      color: '#f59e0b', weight: 3, opacity: 0.9, lineJoin: 'round'
+      className: 'movement-trail', weight: 3, opacity: 0.9, lineJoin: 'round'
     }).addTo(this.map));
     this.layers.push(L.circleMarker(line[line.length - 1], {
-      radius: 4, color: '#f59e0b', weight: 2, fillColor: '#ffffff', fillOpacity: 1
+      className: 'movement-trail', radius: 4, weight: 2,
+      fillColor: '#ffffff', fillOpacity: 1
     }).addTo(this.map));
     for (const p of line) pts.push(p);
   }

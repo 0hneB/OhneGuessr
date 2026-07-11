@@ -89,6 +89,7 @@ html, body {
 /* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
 .leaflet-container { cursor: crosshair; background: #1b1b1b; }
 .guess-marker { fill: var(--accent); }
+.movement-trail { stroke: var(--accent); }
 
 /* Top HUD pills — same recipe as the compass HUD: 32px tall, the gradient HUD
    background and drop shadow, no blur. */
