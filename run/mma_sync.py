@@ -6,7 +6,9 @@ local, gitignored server config and are never included in public status data.
 
 import concurrent.futures
 import json
+import multiprocessing
 import os
+import queue
 import shutil
 import tempfile
 import threading
@@ -24,8 +26,20 @@ CONFIG_VERSION = 1
 MAX_WORKERS = 3
 
 
-class SyncCancelled(Exception):
-    pass
+def _sync_process_main(data_dir, manifest_path, config_path, api_key, token, messages):
+    """Run one sync in an isolated process that the server can terminate."""
+    worker = MapMakingSync(
+        data_dir,
+        manifest_path,
+        config_path,
+        status_sink=lambda values: messages.put(("progress", values)),
+        staging_token=token,
+    )
+    try:
+        result = worker._sync(api_key)
+        messages.put(("complete", result))
+    except Exception as exc:  # noqa: BLE001 - return a safe failure to the parent
+        messages.put(("error", str(exc)))
 
 
 def _utc_now():
@@ -42,13 +56,20 @@ def _config_default():
 
 
 class MapMakingSync:
-    def __init__(self, data_dir, manifest_path, config_path):
+    def __init__(self, data_dir, manifest_path, config_path, status_sink=None, staging_token=None):
         self.data_dir = data_dir
         self.manifest_path = manifest_path
         self.config_path = config_path
+        self._status_sink = status_sink
+        self._staging_token = staging_token
+        self._mp = multiprocessing.get_context("spawn")
+        self._lifecycle_lock = threading.Lock()
         self._lock = threading.Lock()
-        self._cancel = threading.Event()
-        self._thread = None
+        self._process = None
+        self._messages = None
+        self._monitor = None
+        self._job_token = None
+        self._join_lock = None
         self._runtime = {
             "running": False,
             "phase": "idle",
@@ -136,18 +157,63 @@ class MapMakingSync:
         return self.public_status()
 
     def cancel(self):
-        self._cancel.set()
+        with self._lifecycle_lock:
+            return self._cancel()
+
+    def _cancel(self):
+        with self._lock:
+            token = self._job_token
+            process = self._process
+            join_lock = self._join_lock
+            self._job_token = None
+            self._process = None
+            self._messages = None
+            self._monitor = None
+            self._join_lock = None
+            if self._runtime["running"]:
+                self._runtime.update(running=False, phase="cancelled", error=None)
+
+        if process is not None:
+            with join_lock:
+                if process.is_alive():
+                    process.terminate()
+                process.join(timeout=0.5)
+                if process.is_alive():
+                    process.kill()
+                    process.join()
+                process.close()
+        if token:
+            self._cleanup_staging(token)
         return self.public_status()
 
     def start(self):
+        with self._lifecycle_lock:
+            return self._start()
+
+    def _start(self):
         config = self._load_config()
         if not config.get("enabled"):
             raise ValueError("Map Making App sync is off")
         if not config.get("apiKey"):
             raise ValueError("Save an API key first")
         with self._lock:
-            already_running = self._runtime["running"]
-            if not already_running:
+            if not self._runtime["running"]:
+                token = uuid.uuid4().hex
+                messages = self._mp.Queue()
+                join_lock = threading.Lock()
+                process = self._mp.Process(
+                    target=_sync_process_main,
+                    args=(
+                        self.data_dir,
+                        self.manifest_path,
+                        self.config_path,
+                        config["apiKey"],
+                        token,
+                        messages,
+                    ),
+                    daemon=True,
+                    name="ohneguessr-mma-sync",
+                )
                 self._runtime.update({
                     "running": True,
                     "phase": "catalog",
@@ -156,39 +222,120 @@ class MapMakingSync:
                     "error": None,
                     "lastResult": None,
                 })
-                self._cancel = threading.Event()
-                self._thread = threading.Thread(
-                    target=self._run_job,
-                    args=(dict(config), self._cancel),
+                self._job_token = token
+                self._process = process
+                self._messages = messages
+                self._join_lock = join_lock
+                try:
+                    process.start()
+                except Exception as exc:
+                    self._job_token = None
+                    self._process = None
+                    self._messages = None
+                    self._join_lock = None
+                    self._runtime.update(running=False, phase="error", error=str(exc))
+                    messages.cancel_join_thread()
+                    messages.close()
+                    raise
+                self._monitor = threading.Thread(
+                    target=self._monitor_process,
+                    args=(token, process, messages, join_lock),
                     daemon=True,
-                    name="ohneguessr-mma-sync",
+                    name="ohneguessr-mma-sync-monitor",
                 )
-                self._thread.start()
+                self._monitor.start()
         return self.public_status()
 
     def _update_runtime(self, **values):
+        if self._status_sink is not None:
+            self._status_sink(dict(values))
+            return
         with self._lock:
             self._runtime.update(values)
 
-    def _run_job(self, config, cancel_event):
+    def _monitor_process(self, token, process, messages, join_lock):
+        terminal = None
+        while terminal is None:
+            try:
+                kind, payload = messages.get(timeout=0.1)
+            except queue.Empty:
+                try:
+                    process_alive = process.is_alive()
+                except ValueError:
+                    break
+                if process_alive:
+                    continue
+                try:
+                    kind, payload = messages.get(timeout=0.2)
+                except queue.Empty:
+                    break
+                except (EOFError, OSError):
+                    break
+            except (EOFError, OSError):
+                break
+
+            if kind == "progress":
+                with self._lock:
+                    if self._job_token == token:
+                        self._runtime.update(payload)
+            elif kind in ("complete", "error"):
+                terminal = (kind, payload)
+
+        with join_lock:
+            try:
+                process.join(timeout=0.5)
+                if process.is_alive():
+                    process.terminate()
+                    process.join()
+            except ValueError:
+                pass
+
+        owns_process = False
+        with self._lock:
+            if self._job_token == token:
+                owns_process = True
+                if terminal and terminal[0] == "complete":
+                    result = terminal[1]
+                    config = self._load_config()
+                    if config.get("apiKey"):
+                        config["lastSyncAt"] = _utc_now()
+                        self._save_config(config)
+                    values = {
+                        "running": False,
+                        "phase": "complete",
+                        "error": None,
+                        "lastResult": result,
+                        "completed": result["total"],
+                        "total": result["total"],
+                    }
+                else:
+                    error = terminal[1] if terminal else "Map Making App sync stopped unexpectedly"
+                    values = {"running": False, "phase": "error", "error": error}
+
+                self._runtime.update(values)
+                self._job_token = None
+                self._process = None
+                self._messages = None
+                self._monitor = None
+                self._join_lock = None
+
+        messages.cancel_join_thread()
+        messages.close()
+        if owns_process:
+            with join_lock:
+                process.close()
+        self._cleanup_staging(token)
+
+    def _cleanup_staging(self, token):
+        prefix = ".mma-sync-%s-" % token
         try:
-            result = self._sync(config["apiKey"], cancel_event)
-            config = self._load_config()
-            if config.get("apiKey"):
-                config["lastSyncAt"] = _utc_now()
-                self._save_config(config)
-            self._update_runtime(
-                running=False,
-                phase="complete",
-                error=None,
-                lastResult=result,
-                completed=result["total"],
-                total=result["total"],
-            )
-        except SyncCancelled:
-            self._update_runtime(running=False, phase="cancelled", error=None)
-        except Exception as exc:  # noqa: BLE001 - convert job failures to safe status
-            self._update_runtime(running=False, phase="error", error=str(exc))
+            entries = os.scandir(self.data_dir)
+        except OSError:
+            return
+        with entries:
+            for entry in entries:
+                if entry.is_dir(follow_symlinks=False) and entry.name.startswith(prefix):
+                    shutil.rmtree(entry.path, ignore_errors=True)
 
     def _api_get_json(self, path, api_key, timeout=90):
         url = API_BASE + path
@@ -258,14 +405,10 @@ class MapMakingSync:
         reserved.add(rel.casefold())
         return rel
 
-    def _download_map(self, plan, api_key, staging_dir, cancel_event):
-        if cancel_event.is_set():
-            raise SyncCancelled()
+    def _download_map(self, plan, api_key, staging_dir):
         locations = self._api_get_json("/api/maps/%s/locations" % plan["remote"]["id"], api_key)
         if not isinstance(locations, list):
             raise ValueError("%s returned invalid locations" % plan["remote"].get("name", "Map"))
-        if cancel_event.is_set():
-            raise SyncCancelled()
         stage_rel = plan["target"].split("/", 1)[-1]
         stage_path = os.path.join(staging_dir, *stage_rel.split("/"))
         map_store.atomic_write_json(stage_path, locations, compact=True)
@@ -276,12 +419,10 @@ class MapMakingSync:
             "checksum": map_store.file_checksum(stage_path),
         }
 
-    def _sync(self, api_key, cancel_event):
+    def _sync(self, api_key):
         catalog = self._api_get_json("/api/maps", api_key)
         if not isinstance(catalog, list):
             raise ValueError("Map Making App returned an invalid map catalog")
-        if cancel_event.is_set():
-            raise SyncCancelled()
 
         remotes = [item for item in catalog if self._eligible_map(item)]
         remotes.sort(key=lambda item: (str(item.get("folder") or "").casefold(), str(item.get("name") or "").casefold()))
@@ -316,7 +457,8 @@ class MapMakingSync:
             })
             plans.append({"remote": remote, "existing": existing, "target": target, "source": source})
 
-        staging_dir = tempfile.mkdtemp(prefix=".mma-sync-", dir=self.data_dir)
+        prefix = ".mma-sync-%s-" % self._staging_token if self._staging_token else ".mma-sync-"
+        staging_dir = tempfile.mkdtemp(prefix=prefix, dir=self.data_dir)
         successes = {}
         failures = {}
         completed = 0
@@ -324,25 +466,18 @@ class MapMakingSync:
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                 future_map = {
-                    executor.submit(self._download_map, plan, api_key, staging_dir, cancel_event): plan
+                    executor.submit(self._download_map, plan, api_key, staging_dir): plan
                     for plan in plans
                 }
                 for future in concurrent.futures.as_completed(future_map):
                     plan = future_map[future]
-                    if cancel_event.is_set():
-                        raise SyncCancelled()
                     try:
                         result = future.result()
                         successes[int(plan["remote"]["id"])] = result
-                    except SyncCancelled:
-                        raise
                     except Exception as exc:  # keep other maps syncing
                         failures[int(plan["remote"]["id"])] = str(exc)
                     completed += 1
                     self._update_runtime(completed=completed)
-
-            if cancel_event.is_set():
-                raise SyncCancelled()
 
             self._update_runtime(phase="publishing")
             final_synced = []

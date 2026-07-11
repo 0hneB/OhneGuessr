@@ -124,7 +124,7 @@ Use **Open data folder** to open `data/` in your file manager. Create folders or
 2. Paste an API key from [map-making.app/keys](https://map-making.app/keys) and save it.
 3. The first sync starts immediately. Later updates run only when you press **Sync now**.
 
-Current, non-empty maps in active storage are cached under `data/map-making-app/`. Archived maps are skipped. Turning sync off stops every Map Making App request but keeps the cached maps playable.
+Current, non-empty maps in active storage are cached under `data/map-making-app/`. Archived maps are skipped. Turning sync off immediately terminates the active sync but keeps the cached maps playable.
 
 The API key is stored locally in the gitignored `run/.map-making-app-sync.json`. It is never written to `data/maps.json` or returned to the browser. Use **Forget key** to remove it.
 
