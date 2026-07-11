@@ -81,6 +81,10 @@ html, body {
   -webkit-mask-image: url("../icons/timer.svg");
   mask-image: url("../icons/timer.svg");
 }
+.github-icon {
+  -webkit-mask-image: url("../icons/github.svg");
+  mask-image: url("../icons/github.svg");
+}
 /* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
 .leaflet-container { cursor: crosshair; background: #1b1b1b; }
 .guess-marker { fill: var(--accent); }
@@ -488,6 +492,10 @@ body.empty-mode #guessPanel { display: none !important; }
 .seg-custom::placeholder { color: #6b7280; }
 
 /* Editable keyboard shortcuts (Controls tab) */
+#panel-controls {
+  position: relative;
+  min-height: 100%;
+}
 .key-list { display: flex; flex-direction: column; gap: 6px; }
 .key-row {
   display: grid;
@@ -514,6 +522,25 @@ body.empty-mode #guessPanel { display: none !important; }
   color: var(--accent-ink);
   background: var(--accent);
   border-color: var(--accent);
+}
+.controls-github-link {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: block;
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+  line-height: 0;
+}
+.controls-github-link:visited,
+.controls-github-link:hover,
+.controls-github-link:active {
+  color: var(--accent);
+}
+.controls-github-link .github-icon {
+  width: 22px;
+  height: 22px;
 }
 .settings-action {
   align-self: flex-start;
