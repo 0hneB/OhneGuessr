@@ -20,6 +20,7 @@ export const state = {
   all: [],          // locations of the selected map
   mapDiagonalKm: 0, // loaded map's bbox diagonal (km); Country scale
   maps: [],         // map library
+  folders: [],      // filesystem-backed map folder paths
   currentKey: null, // selected map key
   deck: [],         // shuffled locations for this game
   round: 0,

@@ -5,22 +5,27 @@ Serves the repo over http:// and adds a write API so uploaded maps are saved as
 files under data/. Standard library only. Started by run/serve.bat, stopped by
 run/stop.bat.
 
-    GET    /api/health    -> {"ok": true}
-    POST   /api/maps      -> create a map   body {name, locations}
-    PATCH  /api/maps/<id> -> rename a map   body {name}
-    DELETE /api/maps/<id> -> delete a map
-    GET    /*             -> static files
+    GET    /api/health           -> {"ok": true}
+    POST   /api/maps             -> create a local map
+    POST   /api/maps/rescan      -> rebuild the folder-aware manifest
+    PATCH  /api/maps/<id>        -> rename a local map
+    DELETE /api/maps/<id>        -> delete a local map
+    *      /api/mma-sync/*       -> local Map Making App sync controls
+    GET    /*                    -> static files
 """
 
 import json
 import os
-import re
 import socket
+import subprocess
+import sys
 import tempfile
 import threading
-import uuid
 import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+
+import map_store
+from mma_sync import MapMakingSync
 
 PORT = 8000
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,47 +33,8 @@ BASE = os.path.dirname(SCRIPT_DIR)
 DATA_DIR = os.path.join(BASE, "data")
 MANIFEST = os.path.join(DATA_DIR, "maps.json")
 PIDFILE = os.path.join(tempfile.gettempdir(), "ohneguessr-serve.pid")
-
-
-def slugify(name):
-    """Lowercase, runs of non-alphanumerics -> single '-', trimmed. Path-safe."""
-    s = re.sub(r"[^a-z0-9]+", "-", (name or "").strip().lower()).strip("-")
-    return s or "map"
-
-
-def read_manifest():
-    try:
-        with open(MANIFEST, encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, list) else []
-    except (OSError, ValueError):
-        return []
-
-
-def write_json(path, data):
-    # Atomic write: temp file in the same dir, then replace.
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        os.replace(tmp, path)
-    except BaseException:
-        try:
-            os.remove(tmp)
-        except OSError:
-            pass
-        raise
-
-
-def unique_filename(slug, taken):
-    """'<slug>.json', suffixed -2, -3, ... when the name is already taken."""
-    name = slug + ".json"
-    i = 2
-    while name in taken:
-        name = "%s-%d.json" % (slug, i)
-        i += 1
-    return name
+SYNC_CONFIG = os.path.join(SCRIPT_DIR, ".map-making-app-sync.json")
+MMA_SYNC = MapMakingSync(DATA_DIR, MANIFEST, SYNC_CONFIG)
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -104,11 +70,30 @@ class Handler(SimpleHTTPRequestHandler):
         if self._path() == "/api/health":
             self._send_json({"ok": True})
             return
+        if self._path() == "/api/mma-sync/status":
+            self._send_json(MMA_SYNC.public_status())
+            return
         super().do_GET()
 
     def do_POST(self):
         if self._path() == "/api/maps":
             self._create_map()
+        elif self._path() == "/api/maps/rescan":
+            self._rescan_maps()
+        elif self._path() == "/api/open-data-folder":
+            self._open_data_folder()
+        elif self._path() == "/api/mma-sync/run":
+            self._sync_run()
+        elif self._path() == "/api/mma-sync/cancel":
+            self._send_json(MMA_SYNC.cancel())
+        else:
+            self.send_error(404)
+
+    def do_PUT(self):
+        if self._path() == "/api/mma-sync/config":
+            self._sync_config()
+        elif self._path() == "/api/mma-sync/key":
+            self._sync_key()
         else:
             self.send_error(404)
 
@@ -119,7 +104,9 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(404)
 
     def do_DELETE(self):
-        if self._path().startswith("/api/maps/"):
+        if self._path() == "/api/mma-sync/key":
+            self._send_json(MMA_SYNC.forget_key())
+        elif self._path().startswith("/api/maps/"):
             self._delete_map()
         else:
             self.send_error(404)
@@ -129,22 +116,10 @@ class Handler(SimpleHTTPRequestHandler):
             body = self._read_body()
             name = (body.get("name") or "").strip() or "Untitled map"
             locations = body.get("locations")
-            if not isinstance(locations, list) or not locations:
-                self._send_json({"error": "no locations"}, 400)
-                return
-            entries = read_manifest()
-            taken = {e.get("file") for e in entries if isinstance(e, dict)}
-            fname = unique_filename(slugify(name), taken)
-            write_json(os.path.join(DATA_DIR, fname), locations)
-            entry = {
-                "id": uuid.uuid4().hex,
-                "name": name,
-                "file": fname,
-                "count": len(locations),
-            }
-            entries.append(entry)
-            write_json(MANIFEST, entries)
+            entry = map_store.create_local_map(DATA_DIR, MANIFEST, name, locations)
             self._send_json(entry)
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, 400)
         except Exception:  # noqa: BLE001
             self._send_json({"error": "create failed"}, 500)
 
@@ -152,47 +127,71 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             mid = self._map_id()
             name = (self._read_body().get("name") or "").strip()
-            if not name:
-                self._send_json({"error": "name required"}, 400)
-                return
-            entries = read_manifest()
-            entry = next((e for e in entries
-                          if isinstance(e, dict) and e.get("id") == mid), None)
-            if entry is None:
-                self._send_json({"error": "not found"}, 404)
-                return
-            old_file = entry.get("file")
-            taken = {e.get("file") for e in entries
-                     if isinstance(e, dict) and e is not entry}
-            new_file = unique_filename(slugify(name), taken)
-            if old_file and new_file != old_file:
-                old_path = os.path.join(DATA_DIR, old_file)
-                if os.path.exists(old_path):
-                    os.replace(old_path, os.path.join(DATA_DIR, new_file))
-            entry["name"] = name
-            entry["file"] = new_file
-            write_json(MANIFEST, entries)
+            entry = map_store.rename_local_map(DATA_DIR, MANIFEST, mid, name)
             self._send_json(entry)
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, 400)
+        except KeyError:
+            self._send_json({"error": "not found"}, 404)
+        except PermissionError as exc:
+            self._send_json({"error": str(exc)}, 409)
         except Exception:  # noqa: BLE001
             self._send_json({"error": "rename failed"}, 500)
 
     def _delete_map(self):
         try:
             mid = self._map_id()
-            entries = read_manifest()
-            entry = next((e for e in entries
-                          if isinstance(e, dict) and e.get("id") == mid), None)
-            if entry is not None:
-                f = entry.get("file")
-                if f:
-                    try:
-                        os.remove(os.path.join(DATA_DIR, f))
-                    except OSError:
-                        pass
-                write_json(MANIFEST, [e for e in entries if e is not entry])
+            map_store.delete_local_map(DATA_DIR, MANIFEST, mid)
             self._send_json({"ok": True})
+        except PermissionError as exc:
+            self._send_json({"error": str(exc)}, 409)
         except Exception:  # noqa: BLE001
             self._send_json({"error": "delete failed"}, 500)
+
+    def _rescan_maps(self):
+        try:
+            result = map_store.rescan(DATA_DIR, MANIFEST)
+            self._send_json({
+                "ok": True,
+                "maps": len(result["manifest"]["maps"]),
+                "folders": len(result["manifest"]["folders"]),
+                "ignored": result["ignored"],
+            })
+        except Exception:  # noqa: BLE001
+            self._send_json({"error": "refresh failed"}, 500)
+
+    def _open_data_folder(self):
+        try:
+            os.makedirs(DATA_DIR, exist_ok=True)
+            if os.name == "nt":
+                os.startfile(DATA_DIR)  # type: ignore[attr-defined]
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", DATA_DIR], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:
+                subprocess.Popen(["xdg-open", DATA_DIR], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self._send_json({"ok": True})
+        except Exception:  # noqa: BLE001
+            self._send_json({"error": "could not open data folder"}, 500)
+
+    def _sync_config(self):
+        try:
+            body = self._read_body()
+            self._send_json(MMA_SYNC.set_enabled(bool(body.get("enabled"))))
+        except Exception as exc:  # noqa: BLE001
+            self._send_json({"error": str(exc)}, 400)
+
+    def _sync_key(self):
+        try:
+            body = self._read_body()
+            self._send_json(MMA_SYNC.save_key(body.get("apiKey")))
+        except Exception as exc:  # noqa: BLE001
+            self._send_json({"error": str(exc)}, 400)
+
+    def _sync_run(self):
+        try:
+            self._send_json(MMA_SYNC.start(), 202)
+        except Exception as exc:  # noqa: BLE001
+            self._send_json({"error": str(exc)}, 400)
 
 
 def port_in_use(port):

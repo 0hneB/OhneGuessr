@@ -127,12 +127,37 @@
           <div class="setting">
             <div id="mapList" class="map-list"></div>
             <button id="exportMapBtn" type="button" class="settings-action map-export hidden">Export selected map</button>
+            <div class="map-library-actions">
+              <button id="openDataFolderBtn" type="button" class="settings-action">Open data folder</button>
+              <button id="refreshMapsBtn" type="button" class="settings-action">Refresh maps</button>
+            </div>
             <div id="dropZone" class="drop-zone">
               <b>Add a map</b>
               <small>Drop a Map Making App .json here or click</small>
             </div>
             <input id="fileInput" type="file" accept=".json,application/json" hidden />
             <div id="uploadInfo" class="settings-note"></div>
+          </div>
+          <div class="mma-sync-section">
+            <label class="setting-toggle mma-sync-toggle">
+              <span>Map Making App Sync</span>
+              <input id="mmaSyncToggle" type="checkbox" />
+              <span class="switch" aria-hidden="true"></span>
+            </label>
+            <div id="mmaSyncDetails" class="mma-sync-details hidden">
+              <div id="mmaSyncAccount" class="mma-sync-account"></div>
+              <form id="mmaKeyForm" class="mma-key-form">
+                <input id="mmaApiKey" type="password" autocomplete="off"
+                       placeholder="API key" aria-label="Map Making App API key" />
+                <button id="mmaKeySave" type="submit" class="settings-action">Save key</button>
+              </form>
+              <div class="mma-sync-actions">
+                <button id="mmaSyncNow" type="button" class="settings-action hidden">Sync now</button>
+                <button id="mmaKeyReplace" type="button" class="settings-action hidden">Replace key</button>
+                <button id="mmaKeyForget" type="button" class="settings-action danger-text hidden">Forget key</button>
+              </div>
+              <div id="mmaSyncStatus" class="settings-note mma-sync-status"></div>
+            </div>
           </div>
         </section>
       </div>

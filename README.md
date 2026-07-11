@@ -16,6 +16,7 @@
 - Multiple free map styles (OSM, Carto, Esri, satellite, terrain).
 - Distance-based scoring, per-round result screen, end-of-game summary map.
 - Adjustable rounds per game and per-location time limit.
+- Folder-based map library with optional Map Making App sync.
 
 ## Setup
 
@@ -52,7 +53,7 @@ python run/serve.py
 That serves the folder at `http://localhost:8000` and opens your browser. Stop it with Ctrl+C.
 
 > [!IMPORTANT]
-> `run/serve.py` does two jobs: it serves the static files, and it accepts uploads so maps you add in Settings get written into `data/`. A plain `python -m http.server` will serve the game fine but **map uploads, renames, and deletes won't work** without `run/serve.py`.
+> `run/serve.py` serves the game and manages files under `data/`. A plain `python -m http.server` can play cached maps, but uploads, refresh, folder opening, and Map Making App sync require `run/serve.py`.
 
 ## Usage
 
@@ -96,17 +97,17 @@ Settings open from the gear icon and are saved in your browser's `localStorage`,
 | Rounds per game | Unlimited, 5, 10, Custom | Custom takes any whole number |
 | Time limit | Unlimited, 2 min, 5 min, Custom | Per **location**. Custom is in minutes |
 | Scoring | World, Country | World uses a fixed world-map scale; Country scales to the loaded map's location bounds (stricter) |
-| Maps | — | Add, select, rename, export, or delete maps (see below) |
+| Maps | — | Add, organize, export, or synchronize maps (see below) |
 
 ## Maps
 
-A map is just a JSON file of locations. They live in [`data/`](data/), and [`data/maps.json`](data/maps.json) is the index that tells the game which maps exist.
+A map is a JSON file under [`data/`](data/). [`data/maps.json`](data/maps.json) indexes the files and their folders.
 
 ### Adding a map
 
 Bring your own maps ([Map Making App](https://map-making.app/) / [MapGenerator](https://map-g3nerator.vercel.app/)).
 
-Open **Settings → Maps → Add a map** and drop a `.json` file onto the box (or click to browse). The file is saved into `data/` + an entry is added to `data/maps.json`.
+Open **Settings → Maps → Add a map** and drop a `.json` file onto the box, or click to browse.
 
 Each row in the map list has a rename (✎) and delete (×) button:
 
@@ -115,8 +116,24 @@ Each row in the map list has a rename (✎) and delete (×) button:
 
 Use **Export selected map** beneath the list to download the active map's JSON file.
 
+### Organizing maps
+
+Use **Open data folder** to open `data/` in your file manager. Create folders or move and rename JSON files there, then press **Refresh maps**. The map tree mirrors the real folder structure.
+
+### Map Making App sync
+
+1. Open **Settings → Maps** and enable **Map Making App Sync**.
+2. Paste an API key from [map-making.app/keys](https://map-making.app/keys) and save it.
+3. The first sync starts immediately. Later updates run only when you press **Sync now**.
+
+Current, non-empty maps in active storage are cached under `data/map-making-app/`. Archived maps are skipped. Turning sync off stops every Map Making App request but keeps the cached maps playable.
+
+The API key is stored locally in the gitignored `run/.map-making-app-sync.json`. It is never written to `data/maps.json` or returned to the browser. Use **Forget key** to remove it.
+
 > [!CAUTION]
 > Deleting a map removes its file from `data/` permanently. There's no undo — keep a copy if you might want it back.
+
+Synced maps are restored by the next sync if their JSON file is deleted. Move or rename them inside `data/map-making-app/` and press **Refresh maps** to keep a local organization override.
 
 ### Map file format
 
@@ -129,7 +146,7 @@ A JSON array of location objects. Each needs `lat` and `lng`; `panoid`, `heading
 ```
 
 > [!NOTE]
-> You can just use your Map Making App JSON exports
+> Map Making App exports and exact API location JSON are both supported.
 
 ## Troubleshooting
 
