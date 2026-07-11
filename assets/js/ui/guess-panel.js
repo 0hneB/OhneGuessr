@@ -29,11 +29,10 @@ export function createGuessPanel(gmap) {
   // or the player guesses. loadRound/finishRound clear it.
   function setPinned(on) {
     $('guessPanel').classList.toggle('pinned', on);
-    $('mapPinBtn').setAttribute('aria-pressed', on ? 'true' : 'false');
     schedule();
   }
 
-  // Wire the panel's own interactions: relayout on expand, and the pin button.
+  // Wire the panel's own interactions and relayout it when its size changes.
   function setup() {
     const panel = $('guessPanel');
     panel.addEventListener('mouseenter', schedule);
@@ -45,11 +44,6 @@ export function createGuessPanel(gmap) {
       e.stopImmediatePropagation();
       setFullscreen(!isFullscreen());
     }, true);
-    $('mapPinBtn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      setPinned(!isPinned());
-      e.currentTarget.blur();
-    });
     window.addEventListener('resize', schedule);
   }
 
