@@ -180,22 +180,39 @@ async function startGame() {
   await loadRound();
 }
 
-// Snapshot the in-progress game so a refresh resumes the current round.
-function saveProgress() {
+// Snapshot the active game so a refresh restores either the round or its result.
+function saveProgress({ resultTrail = null } = {}) {
   if (!state.currentKey || !state.deck.length) return;
-  saveGame({
+  const snapshot = {
     map: state.currentKey,
     deck: state.deck,
     round: state.round,
     total: state.total,
     results: state.results,
     unlimited: state.unlimited,
-    rounds: state.unlimited ? null : state.rounds
-  });
+    rounds: state.unlimited ? null : state.rounds,
+    phase: state.phase
+  };
+  if (resultTrail) snapshot.resultTrail = resultTrail;
+  saveGame(snapshot);
 }
 
-// Restore a saved game for the loaded map and show its current round. False if
-// there's nothing valid to resume (caller then starts fresh).
+const isPoint = (point) =>
+  Number.isFinite(point?.lat) && Number.isFinite(point?.lng);
+
+function cleanSavedTrail(value) {
+  if (!Array.isArray(value)) return null;
+  const trail = value
+    .filter(Array.isArray)
+    .map((segment) => segment
+      .filter(isPoint)
+      .map((point) => ({ lat: point.lat, lng: point.lng })))
+    .filter((segment) => segment.length);
+  return trail.length ? trail : null;
+}
+
+// Restore a saved game for the loaded map and show its round or completed result.
+// False means there is nothing valid to resume and the caller should start fresh.
 async function tryResume() {
   cancelRoundPreload();
   const snap = loadGame();
@@ -216,6 +233,22 @@ async function tryResume() {
   state.results = Array.isArray(snap.results) ? snap.results : [];
   state.phase = GAME_PHASE.LOADING;
   setHidden('final', true);
+
+  const savedResult = snap.phase === GAME_PHASE.RESULT ? state.results[round] : null;
+  const validResult = savedResult &&
+    isPoint(savedResult.actual) &&
+    (!savedResult.guess || isPoint(savedResult.guess)) &&
+    Number.isFinite(savedResult.points);
+  if (validResult) {
+    state.phase = GAME_PHASE.RESULT;
+    state.current = state.deck[round] || savedResult.actual;
+    guessPanel.setFullscreen(false);
+    guessPanel.setPinned(false);
+    roundTimer.stop();
+    showRoundResult(savedResult, cleanSavedTrail(snap.resultTrail));
+    return true;
+  }
+
   await loadRound();
   return true;
 }
@@ -374,7 +407,7 @@ function finishRound() {
   const distKm = guess ? haversineKm(guess, state.current) : null;
   const points = distKm == null ? 0 : scoreFor(distKm, effectiveScaleKm());
   state.total += points;
-  state.results.push({
+  const result = {
     guess: guess ? { lat: guess.lat, lng: guess.lng } : null,
     actual: {
       lat: state.current.lat,
@@ -382,15 +415,24 @@ function finishRound() {
       panoid: state.current.panoid || null
     },
     distKm, points
-  });
+  };
+  state.results.push(result);
+  saveProgress({ resultTrail: trail });
+  showRoundResult(result, trail);
+}
 
+function showRoundResult(result, trail = null) {
+  const { guess, actual, distKm, points } = result;
+  $('round').textContent = String(state.round + 1);
+  updateRoundLimitDisplay();
   $('total').textContent = String(state.total);
   $('resultDist').textContent = distKm == null ? '—' : formatDistance(distKm);
   $('resultPoints').textContent = String(points);
-  $('nextBtn').textContent = state.round + 1 >= state.rounds ? 'See results' : 'Next';
+  $('nextBtn').textContent = hasNextRound() ? 'Next' : 'See results';
 
+  setLoading(false);
   setHidden('resultScreen', false);
-  resultMap.show(guess, state.current, trail);
+  resultMap.show(guess, actual, trail);
   scheduleNextRoundPreload();
 }
 
