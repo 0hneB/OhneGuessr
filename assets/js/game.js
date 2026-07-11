@@ -5,9 +5,9 @@ import { GuessMap, ResultMap, SummaryMap } from './ui/map.js';
 import { haversineKm, scoreFor, formatDistance, mapDiagonalKm } from './core/scoring.js';
 import { CompassHUD } from './ui/compass.js';
 import { listMaps } from './core/maps.js';
-import { $, setLoading, isSettingsOpen, isHidden, setHidden } from './core/dom.js';
+import { $, setLoading, isSettingsOpen, setHidden } from './core/dom.js';
 import { shuffle, randomLocation } from './core/locations.js';
-import { state, settings } from './core/state.js';
+import { GAME_PHASE, state, settings } from './core/state.js';
 import { RoundTimer } from './ui/round-timer.js';
 import { Keybindings } from './ui/keybindings.js';
 import { createMapLibrary } from './ui/map-library.js';
@@ -23,6 +23,11 @@ const effectiveScaleKm = () =>
 // 'unlimited' -> Infinity (the game never ends on its own).
 const roundsPerGame = () =>
   settings.rounds === 'unlimited' ? Infinity : (parseInt(settings.rounds, 10) || CONFIG.ROUNDS);
+const ACTIVE_GAME_PHASES = new Set([
+  GAME_PHASE.LOADING,
+  GAME_PHASE.GUESSING,
+  GAME_PHASE.RESULT
+]);
 
 let viewer, gmap, resultMap, summaryMap, compass, guessPanel;
 const panoLoad = { controller: null };
@@ -31,7 +36,7 @@ const panoLoad = { controller: null };
 const roundTimer = new RoundTimer({
   getSeconds: () => (settings.timer === 'unlimited' ? 0 : (parseInt(settings.timer, 10) || 0)),
   isPaused: isSettingsOpen,
-  isGuessed: () => state.guessed,
+  isActive: () => state.phase === GAME_PHASE.GUESSING,
   onExpire: () => finishRound() // forfeit
 });
 
@@ -65,6 +70,7 @@ function updateRoundLimitDisplay() {
 
 async function startGame() {
   roundTimer.stop();
+  state.phase = GAME_PHASE.LOADING;
   setHidden('resultScreen', true);
   setHidden('final', true);
   const n = roundsPerGame();
@@ -111,7 +117,7 @@ async function tryResume() {
   state.round = round;
   state.total = Number(snap.total) || 0;
   state.results = Array.isArray(snap.results) ? snap.results : [];
-  state.guessed = false;
+  state.phase = GAME_PHASE.LOADING;
   setHidden('final', true);
   await loadRound();
   return true;
@@ -121,7 +127,7 @@ async function tryResume() {
 // trims the upcoming deck in place, keeping the played and current rounds.
 function applyRoundLimitChange() {
   if (!state.all.length) return;
-  const inGame = state.current && isHidden('final');
+  const inGame = ACTIVE_GAME_PHASES.has(state.phase);
   if (!inGame) { startGame(); return; }
 
   const nRaw = roundsPerGame();
@@ -146,7 +152,7 @@ function applyRoundLimitChange() {
 
   updateRoundLimitDisplay();
   // Result screen open: its Next/See-results label may have flipped.
-  if (!isHidden('resultScreen')) {
+  if (state.phase === GAME_PHASE.RESULT) {
     $('nextBtn').textContent =
       state.unlimited || state.round + 1 < state.rounds ? 'Next' : 'See results';
   }
@@ -154,9 +160,9 @@ function applyRoundLimitChange() {
 
 async function loadRound() {
   const load = beginPanoLoad();
+  state.phase = GAME_PHASE.LOADING;
   guessPanel.setFullscreen(false);
   guessPanel.setPinned(false);
-  state.guessed = false;
   // Endless mode: reshuffle when the deck runs out.
   if (state.unlimited && state.round >= state.deck.length) {
     state.deck = state.deck.concat(shuffle(state.all));
@@ -182,36 +188,31 @@ async function loadRound() {
   }
   if (!isPanoLoadActive(load, state.current)) return;
   if (!ok) {
+    state.phase = GAME_PHASE.ERROR;
     setLoading(true, 'Could not find Street View coverage for this round.');
     return;
   }
   // Imported spots carry a heading; otherwise face north.
   viewer.setDefaultView(state.current.heading ?? 0, state.current.pitch ?? 0);
+  state.phase = GAME_PHASE.GUESSING;
   setLoading(false);
   saveProgress(); // persist the (resolved) round so a refresh resumes here
   roundTimer.start(); // start after load so loading time isn't counted
 }
 
 function onPlaceGuess() {
-  if (!state.guessed) $('guessBtn').disabled = false;
+  if (state.phase === GAME_PHASE.GUESSING) $('guessBtn').disabled = false;
 }
 
-function isNormalGuessScreen() {
-  return !state.guessed &&
-    state.current &&
-    !isSettingsOpen() &&
-    isHidden('emptyState') &&
-    isHidden('resultScreen') &&
-    isHidden('final') &&
-    isHidden('loading');
-}
+const canInteractWithGuess = () =>
+  state.phase === GAME_PHASE.GUESSING && !isSettingsOpen();
 
 // What each shortcut does; names match keybindings.js.
 const KEY_ACTIONS = {
   submitOrNext: () => {
-    if (!isHidden('final')) startGame();
-    else if (state.guessed) nextRound();
-    else if (gmap.guess) submitGuess();
+    if (state.phase === GAME_PHASE.FINAL) startGame();
+    else if (state.phase === GAME_PHASE.RESULT) nextRound();
+    else if (state.phase === GAME_PHASE.GUESSING && gmap.guess) submitGuess();
   },
   zoomIn: () => viewer.zoomFull(1),
   zoomOut: () => viewer.zoomFull(-1),
@@ -224,9 +225,11 @@ const KEY_ACTIONS = {
     else viewer.faceNorth();
   },
   toggleMapFullscreen: () => {
-    if (isNormalGuessScreen()) guessPanel.setFullscreen(!guessPanel.isFullscreen());
+    if (canInteractWithGuess()) guessPanel.setFullscreen(!guessPanel.isFullscreen());
   },
-  hideHud: () => { if (!state.guessed) document.body.classList.toggle('ui-hidden'); }
+  hideHud: () => {
+    if (state.phase === GAME_PHASE.GUESSING) document.body.classList.toggle('ui-hidden');
+  }
 };
 
 const keybindings = new Keybindings({
@@ -237,15 +240,16 @@ const keybindings = new Keybindings({
 const { renderMapList, selectMap, showNoMaps, setupUpload } = createMapLibrary({ startGame, tryResume });
 
 function submitGuess() {
-  if (state.guessed) { nextRound(); return; }
+  if (state.phase === GAME_PHASE.RESULT) { nextRound(); return; }
+  if (state.phase !== GAME_PHASE.GUESSING) return;
   if (!gmap.guess) return;
   finishRound();
 }
 
 // Score and reveal the round. A null guess (timeout) is a forfeit, 0 points.
 function finishRound() {
-  if (state.guessed) return;
-  state.guessed = true;
+  if (state.phase !== GAME_PHASE.GUESSING) return;
+  state.phase = GAME_PHASE.RESULT;
   guessPanel.setFullscreen(false);
   guessPanel.setPinned(false);
   roundTimer.stop();
@@ -274,6 +278,7 @@ function finishRound() {
 }
 
 function nextRound() {
+  if (state.phase !== GAME_PHASE.RESULT) return;
   setHidden('resultScreen', true);
   if (!state.unlimited && state.round + 1 >= state.rounds) { showFinal(); return; }
   state.round++;
@@ -295,6 +300,7 @@ function renderFinalRounds() {
 }
 
 function showFinal() {
+  state.phase = GAME_PHASE.FINAL;
   clearGame(); // game over: nothing left to resume
   const max = state.rounds * CONFIG.SCORE_MAX;
   $('finalScore').textContent = `${state.total} / ${max}`;
@@ -338,6 +344,7 @@ async function init() {
     if (start) await selectMap(start.key, { resume: true });
     else showNoMaps();
   } catch (err) {
+    state.phase = GAME_PHASE.ERROR;
     setLoading(true, `Could not load maps: ${err.message}. ` +
       `Serve over http:// (use run/serve.bat) so data/ can be fetched.`);
   }

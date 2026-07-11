@@ -2,7 +2,7 @@
 // Wires widgets to `settings` and calls back into the game for side effects.
 import { $, setUploadMessage, isSettingsOpen, openSettings, closeSettings } from '../core/dom.js';
 import { applyAccentColor, DEFAULT_ACCENT_COLOR, saveSettings, MAP_STYLES } from '../core/settings.js';
-import { state, settings } from '../core/state.js';
+import { GAME_PHASE, state, settings } from '../core/state.js';
 
 // Assigned by setupSettingsTabs; lets the map-library error flow jump to Maps.
 export let selectSettingsTab = () => {};
@@ -178,7 +178,7 @@ export function setupSettingsUI({
     toInput: (sec) => String(+(parseInt(sec, 10) / 60).toFixed(2)),
     fromInput: (raw) => { const m = parseFloat(raw); return m > 0 ? String(Math.round(m * 60)) : null; },
     onCommit: () => {
-      if (state.current && !state.guessed) roundTimer.start(); // re-arm the live round
+      if (state.phase === GAME_PHASE.GUESSING) roundTimer.start(); // re-arm the live round
       else { roundTimer.stop(); $('timerBox').classList.add('hidden'); }
     }
   });
