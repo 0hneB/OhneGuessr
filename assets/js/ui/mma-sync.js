@@ -73,7 +73,11 @@ export function setupMmaSync({ reloadLibrary }) {
     details.classList.toggle('hidden', !enabled || !available);
     keyForm.classList.toggle('hidden', hasKey && !replacingKey);
     accountRow.classList.toggle('hidden', !hasKey);
-    replaceButton.classList.toggle('hidden', !hasKey || replacingKey);
+    replaceButton.classList.toggle('hidden', !hasKey);
+    const replaceLabel = replacingKey ? 'Cancel key replacement' : 'Replace key';
+    replaceButton.setAttribute('aria-label', replaceLabel);
+    replaceButton.setAttribute('aria-pressed', String(replacingKey));
+    replaceButton.title = replaceLabel;
     forgetButton.classList.toggle('hidden', !hasKey);
     syncButton.classList.toggle('hidden', !hasKey);
     syncButton.disabled = running;
@@ -83,6 +87,7 @@ export function setupMmaSync({ reloadLibrary }) {
     saveButton.disabled = running;
     account.textContent = status?.user?.username ? `Connected as ${status.user.username}` : '';
     setStatusText(statusMessage(status || {}), Boolean(status?.error));
+    statusLine.classList.toggle('hidden', !enabled || !available);
     schedulePoll();
   }
 
@@ -98,11 +103,11 @@ export function setupMmaSync({ reloadLibrary }) {
       toggle.disabled = true;
       toggle.checked = false;
       toggleLabel.classList.add('disabled');
-      details.classList.remove('hidden');
-      keyForm.classList.add('hidden');
+      details.classList.add('hidden');
       accountRow.classList.add('hidden');
       account.textContent = '';
       setStatusText('Start OhneGuessr with run/serve.py to use sync.', true);
+      statusLine.classList.remove('hidden');
     }
   }
 
@@ -137,9 +142,10 @@ export function setupMmaSync({ reloadLibrary }) {
   });
 
   replaceButton.addEventListener('click', () => {
-    replacingKey = true;
+    replacingKey = !replacingKey;
+    if (!replacingKey) keyInput.value = '';
     render();
-    keyInput.focus();
+    if (replacingKey) keyInput.focus();
   });
 
   forgetButton.addEventListener('click', async () => {

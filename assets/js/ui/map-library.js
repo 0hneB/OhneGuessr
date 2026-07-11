@@ -16,17 +16,6 @@ const MMA_ROOT = 'map-making-app';
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const ICON_PATHS = {
-  close: '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>',
-  chevron: '<path d="m9 18 6-6-6-6"></path>',
-  folder: '<path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path>'
-};
-function svgIcon(name) {
-  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    ICON_PATHS[name] + '</svg>';
-}
-
 const parentFolder = (path) => {
   const parts = path.split('/');
   parts.pop();
@@ -109,8 +98,8 @@ export function createMapLibrary({ startGame, tryResume }) {
       button.className = 'map-folder-main';
       button.setAttribute('aria-expanded', String(open));
       button.innerHTML =
-        `<span class="map-folder-chevron">${svgIcon('chevron')}</span>` +
-        `<span class="map-folder-icon">${svgIcon('folder')}</span>` +
+        '<span class="svg-icon chevron-icon map-folder-chevron" aria-hidden="true"></span>' +
+        '<span class="svg-icon folder-icon map-folder-icon" aria-hidden="true"></span>' +
         `<span class="map-folder-name">${escapeHtml(folderName(folder))}</span>` +
         `<span class="map-folder-count">${descendantCount(folder)}</span>`;
       button.addEventListener('click', () => {
@@ -157,7 +146,8 @@ export function createMapLibrary({ startGame, tryResume }) {
         const del = document.createElement('button');
         del.className = 'map-row-del';
         del.title = 'Delete map';
-        del.innerHTML = svgIcon('close');
+        del.setAttribute('aria-label', 'Delete map');
+        del.innerHTML = '<span class="svg-icon close-icon" aria-hidden="true"></span>';
         del.addEventListener('click', (event) => {
           event.stopPropagation();
           removeMap(map);
