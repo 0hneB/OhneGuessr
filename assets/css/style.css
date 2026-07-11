@@ -401,7 +401,7 @@ body.empty-mode #guessPanel { display: none !important; }
 .settings-body {
   height: clamp(340px, 62vh, 520px);
   overflow-y: auto;
-  padding: 18px 22px 22px;
+  padding: 18px 22px 12px;
 }
 .settings-panel[hidden] { display: none; }
 .settings-panel .setting:last-child { margin-bottom: 0; }
@@ -720,7 +720,7 @@ body.empty-mode #guessPanel { display: none !important; }
   max-height: 248px;
   overflow-y: auto;
   margin: 0 -18px 10px 0;
-  padding-right: 18px;
+  padding-right: 6px;
 }
 .map-folder-row {
   --tree-depth: 0;
