@@ -19,6 +19,7 @@ export function setupMmaSync({ reloadLibrary }) {
   const forgetButton = $('mmaKeyForget');
   const syncButton = $('mmaSyncNow');
   const account = $('mmaSyncAccount');
+  const accountRow = account.closest('.mma-sync-account-row');
   const statusLine = $('mmaSyncStatus');
   let status = null;
   let pollTimer = 0;
@@ -71,11 +72,14 @@ export function setupMmaSync({ reloadLibrary }) {
     toggleLabel.classList.toggle('disabled', !available);
     details.classList.toggle('hidden', !enabled || !available);
     keyForm.classList.toggle('hidden', hasKey && !replacingKey);
+    accountRow.classList.toggle('hidden', !hasKey);
     replaceButton.classList.toggle('hidden', !hasKey || replacingKey);
     forgetButton.classList.toggle('hidden', !hasKey);
     syncButton.classList.toggle('hidden', !hasKey);
     syncButton.disabled = running;
-    syncButton.textContent = running ? 'Syncing...' : 'Sync now';
+    const syncLabel = running ? 'Syncing...' : 'Sync now';
+    syncButton.setAttribute('aria-label', syncLabel);
+    syncButton.title = syncLabel;
     saveButton.disabled = running;
     account.textContent = status?.user?.username ? `Connected as ${status.user.username}` : '';
     setStatusText(statusMessage(status || {}), Boolean(status?.error));
@@ -96,6 +100,7 @@ export function setupMmaSync({ reloadLibrary }) {
       toggleLabel.classList.add('disabled');
       details.classList.remove('hidden');
       keyForm.classList.add('hidden');
+      accountRow.classList.add('hidden');
       account.textContent = '';
       setStatusText('Start OhneGuessr with run/serve.py to use sync.', true);
     }

@@ -17,7 +17,6 @@ const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const ICON_PATHS = {
-  edit: '<path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>',
   close: '<path d="M18 6 6 18"></path><path d="m6 6 12 12"></path>',
   chevron: '<path d="m9 18 6-6-6-6"></path>',
   folder: '<path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"></path>'
@@ -145,9 +144,10 @@ export function createMapLibrary({ startGame, tryResume }) {
 
       if (!map.managed) {
         const edit = document.createElement('button');
-        edit.className = 'map-row-edit';
+        edit.className = 'icon-action map-row-edit';
         edit.title = 'Rename map';
-        edit.innerHTML = svgIcon('edit');
+        edit.setAttribute('aria-label', 'Rename map');
+        edit.innerHTML = '<span class="svg-icon pencil-icon" aria-hidden="true"></span>';
         edit.addEventListener('click', (event) => {
           event.stopPropagation();
           beginRename(map, main);

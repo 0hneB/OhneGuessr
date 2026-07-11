@@ -99,6 +99,7 @@ function setupAppFullscreenToggle(scheduleGuessMapLayout) {
 function setupSettingsTabs() {
   const tabs = [...document.querySelectorAll('.settings-tab')];
   const panels = [...document.querySelectorAll('.settings-panel')];
+  const mapActions = document.querySelector('.map-library-actions');
   selectSettingsTab = (name) => {
     for (const t of tabs) {
       const on = t.dataset.tab === name;
@@ -110,6 +111,7 @@ function setupSettingsTabs() {
       p.classList.toggle('active', on);
       p.hidden = !on;
     }
+    mapActions.classList.toggle('hidden', name !== 'maps');
   };
   for (const t of tabs) t.addEventListener('click', () => selectSettingsTab(t.dataset.tab));
 }
