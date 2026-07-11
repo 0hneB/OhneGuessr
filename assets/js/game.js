@@ -4,13 +4,13 @@ import { OpenSvViewer, loadOpenSV } from './ui/pano.js';
 import { GuessMap, ResultMap, SummaryMap } from './ui/map.js';
 import { haversineKm, scoreFor, formatDistance, mapDiagonalKm } from './core/scoring.js';
 import { CompassHUD } from './ui/compass.js';
-import { listMaps } from './core/maps.js';
 import { $, setLoading, isSettingsOpen, setHidden } from './core/dom.js';
 import { shuffle, randomLocation } from './core/locations.js';
 import { GAME_PHASE, state, settings } from './core/state.js';
 import { RoundTimer } from './ui/round-timer.js';
 import { Keybindings } from './ui/keybindings.js';
 import { createMapLibrary } from './ui/map-library.js';
+import { setupMmaSync } from './ui/mma-sync.js';
 import { setupSettingsUI } from './ui/settings-panel.js';
 import { createGuessPanel } from './ui/guess-panel.js';
 import { saveGame, loadGame, clearGame } from './core/persist.js';
@@ -346,7 +346,12 @@ const keybindings = new Keybindings({
   isPanelOpen: isSettingsOpen
 });
 
-const { renderMapList, selectMap, showNoMaps, setupUpload } = createMapLibrary({ startGame, tryResume });
+const {
+  reloadLibrary,
+  selectMap,
+  showNoMaps,
+  setupMapLibrary
+} = createMapLibrary({ startGame, tryResume });
 
 function submitGuess() {
   if (state.phase === GAME_PHASE.RESULT) { nextRound(); return; }
@@ -448,7 +453,8 @@ async function init() {
     keybindings,
     scheduleGuessMapLayout: guessPanel.schedule
   });
-  setupUpload();
+  setupMapLibrary();
+  setupMmaSync({ reloadLibrary });
 
   $('guessBtn').addEventListener('click', (e) => { submitGuess(); e.currentTarget.blur(); });
   $('nextBtn').addEventListener('click', (e) => { nextRound(); e.currentTarget.blur(); });
@@ -461,8 +467,7 @@ async function init() {
   });
 
   try {
-    state.maps = await listMaps();
-    renderMapList();
+    await reloadLibrary();
     const saved = state.maps.find((m) => m.key === settings.currentMap);
     const start = saved || state.maps[0];
     if (start) await selectMap(start.key, { resume: true });

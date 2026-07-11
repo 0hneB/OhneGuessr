@@ -1,14 +1,25 @@
-// Accepts a Map Making App .json ({ customCoordinates }) or a plain array.
-// Street View resolves the pano at round load, so only lat/lng are required.
+// Accepts flat exports, { customCoordinates }, or the exact nested JSON returned
+// by the Map Making App API. API flags preserve the map maker's coverage intent.
 export function normalizeLocations(json) {
   const arr = Array.isArray(json) ? json : (json && json.customCoordinates) || [];
   return arr
-    .map((e) => ({
-      lat: e.lat, lng: e.lng,
-      heading: e.heading,
-      pitch: e.pitch,
-      panoid: e.panoid || e.panoId || null
-    }))
+    .filter((e) => e && typeof e === 'object')
+    .filter((e) => !(Number.isInteger(e?.flags) && (e.flags & 2)))
+    .map((e) => {
+      const nested = e?.location && typeof e.location === 'object';
+      const hasApiFlags = nested && Number.isInteger(e.flags);
+      return {
+        lat: nested ? e.location.lat : e.lat,
+        lng: nested ? e.location.lng : e.lng,
+        heading: e.heading,
+        pitch: e.pitch,
+        zoom: e.zoom,
+        // An API pano ID is only authoritative when LoadAsPanoId (bit 1) is set.
+        panoid: hasApiFlags
+          ? ((e.flags & 1) && e.panoId ? e.panoId : null)
+          : (e.panoid || e.panoId || null)
+      };
+    })
     .filter((e) => Number.isFinite(e.lat) && Number.isFinite(e.lng));
 }
 
