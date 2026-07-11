@@ -38,6 +38,7 @@ Clone the repo, or download the [ZIP](https://github.com/0hneB/OhneGuessr/archiv
 
 ```bash
 git clone https://github.com/0hneB/OhneGuessr.git
+cd OhneGuessr
 ```
 
 ### Windows
