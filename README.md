@@ -97,7 +97,7 @@ Settings open from the gear icon and are saved in your browser's `localStorage`,
 | Rounds per game | Unlimited, 5, 10, Custom | Custom takes any whole number |
 | Time limit | Unlimited, 2 min, 5 min, Custom | Per **location**. Custom is in minutes |
 | Scoring | World, Country | World uses a fixed world-map scale; Country scales to the loaded map's location bounds (stricter) |
-| Maps | — | Add, organize, export, or synchronize maps (see below) |
+| Maps | — | Add, organize, or synchronize maps (see below) |
 
 ## Maps
 
@@ -113,8 +113,6 @@ Each row in the map list has a rename (✎) and delete (×) button:
 
 - **Rename** changes the display name *and* renames the file on disk.
 - **Delete** removes the map from the list *and* deletes the file from `data/`.
-
-Use **Export selected map** beneath the list to download the active map's JSON file.
 
 ### Organizing maps
 
