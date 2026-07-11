@@ -1,7 +1,7 @@
 // Settings → Maps: list, select, rename, delete, export, upload, and recovery when a
 // chosen map can't load. Calls back into the game to start a round.
 import { $, setLoading, setEmptyState, setUploadMessage, openSettings, closeSettings } from '../core/dom.js';
-import { state, settings } from '../core/state.js';
+import { GAME_PHASE, state, settings } from '../core/state.js';
 import { saveSettings } from '../core/settings.js';
 import { listMaps, getLocations, addUserMap, deleteUserMap, renameUserMap } from '../core/maps.js';
 import { normalizeLocations, mapNameFrom } from '../core/locations.js';
@@ -98,6 +98,7 @@ export function createMapLibrary({ startGame, tryResume }) {
   async function selectMap(key, opts = {}) {
     const item = state.maps.find((m) => m.key === key) || state.maps[0];
     if (!item) { showNoMaps(); return; }
+    state.phase = GAME_PHASE.LOADING;
     setEmptyState(false);
     state.currentKey = item.key;
     settings.currentMap = item.key;
@@ -125,6 +126,7 @@ export function createMapLibrary({ startGame, tryResume }) {
   // Drop the player into Settings when a map can't load, re-syncing the list so a
   // map deleted on disk disappears instead of trapping them behind the overlay.
   async function recoverToSettings(message) {
+    state.phase = GAME_PHASE.ERROR;
     setLoading(false);
     setEmptyState(false);
     state.currentKey = null;
@@ -148,6 +150,7 @@ export function createMapLibrary({ startGame, tryResume }) {
 
   // No maps: show the upload prompt instead of a blocked loading overlay.
   function showNoMaps() {
+    state.phase = GAME_PHASE.EMPTY;
     setLoading(false);
     state.currentKey = null;
     renderMapList();
