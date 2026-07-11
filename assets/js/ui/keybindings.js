@@ -11,6 +11,7 @@ const ACTION_LABELS = {
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
   resetView: 'Reset view',
+  checkpoint: 'Set / return checkpoint',
   faceNorth: 'Face north',
   toggleMapFullscreen: 'Toggle map fullscreen',
   hideHud: 'Hide HUD'
@@ -36,7 +37,7 @@ function codeLabel(code) {
 
 export class Keybindings {
   constructor({ actions, isPanelOpen }) {
-    this.actions = actions;         // { action: fn }
+    this.actions = actions;         // { action: fn(keyboardEvent) }
     this.isPanelOpen = isPanelOpen; // don't hijack keys while settings is open
     this.capturingKeyFor = null;
     this.captureHandler = null;
@@ -66,7 +67,7 @@ export class Keybindings {
     const action = this.map[e.code];
     if (!action || !this.actions[action]) return;
     if (e.code === 'Space') e.preventDefault(); // don't let a focused button grab it
-    this.actions[action]();
+    this.actions[action](e);
   }
 
   // Bind an action to a code (null clears), removing it from any other action.

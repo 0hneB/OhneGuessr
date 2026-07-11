@@ -236,19 +236,29 @@ export class ResultMap extends RevealMap {
     invalidateSizeBurst(this.map);
   }
 
-  // The path the player walked from the spawn (Moving mode). A single point means
-  // they never moved, so nothing to draw. Extends pts so the walk fits in view.
+  // Paths walked from the spawn (Moving mode). Checkpoint returns start a new path
+  // so every explored branch is kept without drawing the teleport between them.
   drawTrail(trail, pts) {
-    if (!trail || trail.length < 2) return;
-    const line = trail.map((p) => [p.lat, p.lng]);
-    this.layers.push(L.polyline(line, {
-      className: 'movement-trail', weight: 3, opacity: 0.9, lineJoin: 'round'
-    }).addTo(this.map));
-    this.layers.push(L.circleMarker(line[line.length - 1], {
+    if (!trail?.length) return;
+    const lines = trail
+      .map((segment) => segment.map((p) => [p.lat, p.lng]))
+      .filter((segment) => segment.length);
+    if (!lines.some((segment) => segment.length > 1)) return;
+
+    for (const line of lines) {
+      if (line.length > 1) {
+        this.layers.push(L.polyline(line, {
+          className: 'movement-trail', weight: 3, opacity: 0.9, lineJoin: 'round'
+        }).addTo(this.map));
+      }
+      for (const point of line) pts.push(point);
+    }
+
+    const end = lines[lines.length - 1].at(-1);
+    this.layers.push(L.circleMarker(end, {
       className: 'movement-trail', radius: 4, weight: 2,
       fillColor: '#ffffff', fillOpacity: 1
     }).addTo(this.map));
-    for (const p of line) pts.push(p);
   }
 }
 

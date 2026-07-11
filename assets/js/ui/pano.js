@@ -55,8 +55,12 @@ export class OpenSvViewer {
     this.defaultPitch = 0;
     this._tweenId = 0;
     this._startPanoId = null;   // the round's origin pano, so resetView can walk back
-    this._trail = [];           // {lat,lng} positions walked this round (Moving mode)
+    this._trail = [];           // [{lat,lng}][] paths walked this round (Moving mode)
     this._trailActive = false;  // preparation must never look like player movement
+    this._checkpoint = null;
+    this._checkpointReturning = false;
+    this._cancelCheckpointReturn = null;
+    this._roundToken = 0;
     this.mode = 'moving';       // 'moving' | 'nm' | 'nmpz'; set via setMode()
 
     // Street View mutates the inline style of the element it's given (position, etc.),
@@ -92,13 +96,15 @@ export class OpenSvViewer {
     });
     // Record each step so the result map can show where the player walked.
     this.pano.addListener('position_changed', () => {
-      if (!this._trailActive) return;
+      if (!this._trailActive || this._checkpointReturning) return;
       const p = this.pano.getPosition?.();
       if (!p) return;
       const point = { lat: p.lat(), lng: p.lng() };
-      const last = this._trail[this._trail.length - 1];
+      let segment = this._trail[this._trail.length - 1];
+      if (!segment) { segment = []; this._trail.push(segment); }
+      const last = segment[segment.length - 1];
       if (last && last.lat === point.lat && last.lng === point.lng) return;
-      this._trail.push(point);
+      segment.push(point);
     });
     // Keyboard walking only in moving mode.
     host.addEventListener('keydown', (e) => {
@@ -112,6 +118,12 @@ export class OpenSvViewer {
     this.mode = mode === 'nm' || mode === 'nmpz' ? mode : 'moving';
     const moving = this.mode === 'moving';
     const nmpz = this.mode === 'nmpz';
+    if (!moving) {
+      this._clearCheckpoint();
+      this._trailActive = false;
+    } else if (this._trail.length) {
+      this._trailActive = true;
+    }
     this.pano.setOptions({ clickToGo: moving, linksControl: moving, scrollwheel: !nmpz });
     this._lock.style.pointerEvents = nmpz ? 'auto' : 'none';
   }
@@ -135,18 +147,56 @@ export class OpenSvViewer {
   getHeading() { return this.pano.getPov().heading; }
   get lat() { return this.pano.getPov().pitch; }
 
-  // Positions walked this round (≥2 points only when the player actually moved).
-  getTrail() { return this._trail.slice(); }
+  // Separate walked paths; a checkpoint return starts a fresh segment.
+  getTrail() { return this._trail.map((segment) => segment.map((point) => ({ ...point }))); }
 
   // Turn a prepared panorama into the active round. Preparation may happen while
   // the result screen covers the viewer, so reset the trail and focus only now.
   beginRound(loc) {
+    this._clearCheckpoint();
     this.setDefaultView(loc.heading ?? 0, loc.pitch ?? 0);
     this._trail = [];
     const p = this.pano.getPosition?.();
-    if (p) this._trail.push({ lat: p.lat(), lng: p.lng() });
+    if (p) this._trail.push([{ lat: p.lat(), lng: p.lng() }]);
     this._trailActive = true;
     if (this.mode !== 'nmpz') this.pano.focus?.();
+  }
+
+  // C alternates between saving the exact current view and returning to it once.
+  toggleCheckpoint() {
+    if (this.mode !== 'moving' || !this._trailActive || this._checkpointReturning) return;
+
+    if (!this._checkpoint) {
+      const panoid = this.pano.getPano?.();
+      const position = this.pano.getPosition?.();
+      const pov = this.pano.getPov?.();
+      if (!panoid || !position || !pov) return;
+      this._checkpoint = {
+        panoid,
+        position: { lat: position.lat(), lng: position.lng() },
+        pov: { heading: pov.heading ?? 0, pitch: pov.pitch ?? 0 },
+        zoom: this.pano.getZoom?.() ?? 1
+      };
+      return;
+    }
+
+    const checkpoint = this._checkpoint;
+    const token = this._roundToken;
+    this._checkpointReturning = true;
+    this._returnToCheckpoint(checkpoint).then((ok) => {
+      if (token !== this._roundToken) return;
+      this._cancelCheckpointReturn = null;
+      this._checkpointReturning = false;
+      const p = this.pano.getPosition?.();
+      const point = p
+        ? { lat: p.lat(), lng: p.lng() }
+        : { ...checkpoint.position };
+      this._trail.push([point]);
+      if (!ok) return; // keep the checkpoint so C can retry
+
+      this._checkpoint = null;
+      this.pano.focus?.();
+    });
   }
 
   // faceNorth/zoom pan or zoom the view, so they no-op in nmpz (the locked mode).
@@ -161,6 +211,7 @@ export class OpenSvViewer {
   // Resolve one exact pano before touching the shared viewer. A failed lookup may
   // finish late, but its promise can no longer move a newer replacement location.
   showLocation(loc, { signal, focus = true } = {}) {
+    this._clearCheckpoint();
     this._trailActive = false;
     this._trail = [];
 
@@ -228,6 +279,56 @@ export class OpenSvViewer {
       } catch {
         finish(false);
       }
+    });
+  }
+
+  _clearCheckpoint() {
+    this._roundToken += 1;
+    const cancel = this._cancelCheckpointReturn;
+    this._cancelCheckpointReturn = null;
+    this._checkpoint = null;
+    this._checkpointReturning = false;
+    cancel?.();
+  }
+
+  _returnToCheckpoint(checkpoint) {
+    this._cancelTween();
+    return new Promise((resolve) => {
+      let done = false;
+      let poll = 0;
+      let timer = 0;
+      let listeners = [];
+      const cleanup = () => {
+        clearInterval(poll);
+        clearTimeout(timer);
+        for (const listener of listeners) listener?.remove?.();
+      };
+      const finish = (ok) => {
+        if (done) return;
+        done = true;
+        cleanup();
+        resolve(ok);
+      };
+      const check = () => {
+        if (this.pano.getStatus?.() !== 'OK' ||
+            this.pano.getPano?.() !== checkpoint.panoid ||
+            !samePosition(this.pano.getPosition?.(), checkpoint.position)) return;
+        this.pano.setPov(checkpoint.pov);
+        this.pano.setZoom(checkpoint.zoom);
+        finish(true);
+      };
+
+      listeners = [
+        this.pano.addListener('pano_changed', check),
+        this.pano.addListener('position_changed', check),
+        this.pano.addListener('status_changed', check)
+      ];
+      poll = setInterval(check, 150);
+      timer = setTimeout(() => finish(false), 12000);
+      this._cancelCheckpointReturn = () => finish(false);
+
+      if (this.pano.getPano?.() !== checkpoint.panoid) this.pano.setPano(checkpoint.panoid);
+      check();
     });
   }
 

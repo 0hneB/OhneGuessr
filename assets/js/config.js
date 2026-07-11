@@ -11,6 +11,7 @@ export const KEYBINDINGS = {
   zoomIn: ['KeyE'],
   zoomOut: ['KeyQ'],
   resetView: ['KeyR'],
+  checkpoint: ['KeyC'],
   faceNorth: ['KeyN'],
   toggleMapFullscreen: ['KeyF'],
   hideHud: ['KeyH']
