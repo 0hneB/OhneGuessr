@@ -89,7 +89,7 @@ export class GuessMap {
 
     this.map.on('click', (e) => {
       this.setGuess(e.latlng);
-      onPlace(this.guess);
+      onPlace(this.guess, { submit: e.originalEvent?.shiftKey === true });
     });
     this.map.on('moveend zoomend', () => {
       if (this.isFullscreen && !this.isConstraining) this.constrainFullscreenView();

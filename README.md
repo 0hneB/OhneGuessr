@@ -76,7 +76,7 @@ That serves the folder at `http://localhost:8000` and opens your browser. Stop i
 | <kbd>F</kbd> | Toggle the fullscreen guess map |
 | <kbd>H</kbd> | Hide all UI, including the guess map and Street View navigation arrows |
 
-You can also drag to look around and scroll to zoom the panorama, and click/drag/scroll the guess map as usual.
+You can also drag to look around and scroll to zoom the panorama, and click/drag/scroll the guess map as usual. Shift-click the guess map to place and submit in one step.
 
 > [!TIP]
 > All shortcuts are rebindable in **Settings → Controls** — click a key, then press the one you want (Esc cancels, Backspace clears). The defaults live in [`assets/js/config.js`](assets/js/config.js) under `KEYBINDINGS` (using [`KeyboardEvent.code`](https://developer.mozilla.org/docs/Web/API/KeyboardEvent/code) values like `KeyE`, `Space`, or `ArrowUp`); in-app changes are saved to your browser and override them.
