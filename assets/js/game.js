@@ -309,6 +309,9 @@ const KEY_ACTIONS = {
   checkpoint: (event) => {
     if (!event.repeat && state.phase === GAME_PHASE.GUESSING) viewer.toggleCheckpoint();
   },
+  checkpointPeek: (event) => {
+    if (!event.repeat && state.phase === GAME_PHASE.GUESSING) viewer.startCheckpointPeek();
+  },
   faceNorth: () => {
     // Press once to face north; again while north to look straight down.
     const h = viewer.getHeading();
@@ -327,8 +330,13 @@ const KEY_ACTIONS = {
   }
 };
 
+const KEY_RELEASES = {
+  checkpointPeek: () => viewer.endCheckpointPeek()
+};
+
 const keybindings = new Keybindings({
   actions: KEY_ACTIONS,
+  releases: KEY_RELEASES,
   isPanelOpen: isSettingsOpen
 });
 
@@ -440,6 +448,8 @@ async function init() {
   $('nextBtn').addEventListener('click', (e) => { nextRound(); e.currentTarget.blur(); });
   $('playAgain').addEventListener('click', startGame);
   window.addEventListener('keydown', keybindings.onKeyDown);
+  window.addEventListener('keyup', keybindings.onKeyUp);
+  window.addEventListener('blur', () => viewer.endCheckpointPeek());
 
   try {
     state.maps = await listMaps();

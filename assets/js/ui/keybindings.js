@@ -12,6 +12,7 @@ const ACTION_LABELS = {
   zoomOut: 'Zoom out',
   resetView: 'Reset view',
   checkpoint: 'Set / return checkpoint',
+  checkpointPeek: 'Peek checkpoint',
   faceNorth: 'Face north',
   toggleMapPinned: 'Toggle pinned map',
   toggleMapFullscreen: 'Toggle map fullscreen',
@@ -37,14 +38,16 @@ function codeLabel(code) {
 }
 
 export class Keybindings {
-  constructor({ actions, isPanelOpen }) {
+  constructor({ actions, releases = {}, isPanelOpen }) {
     this.actions = actions;         // { action: fn(keyboardEvent) }
+    this.releases = releases;       // momentary actions released on keyup
     this.isPanelOpen = isPanelOpen; // don't hijack keys while settings is open
     this.capturingKeyFor = null;
     this.captureHandler = null;
     this.map = {};
     this.rebuild();
     this.onKeyDown = this.onKeyDown.bind(this);
+    this.onKeyUp = this.onKeyUp.bind(this);
     this.cancelCapture = this.cancelCapture.bind(this);
     document.addEventListener(SETTINGS_CLOSED_EVENT, this.cancelCapture);
   }
@@ -76,6 +79,11 @@ export class Keybindings {
     if (!action || !this.actions[action]) return;
     if (e.code === 'Space') e.preventDefault(); // don't let a focused button grab it
     this.actions[action](e);
+  }
+
+  onKeyUp(e) {
+    const action = this.map[e.code];
+    if (action && this.releases[action]) this.releases[action](e);
   }
 
   // Bind an action to a code (null clears), removing it from any other action.

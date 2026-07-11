@@ -58,8 +58,9 @@ export class OpenSvViewer {
     this._trail = [];           // [{lat,lng}][] paths walked this round (Moving mode)
     this._trailActive = false;  // preparation must never look like player movement
     this._checkpoint = null;
-    this._checkpointReturning = false;
-    this._cancelCheckpointReturn = null;
+    this._checkpointBusy = false;
+    this._checkpointPeek = null;
+    this._cancelCheckpointJump = null;
     this._roundToken = 0;
     this.mode = 'moving';       // 'moving' | 'nm' | 'nmpz'; set via setMode()
 
@@ -96,7 +97,7 @@ export class OpenSvViewer {
     });
     // Record each step so the result map can show where the player walked.
     this.pano.addListener('position_changed', () => {
-      if (!this._trailActive || this._checkpointReturning) return;
+      if (!this._trailActive || this._checkpointBusy) return;
       const p = this.pano.getPosition?.();
       if (!p) return;
       const point = { lat: p.lat(), lng: p.lng() };
@@ -164,29 +165,20 @@ export class OpenSvViewer {
 
   // C alternates between saving the exact current view and returning to it once.
   toggleCheckpoint() {
-    if (this.mode !== 'moving' || !this._trailActive || this._checkpointReturning) return;
+    if (this.mode !== 'moving' || !this._trailActive || this._checkpointBusy) return;
 
     if (!this._checkpoint) {
-      const panoid = this.pano.getPano?.();
-      const position = this.pano.getPosition?.();
-      const pov = this.pano.getPov?.();
-      if (!panoid || !position || !pov) return;
-      this._checkpoint = {
-        panoid,
-        position: { lat: position.lat(), lng: position.lng() },
-        pov: { heading: pov.heading ?? 0, pitch: pov.pitch ?? 0 },
-        zoom: this.pano.getZoom?.() ?? 1
-      };
+      this._checkpoint = this._captureView();
       return;
     }
 
     const checkpoint = this._checkpoint;
     const token = this._roundToken;
-    this._checkpointReturning = true;
-    this._returnToCheckpoint(checkpoint).then((ok) => {
+    this._checkpointBusy = true;
+    this._jumpToView(checkpoint).then((ok) => {
       if (token !== this._roundToken) return;
-      this._cancelCheckpointReturn = null;
-      this._checkpointReturning = false;
+      this._cancelCheckpointJump = null;
+      this._checkpointBusy = false;
       const p = this.pano.getPosition?.();
       const point = p
         ? { lat: p.lat(), lng: p.lng() }
@@ -197,6 +189,39 @@ export class OpenSvViewer {
       this._checkpoint = null;
       this.pano.focus?.();
     });
+  }
+
+  // V temporarily visits an armed checkpoint; releasing it restores this view.
+  startCheckpointPeek() {
+    if (this.mode !== 'moving' || !this._trailActive ||
+        !this._checkpoint || this._checkpointBusy) return false;
+    const source = this._captureView();
+    if (!source) return false;
+
+    const peek = {
+      source,
+      token: this._roundToken,
+      ready: false,
+      released: false,
+      returning: false
+    };
+    this._checkpointPeek = peek;
+    this._checkpointBusy = true;
+    this._jumpToView(this._checkpoint).then((ok) => {
+      if (this._checkpointPeek !== peek || peek.token !== this._roundToken) return;
+      this._cancelCheckpointJump = null;
+      if (!ok || peek.released) { this._restoreCheckpointPeek(peek); return; }
+      peek.ready = true;
+    });
+    return true;
+  }
+
+  endCheckpointPeek() {
+    const peek = this._checkpointPeek;
+    if (!peek) return;
+    peek.released = true;
+    if (peek.ready) this._restoreCheckpointPeek(peek);
+    else this._cancelCheckpointJump?.();
   }
 
   // faceNorth/zoom pan or zoom the view, so they no-op in nmpz (the locked mode).
@@ -284,14 +309,44 @@ export class OpenSvViewer {
 
   _clearCheckpoint() {
     this._roundToken += 1;
-    const cancel = this._cancelCheckpointReturn;
-    this._cancelCheckpointReturn = null;
+    const cancel = this._cancelCheckpointJump;
+    this._cancelCheckpointJump = null;
     this._checkpoint = null;
-    this._checkpointReturning = false;
+    this._checkpointBusy = false;
+    this._checkpointPeek = null;
     cancel?.();
   }
 
-  _returnToCheckpoint(checkpoint) {
+  _captureView() {
+    const panoid = this.pano.getPano?.();
+    const position = this.pano.getPosition?.();
+    const pov = this.pano.getPov?.();
+    if (!panoid || !position || !pov) return null;
+    return {
+      panoid,
+      position: { lat: position.lat(), lng: position.lng() },
+      pov: { heading: pov.heading ?? 0, pitch: pov.pitch ?? 0 },
+      zoom: this.pano.getZoom?.() ?? 1
+    };
+  }
+
+  _restoreCheckpointPeek(peek) {
+    if (this._checkpointPeek !== peek || peek.returning) return;
+    peek.returning = true;
+    this._jumpToView(peek.source).then((ok) => {
+      if (this._checkpointPeek !== peek || peek.token !== this._roundToken) return;
+      this._cancelCheckpointJump = null;
+      this._checkpointPeek = null;
+      this._checkpointBusy = false;
+      if (!ok) {
+        const p = this.pano.getPosition?.();
+        if (p) this._trail.push([{ lat: p.lat(), lng: p.lng() }]);
+      }
+      this.pano.focus?.();
+    });
+  }
+
+  _jumpToView(view) {
     this._cancelTween();
     return new Promise((resolve) => {
       let done = false;
@@ -311,10 +366,10 @@ export class OpenSvViewer {
       };
       const check = () => {
         if (this.pano.getStatus?.() !== 'OK' ||
-            this.pano.getPano?.() !== checkpoint.panoid ||
-            !samePosition(this.pano.getPosition?.(), checkpoint.position)) return;
-        this.pano.setPov(checkpoint.pov);
-        this.pano.setZoom(checkpoint.zoom);
+            this.pano.getPano?.() !== view.panoid ||
+            !samePosition(this.pano.getPosition?.(), view.position)) return;
+        this.pano.setPov(view.pov);
+        this.pano.setZoom(view.zoom);
         finish(true);
       };
 
@@ -325,9 +380,9 @@ export class OpenSvViewer {
       ];
       poll = setInterval(check, 150);
       timer = setTimeout(() => finish(false), 12000);
-      this._cancelCheckpointReturn = () => finish(false);
+      this._cancelCheckpointJump = () => finish(false);
 
-      if (this.pano.getPano?.() !== checkpoint.panoid) this.pano.setPano(checkpoint.panoid);
+      if (this.pano.getPano?.() !== view.panoid) this.pano.setPano(view.panoid);
       check();
     });
   }
