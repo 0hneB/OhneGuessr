@@ -111,10 +111,6 @@ html, body {
   -webkit-mask-image: url("../icons/timer.svg");
   mask-image: url("../icons/timer.svg");
 }
-.github-icon {
-  -webkit-mask-image: url("../icons/github.svg");
-  mask-image: url("../icons/github.svg");
-}
 .folder-icon {
   -webkit-mask-image: url("../icons/folder.svg");
   mask-image: url("../icons/folder.svg");
@@ -134,6 +130,18 @@ html, body {
 .rm-bookmark-icon {
   -webkit-mask-image: url("../icons/rm-bookmark.svg");
   mask-image: url("../icons/rm-bookmark.svg");
+}
+.info-icon {
+  -webkit-mask-image: url("../icons/info.svg");
+  mask-image: url("../icons/info.svg");
+}
+.close-icon {
+  -webkit-mask-image: url("../icons/close.svg");
+  mask-image: url("../icons/close.svg");
+}
+.chevron-icon {
+  -webkit-mask-image: url("../icons/chevron.svg");
+  mask-image: url("../icons/chevron.svg");
 }
 /* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
 .leaflet-container { cursor: crosshair; background: #1b1b1b; }
@@ -415,7 +423,7 @@ body.empty-mode #guessPanel { display: none !important; }
   color: #aaa;
   cursor: pointer;
 }
-#settingsClose svg { width: 18px; height: 18px; }
+#settingsClose .svg-icon { width: 18px; height: 18px; }
 #settingsClose:hover { color: #fff; }
 .setting {
   display: flex;
@@ -578,24 +586,21 @@ body.empty-mode #guessPanel { display: none !important; }
   background: var(--accent);
   border-color: var(--accent);
 }
-.controls-github-link {
-  position: absolute;
-  right: 0;
-  bottom: 0;
+.settings-info-link {
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   color: var(--accent);
   line-height: 0;
 }
-.controls-github-link:visited,
-.controls-github-link:hover,
-.controls-github-link:active {
-  color: var(--accent);
-}
-.controls-github-link .github-icon {
-  width: 22px;
-  height: 22px;
+.settings-info-link:visited,
+.settings-info-link:hover,
+.settings-info-link:active { color: var(--accent); }
+.settings-info-link .info-icon { width: 20px; height: 20px; }
+.controls-info-link {
+  position: absolute;
+  right: 0;
+  bottom: 0;
 }
 .settings-action {
   align-self: flex-start;
@@ -714,12 +719,13 @@ body.empty-mode #guessPanel { display: none !important; }
 
 /* Map library list */
 .map-list {
+  flex: 1 1 120px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 248px;
+  min-height: 120px;
   overflow-y: auto;
-  margin: 0 -18px 10px 0;
+  margin: 0 -18px 0 0;
   padding-right: 6px;
 }
 .map-folder-row {
@@ -742,11 +748,14 @@ body.empty-mode #guessPanel { display: none !important; }
   text-align: left;
 }
 .map-folder-main:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
-.map-folder-chevron,
-.map-folder-icon { display: grid; place-items: center; flex: none; }
-.map-folder-chevron svg { width: 13px; height: 13px; transition: transform 0.12s ease; }
-.map-folder-row.open > .map-folder-main .map-folder-chevron svg { transform: rotate(90deg); }
-.map-folder-icon svg { width: 16px; height: 16px; color: var(--accent); }
+.map-folder-chevron {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  transition: transform 0.12s ease;
+}
+.map-folder-row.open > .map-folder-main .map-folder-chevron { transform: rotate(90deg); }
+.map-folder-icon { width: 16px; height: 16px; flex: none; color: var(--accent); }
 .map-folder-name {
   flex: 1;
   min-width: 0;
@@ -805,7 +814,7 @@ body.empty-mode #guessPanel { display: none !important; }
   cursor: pointer;
   transition: color 0.15s ease;
 }
-.map-row-del svg { width: 14px; height: 14px; }
+.map-row-del .svg-icon { width: 14px; height: 14px; }
 .map-row-del:hover { color: #f87171; }
 .map-row-edit {
   flex: none;
@@ -831,6 +840,12 @@ body.empty-mode #guessPanel { display: none !important; }
 .settings-note:empty { display: none; }
 
 /* Optional Map Making App sync. Cached maps remain available while disabled. */
+#panel-maps:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.maps-bottom { flex: none; padding-top: 10px; }
 .mma-sync-section {
   margin-top: 17px;
   padding-top: 15px;
@@ -859,8 +874,19 @@ body.empty-mode #guessPanel { display: none !important; }
 .mma-key-form input:focus { outline: none; border-color: var(--accent); }
 .mma-key-form .settings-action { margin: 0; }
 .mma-sync-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.mma-sync-status { min-height: 17px; }
+.maps-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 20px;
+  margin-top: 10px;
+}
+.mma-sync-status { flex: 1; min-width: 0; }
 .mma-sync-status.error { color: #f87171; opacity: 0.9; }
+.maps-info-link {
+  flex: none;
+  margin-left: auto;
+}
 
 /* Round result (fullscreen map + floating panel) */
 #resultScreen {
@@ -910,8 +936,8 @@ body.empty-mode #guessPanel { display: none !important; }
 .map-pin-guess {
   background: var(--accent);
   border: none;
-  -webkit-mask: url("../images/pin-guess.svg") center / contain no-repeat;
-  mask: url("../images/pin-guess.svg") center / contain no-repeat;
+  -webkit-mask: url("../icons/pin-guess.svg") center / contain no-repeat;
+  mask: url("../icons/pin-guess.svg") center / contain no-repeat;
 }
 .map-pin,
 .map-pin-correct {
