@@ -71,6 +71,7 @@ That serves the folder at `http://localhost:8000` and opens your browser. Stop i
 | <kbd>R</kbd> | Reset the view |
 | <kbd>C</kbd> | Set a movement checkpoint, then return to it and clear it |
 | Hold <kbd>V</kbd> | Peek at the checkpoint; release to return without clearing it |
+| Hold <kbd>B</kbd> | Look directly behind; release to restore the previous view |
 | <kbd>M</kbd> | Toggle the expanded and pinned guess map |
 | <kbd>F</kbd> | Toggle the fullscreen guess map |
 | <kbd>H</kbd> | Hide all UI, including the guess map and Street View navigation arrows |
