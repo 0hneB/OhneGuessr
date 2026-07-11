@@ -92,6 +92,8 @@ html, body {
   flex: none;
   background: currentColor;
   vertical-align: -0.12em;
+  -webkit-mask-image: var(--icon-url);
+  mask-image: var(--icon-url);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
@@ -99,50 +101,17 @@ html, body {
   -webkit-mask-size: contain;
   mask-size: contain;
 }
-.settings-icon {
-  -webkit-mask-image: url("../icons/settings.svg");
-  mask-image: url("../icons/settings.svg");
-}
-.unlimited-icon {
-  -webkit-mask-image: url("../icons/unlimited.svg");
-  mask-image: url("../icons/unlimited.svg");
-}
-.timer-icon {
-  -webkit-mask-image: url("../icons/timer.svg");
-  mask-image: url("../icons/timer.svg");
-}
-.folder-icon {
-  -webkit-mask-image: url("../icons/folder.svg");
-  mask-image: url("../icons/folder.svg");
-}
-.refresh-icon {
-  -webkit-mask-image: url("../icons/refresh.svg");
-  mask-image: url("../icons/refresh.svg");
-}
-.sync-icon {
-  -webkit-mask-image: url("../icons/sync.svg");
-  mask-image: url("../icons/sync.svg");
-}
-.pencil-icon {
-  -webkit-mask-image: url("../icons/pencil.svg");
-  mask-image: url("../icons/pencil.svg");
-}
-.rm-bookmark-icon {
-  -webkit-mask-image: url("../icons/rm-bookmark.svg");
-  mask-image: url("../icons/rm-bookmark.svg");
-}
-.info-icon {
-  -webkit-mask-image: url("../icons/info.svg");
-  mask-image: url("../icons/info.svg");
-}
-.close-icon {
-  -webkit-mask-image: url("../icons/close.svg");
-  mask-image: url("../icons/close.svg");
-}
-.chevron-icon {
-  -webkit-mask-image: url("../icons/chevron.svg");
-  mask-image: url("../icons/chevron.svg");
-}
+.settings-icon { --icon-url: url("../icons/settings.svg"); }
+.unlimited-icon { --icon-url: url("../icons/unlimited.svg"); }
+.timer-icon { --icon-url: url("../icons/timer.svg"); }
+.folder-icon { --icon-url: url("../icons/folder.svg"); }
+.refresh-icon { --icon-url: url("../icons/refresh.svg"); }
+.sync-icon { --icon-url: url("../icons/sync.svg"); }
+.pencil-icon { --icon-url: url("../icons/pencil.svg"); }
+.rm-bookmark-icon { --icon-url: url("../icons/rm-bookmark.svg"); }
+.info-icon { --icon-url: url("../icons/info.svg"); }
+.close-icon { --icon-url: url("../icons/close.svg"); }
+.chevron-icon { --icon-url: url("../icons/chevron.svg"); }
 /* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
 .leaflet-container { cursor: crosshair; background: #1b1b1b; }
 .guess-marker { fill: var(--accent); }
