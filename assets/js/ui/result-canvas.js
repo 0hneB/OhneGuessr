@@ -11,9 +11,8 @@ const DEFAULT_MARKER_FILTER = [
   'drop-shadow(0 0 1px #fff)',
   'drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4))'
 ].join(' ');
-let markerImagesPromise = null;
-let sharedSpriteKey = '';
-let sharedSprites = null;
+let markerImages = null;
+let spriteCache = null;
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -25,13 +24,12 @@ function loadImage(src) {
   });
 }
 
-function loadMarkerImages() {
-  markerImagesPromise ||= Promise.all([
-    loadImage(GUESS_IMAGE),
-    loadImage(CORRECT_IMAGE)
-  ]).then(([guess, correct]) => ({ guess, correct }));
-  return markerImagesPromise;
-}
+const markerImagesPromise = Promise.all([
+  loadImage(GUESS_IMAGE),
+  loadImage(CORRECT_IMAGE)
+]).then(([guess, correct]) => {
+  markerImages = { guess, correct };
+});
 
 function colorize(image, width, height, color, pixelRatio) {
   const canvas = document.createElement('canvas');
@@ -47,8 +45,7 @@ function colorize(image, width, height, color, pixelRatio) {
 }
 
 // Rasterize each styled marker once, then reuse the cached pixels for every
-// round and frame. This matches the DOM marker treatment without repeatedly
-// evaluating its stacked CSS drop shadows while the map moves.
+// round and frame instead of reevaluating its shadows while the map moves.
 function createSprite(image, size, pixelRatio, filter, color = null) {
   const { width, height, anchorX, anchorY } = size;
   const source = color
@@ -103,99 +100,94 @@ function markerStyle() {
 const isPoint = (value) =>
   Number.isFinite(value?.lat) && Number.isFinite(value?.lng);
 
+function getMarkerSprites(pixelRatio) {
+  if (!markerImages) return null;
+  const style = markerStyle();
+  const key = `${style.accent}:${style.filter}:${pixelRatio}`;
+  if (key !== spriteCache?.key) {
+    spriteCache = {
+      key,
+      guess: createSprite(
+        markerImages.guess, GUESS_SIZE, pixelRatio, style.filter, style.accent
+      ),
+      correct: createSprite(
+        markerImages.correct, CORRECT_SIZE, pixelRatio, style.filter
+      )
+    };
+  }
+  return spriteCache;
+}
+
+function drawSprite(ctx, sprite, point) {
+  ctx.drawImage(
+    sprite.canvas,
+    point.x + sprite.offsetX,
+    point.y + sprite.offsetY,
+    sprite.width,
+    sprite.height
+  );
+}
+
 // Shared renderer for one or many result pairs. Marker artwork is cached and
 // every visible pair is batched into one canvas regardless of round count.
 export class ResultCanvas {
-  constructor(map, { onAnswerClick = null } = {}) {
+  constructor(map, onAnswerClick) {
     this.map = map;
+    this.container = map.getContainer();
     this.onAnswerClick = onAnswerClick;
     this.results = [];
-    this.visible = false;
     this.frame = 0;
     this.center = null;
     this.zoom = null;
-    this.sprites = null;
-    this.images = null;
 
-    this.canvas = document.createElement('canvas');
-    this.canvas.className = 'result-markers-canvas leaflet-zoom-animated';
-    this.canvas.hidden = true;
-    this.canvas.setAttribute('aria-hidden', 'true');
     const pane = this.map.getPane('resultMarkersPane') ||
       this.map.createPane('resultMarkersPane');
     pane.style.zIndex = '650';
     pane.style.pointerEvents = 'none';
-    pane.appendChild(this.canvas);
+    this.canvas = L.DomUtil.create(
+      'canvas', 'result-markers-canvas leaflet-zoom-animated', pane
+    );
+    this.canvas.hidden = true;
+    this.canvas.setAttribute('aria-hidden', 'true');
 
-    this.scheduleDraw = this.scheduleDraw.bind(this);
-    this.handleZoom = this.handleZoom.bind(this);
-    this.handleZoomAnimation = this.handleZoomAnimation.bind(this);
-    this.handleClick = this.handleClick.bind(this);
-    this.handleMouseMove = this.handleMouseMove.bind(this);
-    this.handleMouseOut = this.handleMouseOut.bind(this);
-    this.map.on('moveend zoomend resize viewreset', this.scheduleDraw);
-    this.map.on('zoom', this.handleZoom);
-    this.map.on('zoomanim', this.handleZoomAnimation);
-    this.map.on('click', this.handleClick);
-    this.map.on('mousemove', this.handleMouseMove);
-    this.map.on('mouseout', this.handleMouseOut);
-    new MutationObserver(this.scheduleDraw).observe(document.documentElement, {
+    this.map.on('moveend zoomend resize viewreset', this.scheduleDraw, this);
+    this.map.on('zoom', this.handleZoom, this);
+    this.map.on('zoomanim', this.handleZoomAnimation, this);
+    this.map.on('click', this.handleClick, this);
+    this.map.on('mousemove', this.handleMouseMove, this);
+    this.map.on('mouseout', this.handleMouseOut, this);
+    new MutationObserver(() => this.scheduleDraw()).observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['style']
     });
 
-    loadMarkerImages()
-      .then((images) => {
-        this.images = images;
-        this.scheduleDraw();
-      })
+    markerImagesPromise
+      .then(() => this.scheduleDraw())
       .catch(() => { /* keep the map usable if a marker asset is unavailable */ });
   }
 
   show(results) {
     this.results = results.filter((result) => isPoint(result?.actual));
-    this.visible = this.results.length > 0;
     this.canvas.hidden = true;
     this.scheduleDraw();
   }
 
   hide() {
-    this.visible = false;
     this.results = [];
     this.center = null;
     this.zoom = null;
     this.canvas.hidden = true;
-    this.map.getContainer().classList.remove('result-answer-hover');
+    this.container.classList.remove('result-answer-hover');
     if (this.frame) cancelAnimationFrame(this.frame);
     this.frame = 0;
   }
 
   scheduleDraw() {
-    if (!this.visible || this.frame) return;
+    if (!this.results.length || this.frame) return;
     this.frame = requestAnimationFrame(() => {
       this.frame = 0;
       this.draw();
     });
-  }
-
-  ensureSprites(pixelRatio) {
-    if (!this.images) return false;
-    const style = markerStyle();
-    const key = `${style.accent}:${style.filter}:${pixelRatio}`;
-    if (key !== sharedSpriteKey) {
-      const sprites = {
-        guess: createSprite(
-          this.images.guess, GUESS_SIZE, pixelRatio, style.filter, style.accent
-        ),
-        correct: createSprite(
-          this.images.correct, CORRECT_SIZE, pixelRatio, style.filter
-        )
-      };
-      sharedSpriteKey = key;
-      sharedSprites = sprites;
-    }
-    this.sprites = sharedSprites;
-    return true;
   }
 
   resizeCanvas(pixelRatio) {
@@ -213,18 +205,8 @@ export class ResultCanvas {
     return { width, height };
   }
 
-  drawSprite(ctx, sprite, point) {
-    ctx.drawImage(
-      sprite.canvas,
-      point.x + sprite.offsetX,
-      point.y + sprite.offsetY,
-      sprite.width,
-      sprite.height
-    );
-  }
-
   draw() {
-    if (!this.visible) return;
+    if (!this.results.length) return;
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
     L.DomUtil.setPosition(
       this.canvas,
@@ -237,11 +219,10 @@ export class ResultCanvas {
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     ctx.clearRect(0, 0, size.width, size.height);
 
-    const projected = this.results.map((result) => ({
-      result,
-      actual: this.map.latLngToContainerPoint(result.actual),
-      guess: isPoint(result.guess)
-        ? this.map.latLngToContainerPoint(result.guess)
+    const projected = this.results.map(({ actual, guess }) => ({
+      actual: this.map.latLngToContainerPoint(actual),
+      guess: isPoint(guess)
+        ? this.map.latLngToContainerPoint(guess)
         : null
     }));
     ctx.save();
@@ -258,10 +239,11 @@ export class ResultCanvas {
     }
     ctx.restore();
 
-    if (!this.ensureSprites(pixelRatio)) return;
-    for (const item of projected) this.drawSprite(ctx, this.sprites.correct, item.actual);
+    const sprites = getMarkerSprites(pixelRatio);
+    if (!sprites) return;
+    for (const item of projected) drawSprite(ctx, sprites.correct, item.actual);
     for (const item of projected) {
-      if (item.guess) this.drawSprite(ctx, this.sprites.guess, item.guess);
+      if (item.guess) drawSprite(ctx, sprites.guess, item.guess);
     }
     this.canvas.hidden = false;
   }
@@ -284,7 +266,7 @@ export class ResultCanvas {
   }
 
   updateTransform(center, zoom) {
-    if (!this.visible || !this.center || this.zoom == null) return;
+    if (!this.results.length || !this.center || this.zoom == null) return;
     const scale = this.map.getZoomScale(zoom, this.zoom);
     const viewHalf = this.map.getSize().multiplyBy(0.5);
     const currentCenterPoint = this.map.project(this.center, zoom);
@@ -304,18 +286,18 @@ export class ResultCanvas {
   }
 
   handleClick(event) {
-    if (!this.visible || !this.onAnswerClick) return;
+    if (!this.results.length) return;
     const actual = this.answerAt(event.containerPoint);
     if (actual) this.onAnswerClick(actual);
   }
 
   handleMouseMove(event) {
-    if (!this.visible || this.map.dragging.moving()) return;
+    if (!this.results.length || this.map.dragging.moving()) return;
     const hovering = !!this.answerAt(event.containerPoint);
-    this.map.getContainer().classList.toggle('result-answer-hover', hovering);
+    this.container.classList.toggle('result-answer-hover', hovering);
   }
 
   handleMouseOut() {
-    this.map.getContainer().classList.remove('result-answer-hover');
+    this.container.classList.remove('result-answer-hover');
   }
 }
