@@ -102,6 +102,8 @@ export class SummaryCanvas {
     this.results = [];
     this.visible = false;
     this.frame = 0;
+    this.center = null;
+    this.zoom = null;
     this.sprites = null;
     this.spriteKey = '';
     this.images = null;
@@ -117,11 +119,13 @@ export class SummaryCanvas {
     pane.appendChild(this.canvas);
 
     this.scheduleDraw = this.scheduleDraw.bind(this);
+    this.handleZoom = this.handleZoom.bind(this);
     this.handleZoomAnimation = this.handleZoomAnimation.bind(this);
     this.handleClick = this.handleClick.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
     this.handleMouseOut = this.handleMouseOut.bind(this);
     this.map.on('moveend zoomend resize viewreset', this.scheduleDraw);
+    this.map.on('zoom', this.handleZoom);
     this.map.on('zoomanim', this.handleZoomAnimation);
     this.map.on('click', this.handleClick);
     this.map.on('mousemove', this.handleMouseMove);
@@ -206,8 +210,10 @@ export class SummaryCanvas {
     const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
     L.DomUtil.setPosition(
       this.canvas,
-      this.map.containerPointToLayerPoint([0, 0])
+      this.map.containerPointToLayerPoint([0, 0]).round()
     );
+    this.center = this.map.getCenter();
+    this.zoom = this.map.getZoom();
     const size = this.resizeCanvas(pixelRatio);
     const ctx = this.canvas.getContext('2d');
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
@@ -258,15 +264,24 @@ export class SummaryCanvas {
     return nearest;
   }
 
+  updateTransform(center, zoom) {
+    if (!this.visible || !this.center || this.zoom == null) return;
+    const scale = this.map.getZoomScale(zoom, this.zoom);
+    const viewHalf = this.map.getSize().multiplyBy(0.5);
+    const currentCenterPoint = this.map.project(this.center, zoom);
+    const offset = viewHalf.multiplyBy(-scale)
+      .add(currentCenterPoint)
+      .subtract(this.map._getNewPixelOrigin(center, zoom));
+    if (L.Browser.any3d) L.DomUtil.setTransform(this.canvas, offset, scale);
+    else L.DomUtil.setPosition(this.canvas, offset);
+  }
+
+  handleZoom() {
+    this.updateTransform(this.map.getCenter(), this.map.getZoom());
+  }
+
   handleZoomAnimation(event) {
-    if (!this.visible) return;
-    const scale = this.map.getZoomScale(event.zoom);
-    const offset = this.map._latLngToNewLayerPoint(
-      this.map.getBounds().getNorthWest(),
-      event.zoom,
-      event.center
-    );
-    L.DomUtil.setTransform(this.canvas, offset, scale);
+    this.updateTransform(event.center, event.zoom);
   }
 
   handleClick(event) {
