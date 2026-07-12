@@ -4,6 +4,7 @@
 //   SummaryMap - end-of-game overview of every round
 import { MAP_STYLES } from '../core/settings.js';
 import { rafBurst } from '../core/raf.js';
+import { SummaryCanvas } from './summary-canvas.js';
 
 function addBaseLayer(map, key, current) {
   const style = MAP_STYLES[key] || MAP_STYLES.osm;
@@ -177,6 +178,10 @@ function streetViewUrl(actual) {
   return `https://www.google.com/maps/@?${params}`;
 }
 
+function openStreetView(actual) {
+  window.open(streetViewUrl(actual), '_blank', 'noopener,noreferrer');
+}
+
 // Draw a round's answer pin plus the guess pin and link (guess is null on a
 // forfeit). Pushes layers for later cleanup; returns the points for bounds fitting.
 function drawGuessPair(map, layers, guess, actual) {
@@ -191,9 +196,7 @@ function drawGuessPair(map, layers, guess, actual) {
     pts.push(g);
   }
   const answerMarker = L.marker(a, { icon: CORRECT_ICON }).addTo(map);
-  answerMarker.on('click', () => {
-    window.open(streetViewUrl(actual), '_blank', 'noopener,noreferrer');
-  });
+  answerMarker.on('click', () => openStreetView(actual));
   layers.push(answerMarker);
   pts.push(a);
   return pts;
@@ -264,13 +267,25 @@ export class ResultMap extends RevealMap {
 
 // End-of-game overview: every round's guess/answer pair on one map.
 export class SummaryMap extends RevealMap {
+  constructor(elId, styleKey = 'osm') {
+    super(elId, styleKey);
+    this.overview = new SummaryCanvas(this.map, { onAnswerClick: openStreetView });
+  }
+
   // results: [{ guess: {lat,lng}, actual: {lat,lng,panoid?} }, ...]
   show(results) {
+    this.overview.hide();
     this.clear();
     if (!results.length) return;
     const pts = [];
-    for (const r of results) {
-      pts.push(...drawGuessPair(this.map, this.layers, r.guess, r.actual));
+    if (results.length === 1) {
+      pts.push(...drawGuessPair(this.map, this.layers, results[0].guess, results[0].actual));
+    } else {
+      for (const r of results) {
+        if (r.guess) pts.push([r.guess.lat, r.guess.lng]);
+        pts.push([r.actual.lat, r.actual.lng]);
+      }
+      this.overview.show(results);
     }
     this.map.fitBounds(L.latLngBounds(pts).pad(0.2), { animate: false });
     invalidateSizeBurst(this.map);
