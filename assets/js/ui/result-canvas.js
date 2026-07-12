@@ -11,6 +11,9 @@ const DEFAULT_MARKER_FILTER = [
   'drop-shadow(0 0 1px #fff)',
   'drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4))'
 ].join(' ');
+let markerImagesPromise = null;
+let sharedSpriteKey = '';
+let sharedSprites = null;
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -20,6 +23,14 @@ function loadImage(src) {
     image.onerror = () => reject(new Error(`Could not load ${src}`));
     image.src = src;
   });
+}
+
+function loadMarkerImages() {
+  markerImagesPromise ||= Promise.all([
+    loadImage(GUESS_IMAGE),
+    loadImage(CORRECT_IMAGE)
+  ]).then(([guess, correct]) => ({ guess, correct }));
+  return markerImagesPromise;
 }
 
 function colorize(image, width, height, color, pixelRatio) {
@@ -85,17 +96,16 @@ function markerStyle() {
   const style = getComputedStyle(document.documentElement);
   return {
     accent: style.getPropertyValue('--accent').trim() || '#22c55e',
-    filter: style.getPropertyValue('--map-marker-filter').trim() || DEFAULT_MARKER_FILTER
+    filter: style.getPropertyValue('--result-marker-filter').trim() || DEFAULT_MARKER_FILTER
   };
 }
 
 const isPoint = (value) =>
   Number.isFinite(value?.lat) && Number.isFinite(value?.lng);
 
-// End-of-game renderer for many result pairs. Leaflet's regular markers remain
-// ideal for one round; this batches the same artwork into one canvas for the
-// all-round overview so pan and zoom cost does not grow with the DOM layer count.
-export class SummaryCanvas {
+// Shared renderer for one or many result pairs. Marker artwork is cached and
+// every visible pair is batched into one canvas regardless of round count.
+export class ResultCanvas {
   constructor(map, { onAnswerClick = null } = {}) {
     this.map = map;
     this.onAnswerClick = onAnswerClick;
@@ -105,15 +115,14 @@ export class SummaryCanvas {
     this.center = null;
     this.zoom = null;
     this.sprites = null;
-    this.spriteKey = '';
     this.images = null;
 
     this.canvas = document.createElement('canvas');
-    this.canvas.className = 'summary-results-canvas leaflet-zoom-animated';
+    this.canvas.className = 'result-markers-canvas leaflet-zoom-animated';
     this.canvas.hidden = true;
     this.canvas.setAttribute('aria-hidden', 'true');
-    const pane = this.map.getPane('summaryResultsPane') ||
-      this.map.createPane('summaryResultsPane');
+    const pane = this.map.getPane('resultMarkersPane') ||
+      this.map.createPane('resultMarkersPane');
     pane.style.zIndex = '650';
     pane.style.pointerEvents = 'none';
     pane.appendChild(this.canvas);
@@ -130,27 +139,33 @@ export class SummaryCanvas {
     this.map.on('click', this.handleClick);
     this.map.on('mousemove', this.handleMouseMove);
     this.map.on('mouseout', this.handleMouseOut);
+    new MutationObserver(this.scheduleDraw).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
 
-    Promise.all([loadImage(GUESS_IMAGE), loadImage(CORRECT_IMAGE)])
-      .then(([guess, correct]) => {
-        this.images = { guess, correct };
+    loadMarkerImages()
+      .then((images) => {
+        this.images = images;
         this.scheduleDraw();
       })
-      .catch(() => { /* regular round markers remain available */ });
+      .catch(() => { /* keep the map usable if a marker asset is unavailable */ });
   }
 
   show(results) {
     this.results = results.filter((result) => isPoint(result?.actual));
     this.visible = this.results.length > 0;
-    this.canvas.hidden = !this.visible;
+    this.canvas.hidden = true;
     this.scheduleDraw();
   }
 
   hide() {
     this.visible = false;
     this.results = [];
+    this.center = null;
+    this.zoom = null;
     this.canvas.hidden = true;
-    this.map.getContainer().classList.remove('summary-answer-hover');
+    this.map.getContainer().classList.remove('result-answer-hover');
     if (this.frame) cancelAnimationFrame(this.frame);
     this.frame = 0;
   }
@@ -167,16 +182,19 @@ export class SummaryCanvas {
     if (!this.images) return false;
     const style = markerStyle();
     const key = `${style.accent}:${style.filter}:${pixelRatio}`;
-    if (key === this.spriteKey) return true;
-    this.spriteKey = key;
-    this.sprites = {
-      guess: createSprite(
-        this.images.guess, GUESS_SIZE, pixelRatio, style.filter, style.accent
-      ),
-      correct: createSprite(
-        this.images.correct, CORRECT_SIZE, pixelRatio, style.filter
-      )
-    };
+    if (key !== sharedSpriteKey) {
+      const sprites = {
+        guess: createSprite(
+          this.images.guess, GUESS_SIZE, pixelRatio, style.filter, style.accent
+        ),
+        correct: createSprite(
+          this.images.correct, CORRECT_SIZE, pixelRatio, style.filter
+        )
+      };
+      sharedSpriteKey = key;
+      sharedSprites = sprites;
+    }
+    this.sprites = sharedSprites;
     return true;
   }
 
@@ -245,6 +263,7 @@ export class SummaryCanvas {
     for (const item of projected) {
       if (item.guess) this.drawSprite(ctx, this.sprites.guess, item.guess);
     }
+    this.canvas.hidden = false;
   }
 
   answerAt(point) {
@@ -291,12 +310,12 @@ export class SummaryCanvas {
   }
 
   handleMouseMove(event) {
-    if (!this.visible) return;
+    if (!this.visible || this.map.dragging.moving()) return;
     const hovering = !!this.answerAt(event.containerPoint);
-    this.map.getContainer().classList.toggle('summary-answer-hover', hovering);
+    this.map.getContainer().classList.toggle('result-answer-hover', hovering);
   }
 
   handleMouseOut() {
-    this.map.getContainer().classList.remove('summary-answer-hover');
+    this.map.getContainer().classList.remove('result-answer-hover');
   }
 }

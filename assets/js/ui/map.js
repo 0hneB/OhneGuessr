@@ -4,7 +4,7 @@
 //   SummaryMap - end-of-game overview of every round
 import { MAP_STYLES } from '../core/settings.js';
 import { rafBurst } from '../core/raf.js';
-import { SummaryCanvas } from './summary-canvas.js';
+import { ResultCanvas } from './result-canvas.js';
 
 function addBaseLayer(map, key, current) {
   const style = MAP_STYLES[key] || MAP_STYLES.osm;
@@ -157,17 +157,6 @@ export class GuessMap {
   }
 }
 
-// Teardrop pin, anchored at the tip. CSS masks the asset with the live accent.
-const GUESS_ICON = L.divIcon({
-  className: 'map-pin map-pin-guess',
-  iconSize: [44, 56], iconAnchor: [22, 48]
-});
-// Circular badge, anchored at its centre.
-const CORRECT_ICON = L.icon({
-  iconUrl: 'assets/images/correct-location.webp',
-  iconSize: [28, 28], iconAnchor: [14, 14], className: 'map-pin-correct'
-});
-
 function streetViewUrl(actual) {
   const params = new URLSearchParams({
     api: '1',
@@ -182,35 +171,21 @@ function openStreetView(actual) {
   window.open(streetViewUrl(actual), '_blank', 'noopener,noreferrer');
 }
 
-// Draw a round's answer pin plus the guess pin and link (guess is null on a
-// forfeit). Pushes layers for later cleanup; returns the points for bounds fitting.
-function drawGuessPair(map, layers, guess, actual) {
-  const a = [actual.lat, actual.lng];
+function resultPoints(guess, actual) {
   const pts = [];
-  if (guess) {
-    const g = [guess.lat, guess.lng];
-    layers.push(L.polyline([g, a], {
-      color: '#000000', weight: 2, dashArray: '3 9', opacity: 0.85
-    }).addTo(map));
-    layers.push(L.marker(g, { icon: GUESS_ICON, pane: 'guessPane' }).addTo(map));
-    pts.push(g);
-  }
-  const answerMarker = L.marker(a, { icon: CORRECT_ICON }).addTo(map);
-  answerMarker.on('click', () => openStreetView(actual));
-  layers.push(answerMarker);
-  pts.push(a);
+  if (guess) pts.push([guess.lat, guess.lng]);
+  pts.push([actual.lat, actual.lng]);
   return pts;
 }
 
-// Shared base for the reveal maps: a non-interactive Leaflet map that draws
-// guess pins above answer badges. Subclasses implement show().
+// Shared base for the reveal maps: owns base tiles, the batched result canvas,
+// and any extra Leaflet vector layers such as the walked path.
 class RevealMap {
   constructor(elId, styleKey = 'osm') {
     this.map = L.map(elId, { worldCopyJump: true, zoomControl: false, maxZoom: 19 })
       .setView([20, 0], 2);
     this.baseLayer = addBaseLayer(this.map, styleKey);
-    // Keep guess pins above the answer badges (default marker pane is 600).
-    this.map.createPane('guessPane').style.zIndex = 650;
+    this.resultCanvas = new ResultCanvas(this.map, { onAnswerClick: openStreetView });
     bindDragCursor(this.map);
     autoResize(this.map);
     this.layers = [];
@@ -220,9 +195,10 @@ class RevealMap {
     this.baseLayer = addBaseLayer(this.map, key, this.baseLayer);
   }
 
-  // Resync size and clear the previous draw's pins/lines before redrawing.
+  // Resync size and clear the previous result before redrawing.
   clear() {
     invalidateSizeBurst(this.map);
+    this.resultCanvas.hide();
     for (const l of this.layers) this.map.removeLayer(l);
     this.layers = [];
   }
@@ -232,7 +208,8 @@ class RevealMap {
 export class ResultMap extends RevealMap {
   show(guess, actual, trail = null) {
     this.clear();
-    const pts = drawGuessPair(this.map, this.layers, guess, actual);
+    const pts = resultPoints(guess, actual);
+    this.resultCanvas.show([{ guess, actual }]);
     this.drawTrail(trail, pts);
     if (pts.length > 1) this.map.fitBounds(L.latLngBounds(pts).pad(0.35), { animate: false });
     else this.map.setView(pts[0], 5, { animate: false }); // forfeit: only the answer
@@ -267,26 +244,13 @@ export class ResultMap extends RevealMap {
 
 // End-of-game overview: every round's guess/answer pair on one map.
 export class SummaryMap extends RevealMap {
-  constructor(elId, styleKey = 'osm') {
-    super(elId, styleKey);
-    this.overview = new SummaryCanvas(this.map, { onAnswerClick: openStreetView });
-  }
-
   // results: [{ guess: {lat,lng}, actual: {lat,lng,panoid?} }, ...]
   show(results) {
-    this.overview.hide();
     this.clear();
     if (!results.length) return;
     const pts = [];
-    if (results.length === 1) {
-      pts.push(...drawGuessPair(this.map, this.layers, results[0].guess, results[0].actual));
-    } else {
-      for (const r of results) {
-        if (r.guess) pts.push([r.guess.lat, r.guess.lng]);
-        pts.push([r.actual.lat, r.actual.lng]);
-      }
-      this.overview.show(results);
-    }
+    for (const result of results) pts.push(...resultPoints(result.guess, result.actual));
+    this.resultCanvas.show(results);
     this.map.fitBounds(L.latLngBounds(pts).pad(0.2), { animate: false });
     invalidateSizeBurst(this.map);
   }
