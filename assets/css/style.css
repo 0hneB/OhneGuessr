@@ -6,6 +6,10 @@
   --accent-strong: #16a34a; /* hover / pressed */
   --accent-ink: #06240f;    /* text/icon on top of the accent */
   --accent-rgb: 34, 197, 94; /* for rgba() tints */
+  --map-marker-filter:
+    drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
+    drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
+    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4));
 
   /* Translucent HUD background, mirroring the compass bar (compass.js CONFIG):
      top layer = subtle dark bottom shade (no white highlight), bottom layer =
@@ -920,15 +924,20 @@ body.empty-mode #guessPanel { display: none !important; }
 }
 .map-pin,
 .map-pin-correct {
-  filter:
-    drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
-    drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
-    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4));
+  filter: var(--map-marker-filter);
 }
 
 .map-pin-correct {
   border-radius: 50%;
 }
+
+.summary-results-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+.leaflet-container.summary-answer-hover { cursor: pointer; }
 
 /* Final screen — fullscreen summary map with a floating results card */
 #final {
