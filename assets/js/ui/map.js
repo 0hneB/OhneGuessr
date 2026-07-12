@@ -35,8 +35,8 @@ function invalidateSizeNow(map) {
   map.setView(center, zoom, { animate: false });
 }
 
-function invalidateSizeBurst(map) {
-  rafBurst(() => invalidateSizeNow(map), { now: true, delays: [90, 180] });
+function invalidateSizeBurst(map, { now = true } = {}) {
+  rafBurst(() => invalidateSizeNow(map), { now, delays: [90, 180] });
 }
 
 function minZoomToFillHeight(map) {
@@ -171,11 +171,13 @@ function openStreetView(actual) {
   window.open(streetViewUrl(actual), '_blank', 'noopener,noreferrer');
 }
 
-function resultPoints(guess, actual) {
-  const pts = [];
-  if (guess) pts.push([guess.lat, guess.lng]);
-  pts.push([actual.lat, actual.lng]);
-  return pts;
+function collectResultPoints(results) {
+  const points = [];
+  for (const { guess, actual } of results) {
+    if (guess) points.push([guess.lat, guess.lng]);
+    points.push([actual.lat, actual.lng]);
+  }
+  return points;
 }
 
 // Shared base for the reveal maps: owns base tiles, the batched result canvas,
@@ -185,10 +187,10 @@ class RevealMap {
     this.map = L.map(elId, { worldCopyJump: true, zoomControl: false, maxZoom: 19 })
       .setView([20, 0], 2);
     this.baseLayer = addBaseLayer(this.map, styleKey);
-    this.resultCanvas = new ResultCanvas(this.map, { onAnswerClick: openStreetView });
+    this.resultCanvas = new ResultCanvas(this.map, openStreetView);
     bindDragCursor(this.map);
     autoResize(this.map);
-    this.layers = [];
+    this.extraLayers = [];
   }
 
   setStyle(key) {
@@ -197,10 +199,20 @@ class RevealMap {
 
   // Resync size and clear the previous result before redrawing.
   clear() {
-    invalidateSizeBurst(this.map);
     this.resultCanvas.hide();
-    for (const l of this.layers) this.map.removeLayer(l);
-    this.layers = [];
+    for (const layer of this.extraLayers) this.map.removeLayer(layer);
+    this.extraLayers = [];
+    invalidateSizeNow(this.map);
+  }
+
+  reveal(results, points, { padding, singlePointZoom = null }) {
+    this.resultCanvas.show(results);
+    if (points.length === 1 && singlePointZoom != null) {
+      this.map.setView(points[0], singlePointZoom, { animate: false });
+    } else {
+      this.map.fitBounds(L.latLngBounds(points).pad(padding), { animate: false });
+    }
+    invalidateSizeBurst(this.map, { now: false });
   }
 }
 
@@ -208,17 +220,15 @@ class RevealMap {
 export class ResultMap extends RevealMap {
   show(guess, actual, trail = null) {
     this.clear();
-    const pts = resultPoints(guess, actual);
-    this.resultCanvas.show([{ guess, actual }]);
-    this.drawTrail(trail, pts);
-    if (pts.length > 1) this.map.fitBounds(L.latLngBounds(pts).pad(0.35), { animate: false });
-    else this.map.setView(pts[0], 5, { animate: false }); // forfeit: only the answer
-    invalidateSizeBurst(this.map);
+    const results = [{ guess, actual }];
+    const points = collectResultPoints(results);
+    this.drawTrail(trail, points);
+    this.reveal(results, points, { padding: 0.35, singlePointZoom: 5 });
   }
 
   // Paths walked from the spawn (Moving mode). Checkpoint returns start a new path
   // so every explored branch is kept without drawing the teleport between them.
-  drawTrail(trail, pts) {
+  drawTrail(trail, points) {
     if (!trail?.length) return;
     const lines = trail
       .map((segment) => segment.map((p) => [p.lat, p.lng]))
@@ -227,15 +237,15 @@ export class ResultMap extends RevealMap {
 
     for (const line of lines) {
       if (line.length > 1) {
-        this.layers.push(L.polyline(line, {
+        this.extraLayers.push(L.polyline(line, {
           className: 'movement-trail', weight: 3, opacity: 0.9, lineJoin: 'round'
         }).addTo(this.map));
       }
-      for (const point of line) pts.push(point);
+      for (const point of line) points.push(point);
     }
 
     const end = lines[lines.length - 1].at(-1);
-    this.layers.push(L.circleMarker(end, {
+    this.extraLayers.push(L.circleMarker(end, {
       className: 'movement-trail', radius: 4, weight: 2,
       fillColor: '#ffffff', fillOpacity: 1
     }).addTo(this.map));
@@ -248,10 +258,6 @@ export class SummaryMap extends RevealMap {
   show(results) {
     this.clear();
     if (!results.length) return;
-    const pts = [];
-    for (const result of results) pts.push(...resultPoints(result.guess, result.actual));
-    this.resultCanvas.show(results);
-    this.map.fitBounds(L.latLngBounds(pts).pad(0.2), { animate: false });
-    invalidateSizeBurst(this.map);
+    this.reveal(results, collectResultPoints(results), { padding: 0.2 });
   }
 }
