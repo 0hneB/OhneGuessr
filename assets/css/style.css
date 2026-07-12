@@ -917,8 +917,14 @@ body.empty-mode #guessPanel { display: none !important; }
 /* Result-map markers: stacked drop-shadows follow the asset alpha edge and give
    both marker types the same soft white outline. */
 .map-pin-guess {
-  background: var(--accent);
+  background: transparent;
   border: none;
+}
+.map-pin-guess::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
   -webkit-mask: url("../icons/pin-guess.svg") center / contain no-repeat;
   mask: url("../icons/pin-guess.svg") center / contain no-repeat;
 }
