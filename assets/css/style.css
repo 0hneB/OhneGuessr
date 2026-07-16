@@ -28,6 +28,11 @@
       rgba(0, 0, 0, 0.62) 72%,
       rgba(0, 0, 0, 0.68) 100%);
   --hud-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --timer-top: 52px;
+}
+
+:root[data-compass-style="classic"] {
+  --timer-top: 12px;
 }
 
 /* Keep every scroll area compact and visually consistent. */
@@ -162,7 +167,7 @@ html, body {
 /* Round timer — centred just below the compass; turns red in the last seconds. */
 #timerBox {
   left: 50%;
-  top: 52px;
+  top: var(--timer-top);
   transform: translateX(-50%);
   gap: 6px;
   padding-left: 12px; /* the icon glyph has transparent margin; trim to balance */
@@ -175,6 +180,7 @@ html, body {
 body.ui-hidden #settingsBtn,
 body.ui-hidden #topLeft,
 body.ui-hidden #compass-hud,
+body.ui-hidden #classicCompass,
 body.ui-hidden #timerBox,
 body.ui-hidden #scoreBox,
 body.ui-hidden #guessPanel { display: none !important; }
@@ -187,19 +193,74 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 
 body.empty-mode #topLeft,
 body.empty-mode #compass-hud,
+body.empty-mode #classicCompass,
 body.empty-mode #timerBox,
 body.empty-mode #scoreBox,
 body.empty-mode #guessPanel { display: none !important; }
 
-/* Compass HUD (canvas, top middle) — draws its own bar; just position it. */
+/* Compass HUD: the heading bar stays top-centre; the classic needle sits bottom-left. */
 #compass-hud {
   position: fixed;
   top: 12px;
   left: 50%;
+  display: none;
   transform: translateX(-50%);
-  z-index: 500;
   cursor: pointer;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
+  z-index: 500;
+}
+
+.classic-compass {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  display: none;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  place-items: center;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow:
+    inset 0 0 0 12px rgba(246, 249, 251, 0.32),
+    0 2px 5px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  transition: box-shadow 80ms ease-out;
+  z-index: 500;
+}
+
+.classic-compass:hover {
+  box-shadow:
+    inset 0 0 0 12px rgba(246, 249, 251, 0.4),
+    0 2px 5px rgba(0, 0, 0, 0.22);
+}
+
+.classic-compass:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 2px;
+}
+
+.classic-compass-needle {
+  width: 48px;
+  height: 48px;
+  transform-box: view-box;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.classic-compass-north { fill: var(--accent); }
+.classic-compass-south { fill: #d8dee4; }
+
+:root[data-compass-style="bar"] #compass-hud,
+:root[data-compass-style="both"] #compass-hud {
+  display: block;
+}
+
+:root[data-compass-style="classic"] .classic-compass,
+:root[data-compass-style="both"] .classic-compass {
+  display: grid;
 }
 
 /* Guess panel (bottom-right, expands on hover) */

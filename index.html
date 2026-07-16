@@ -72,6 +72,14 @@
               <button type="button" data-value="xxl">XXL</button>
             </div>
           </div>
+          <div class="setting">
+            <span>Compass</span>
+            <div class="segmented" id="compassStyleSeg">
+              <button type="button" data-value="bar">Bar</button>
+              <button type="button" data-value="classic">Classic</button>
+              <button type="button" data-value="both">Both</button>
+            </div>
+          </div>
           <div class="setting setting-color">
             <span>Accent color</span>
             <div class="accent-color-actions">
@@ -224,6 +232,15 @@
 
   <canvas id="compass-hud" width="240" height="32"
           title="Click or press N to face north (R resets view)"></canvas>
+
+  <button id="classicCompass" class="classic-compass" type="button"
+          aria-label="Face north" title="Click or press N to face north (R resets view)">
+    <svg id="classicCompassNeedle" class="classic-compass-needle"
+         viewBox="0 0 48 48" aria-hidden="true">
+      <path class="classic-compass-north" d="M24 1 30 24 18 24Z"></path>
+      <path class="classic-compass-south" d="M24 47 18 24 30 24Z"></path>
+    </svg>
+  </button>
 
   <div id="timerBox" class="hud-pill hidden"><span class="svg-icon timer-icon" aria-hidden="true"></span><b id="timerVal">0:30</b></div>
 

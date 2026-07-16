@@ -146,6 +146,16 @@ export function setupSettingsUI({
     onCommit: () => {}
   });
 
+  setupChoiceSegmented({
+    segId: 'compassStyleSeg',
+    read: () => settings.compassStyle,
+    write: (v) => {
+      settings.compassStyle = views.compass.setStyle(v);
+      saveSettings(settings);
+    },
+    onCommit: () => {}
+  });
+
   const accentInput = $('accentColor');
   const renderAccent = (color) => {
     settings.accentColor = applyAccentColor(color);

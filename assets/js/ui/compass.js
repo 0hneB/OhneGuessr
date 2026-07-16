@@ -1,4 +1,5 @@
-// Canvas compass HUD: a horizontal heading bar, driven by setHeading().
+// Shared heading state for the horizontal bar and classic needle.
+import { normalizeCompassStyle } from '../core/settings.js';
 
 const CONFIG = {
   size: { w: 240, h: 32 },
@@ -61,21 +62,40 @@ const wrap = (d) => ((d % 360) + 360) % 360;
 const signedAngle = (to, from) => ((to - from + 540) % 360) - 180;
 
 export class CompassHUD {
-  constructor(canvas, config = CONFIG) {
+  constructor(canvas, needle, { style = 'bar', config = CONFIG } = {}) {
     this.canvas = canvas;
+    this.needle = needle;
     this.ctx = canvas.getContext('2d');
     this.config = config;
     this.heading = 0;
+    this.style = normalizeCompassStyle(style);
+    document.documentElement.dataset.compassStyle = this.style;
     this.resize = this.resize.bind(this);
     this.resize();
     window.addEventListener('resize', this.resize);
+  }
+
+  setStyle(value) {
+    this.style = normalizeCompassStyle(value);
+    document.documentElement.dataset.compassStyle = this.style;
+    this.render();
+    return this.style;
   }
 
   setHeading(value) {
     const h = Number(value);
     if (!Number.isFinite(h)) return;
     this.heading = wrap(h);
-    this.draw();
+    this.render();
+  }
+
+  render() {
+    if (this.style !== 'classic') this.draw();
+    if (this.style !== 'bar') this.rotateNeedle();
+  }
+
+  rotateNeedle() {
+    this.needle.style.transform = `rotate(${-this.heading}deg)`;
   }
 
   resize() {
@@ -86,7 +106,7 @@ export class CompassHUD {
     this.canvas.style.width = w + 'px';
     this.canvas.style.height = h + 'px';
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.draw();
+    this.render();
   }
 
   draw() {

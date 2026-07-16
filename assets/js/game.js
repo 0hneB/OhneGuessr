@@ -520,11 +520,19 @@ function showFinal() {
 
 async function init() {
   const compassCanvas = $('compass-hud');
-  compass = new CompassHUD(compassCanvas);
+  const classicCompass = $('classicCompass');
+  compass = new CompassHUD(compassCanvas, $('classicCompassNeedle'), {
+    style: settings.compassStyle
+  });
   await loadOpenSV();
   viewer = new OpenSvViewer($('pano'));
-  compassCanvas.addEventListener('click', () => {
+  const faceNorth = () => {
     if (canInteractWithGuess()) viewer.faceNorth();
+  };
+  compassCanvas.addEventListener('click', faceNorth);
+  classicCompass.addEventListener('click', faceNorth);
+  classicCompass.addEventListener('keydown', (event) => {
+    if (event.code === 'Space' || event.code === 'Enter') event.stopPropagation();
   });
   viewer.onChange = (heading) => compass.setHeading(heading);
   viewer.setMode(settings.movement);
@@ -535,7 +543,7 @@ async function init() {
   setGuessMapSize(settings.guessMapSize, { persist: false });
   guessPanel.setup();
   const settingsUI = setupSettingsUI({
-    views: { viewer, gmap, resultMap, summaryMap },
+    views: { viewer, gmap, resultMap, summaryMap, compass },
     applyRoundLimitChange,
     roundTimer,
     keybindings,
