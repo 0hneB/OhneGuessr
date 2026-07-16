@@ -52,6 +52,7 @@ export const MAP_STYLES = {
 
 export const DEFAULT_ACCENT_COLOR = '#22c55e';
 export const GUESS_MAP_SIZES = Object.freeze(['default', 'large', 'xl', 'xxl']);
+export const COMPASS_STYLES = Object.freeze(['bar', 'classic', 'both']);
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 let logoSvgPromise = null;
 
@@ -61,6 +62,10 @@ export function normalizeAccentColor(value) {
 
 export function normalizeGuessMapSize(value) {
   return GUESS_MAP_SIZES.includes(value) ? value : 'default';
+}
+
+export function normalizeCompassStyle(value) {
+  return COMPASS_STYLES.includes(value) ? value : 'bar';
 }
 
 const channelHex = (value) => Math.round(value).toString(16).padStart(2, '0');
@@ -111,6 +116,7 @@ const DEFAULTS = {
   mapStyle: 'osm', rounds: '5', timer: 'unlimited',
   accentColor: DEFAULT_ACCENT_COLOR,
   guessMapSize: 'default',
+  compassStyle: 'bar',
   movement: 'moving', // 'moving' | 'nm' (no move) | 'nmpz' (no move/pan/zoom)
   scoring: 'world' // 'world' fixed scale, 'country' per-map
 };
@@ -121,6 +127,7 @@ export function loadSettings() {
     if (!MAP_STYLES[loaded.mapStyle]) loaded.mapStyle = DEFAULTS.mapStyle;
     loaded.accentColor = normalizeAccentColor(loaded.accentColor);
     loaded.guessMapSize = normalizeGuessMapSize(loaded.guessMapSize);
+    loaded.compassStyle = normalizeCompassStyle(loaded.compassStyle);
     return loaded;
   } catch {
     return { ...DEFAULTS };
