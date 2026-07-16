@@ -56,6 +56,23 @@ That serves the folder at `http://localhost:8000` and opens your browser. Stop i
 > [!IMPORTANT]
 > `run/serve.py` serves the game and manages files under `data/`. A plain `python -m http.server` can play cached maps, but uploads, refresh, folder opening, and Map Making App sync require `run/serve.py`.
 
+## Updating
+
+If you cloned the repository, stop OhneGuessr and update it from inside the repository:
+
+```bash
+git pull --ff-only
+```
+
+Everything under `data/` is local and ignored by Git, including maps, the generated map index, synchronized maps, and Map Making App credentials. Browser settings remain in `localStorage`.
+
+If you use the ZIP, extract the new version and copy the old `data/` folder into it before starting the server.
+
+> [!IMPORTANT]
+> When updating an older Git clone for the first time, back up `data/`, run `git restore data/maps.json`, pull the update, then restore the backup into `data/`. Later updates need only `git pull --ff-only`.
+
+The first launch after updating an older installation automatically moves `run/.map-making-app-sync.json` into `data/` and rebuilds the map index.
+
 ## Usage
 
 1. Start the server and let the browser open.
@@ -104,7 +121,7 @@ Settings open from the gear icon and are saved in your browser's `localStorage`,
 
 ## Maps
 
-A map is a JSON file under [`data/`](data/). [`data/maps.json`](data/maps.json) indexes the files and their folders.
+All map data is local and Git-ignored under `data/`. `data/maps.json` is generated automatically and indexes the map files and folders on disk.
 
 ### Adding a map
 
@@ -129,7 +146,7 @@ Use **Open data folder** to open `data/` in your file manager. Create folders or
 
 Current, non-empty maps in active storage are cached under `data/map-making-app/`. Archived maps are skipped. Turning sync off immediately terminates the active sync but keeps the cached maps playable.
 
-The API key is stored locally in the gitignored `run/.map-making-app-sync.json`. It is never written to `data/maps.json` or returned to the browser. Use **Forget key** to remove it.
+The API key is stored locally in the Git-ignored `data/.map-making-app-sync.json`. It is never written to `data/maps.json` or returned to the browser. Use **Forget key** to remove it.
 
 > [!CAUTION]
 > Deleting a map removes its file from `data/` permanently. There's no undo — keep a copy if you might want it back.

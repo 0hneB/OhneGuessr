@@ -1,4 +1,4 @@
 run/.map-making-app-sync.json
 run/__pycache__/
-data/.mma-sync-*/
-data/map-making-app/
+/data/*
+!/data/.gitkeep

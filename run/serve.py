@@ -16,6 +16,7 @@ run/stop.bat.
 
 import json
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -33,8 +34,29 @@ BASE = os.path.dirname(SCRIPT_DIR)
 DATA_DIR = os.path.join(BASE, "data")
 MANIFEST = os.path.join(DATA_DIR, "maps.json")
 PIDFILE = os.path.join(tempfile.gettempdir(), "ohneguessr-serve.pid")
-SYNC_CONFIG = os.path.join(SCRIPT_DIR, ".map-making-app-sync.json")
-MMA_SYNC = MapMakingSync(DATA_DIR, MANIFEST, SYNC_CONFIG)
+SYNC_CONFIG = os.path.join(DATA_DIR, ".map-making-app-sync.json")
+LEGACY_SYNC_CONFIG = os.path.join(SCRIPT_DIR, ".map-making-app-sync.json")
+PRIVATE_STATIC_PATHS = {
+    "/data/.map-making-app-sync.json",
+    "/run/.map-making-app-sync.json",
+}
+MMA_SYNC = None
+
+
+def prepare_data():
+    os.makedirs(DATA_DIR, exist_ok=True)
+    sync_config = SYNC_CONFIG
+    if not os.path.exists(SYNC_CONFIG) and os.path.isfile(LEGACY_SYNC_CONFIG):
+        try:
+            os.replace(LEGACY_SYNC_CONFIG, SYNC_CONFIG)
+        except OSError:
+            try:
+                shutil.copy2(LEGACY_SYNC_CONFIG, SYNC_CONFIG)
+                os.remove(LEGACY_SYNC_CONFIG)
+            except OSError:
+                sync_config = LEGACY_SYNC_CONFIG
+    map_store.rescan(DATA_DIR, MANIFEST)
+    return sync_config
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -67,6 +89,9 @@ class Handler(SimpleHTTPRequestHandler):
         return parts[-1] if len(parts) >= 4 else None
 
     def do_GET(self):
+        if self._path().lower() in PRIVATE_STATIC_PATHS:
+            self.send_error(404)
+            return
         if self._path() == "/api/health":
             self._send_json({"ok": True})
             return
@@ -199,13 +224,14 @@ def port_in_use(port):
 
 
 def main():
+    global MMA_SYNC
     url = "http://localhost:%d/" % PORT
     # Already running: reopen the browser and exit.
     if port_in_use(PORT):
         webbrowser.open(url)
         return
 
-    os.makedirs(DATA_DIR, exist_ok=True)
+    MMA_SYNC = MapMakingSync(DATA_DIR, MANIFEST, prepare_data())
     try:
         with open(PIDFILE, "w", encoding="utf-8") as f:
             f.write(str(os.getpid()))
