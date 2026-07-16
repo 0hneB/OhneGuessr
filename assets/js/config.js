@@ -17,9 +17,5 @@ export const KEYBINDINGS = {
   faceNorth: ['KeyN'],
   toggleMapPinned: ['KeyM'],
   toggleMapFullscreen: ['KeyF'],
-  mapSizeDefault: ['Digit1'],
-  mapSizeLarge: ['Digit2'],
-  mapSizeExtraLarge: ['Digit3'],
-  mapSizeExtraExtraLarge: ['Digit4'],
   hideHud: ['KeyH']
 };
