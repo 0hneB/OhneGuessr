@@ -14,6 +14,7 @@ import { setupMmaSync } from './ui/mma-sync.js';
 import { setupSettingsUI } from './ui/settings-panel.js';
 import { createGuessPanel } from './ui/guess-panel.js';
 import { saveGame, loadGame, clearGame } from './core/persist.js';
+import { saveSettings } from './core/settings.js';
 
 // World: fixed scale. Country: the loaded map's bbox diagonal.
 const effectiveScaleKm = () =>
@@ -30,6 +31,7 @@ const ACTIVE_GAME_PHASES = new Set([
 ]);
 
 let viewer, gmap, resultMap, summaryMap, compass, guessPanel;
+let syncGuessMapSizeControl = () => {};
 const panoLoad = { controller: null };
 let roundPreload = null;
 let preloadFrame = 0;
@@ -332,6 +334,19 @@ function onPlaceGuess(_guess, { submit = false } = {}) {
 const canInteractWithGuess = () =>
   state.phase === GAME_PHASE.GUESSING && !isSettingsOpen();
 
+function setGuessMapSize(size, { persist = true } = {}) {
+  const next = guessPanel.setSize(size);
+  if (next === settings.guessMapSize) return false;
+  settings.guessMapSize = next;
+  if (persist) saveSettings(settings);
+  return true;
+}
+
+function setGuessMapSizeFromShortcut(size, event) {
+  if (event.repeat || !canInteractWithGuess()) return;
+  if (setGuessMapSize(size)) syncGuessMapSizeControl();
+}
+
 // What each shortcut does; names match keybindings.js.
 const KEY_ACTIONS = {
   submitOrNext: () => {
@@ -365,6 +380,10 @@ const KEY_ACTIONS = {
   toggleMapFullscreen: () => {
     if (canInteractWithGuess()) guessPanel.setFullscreen(!guessPanel.isFullscreen());
   },
+  mapSizeDefault: (event) => setGuessMapSizeFromShortcut('default', event),
+  mapSizeLarge: (event) => setGuessMapSizeFromShortcut('large', event),
+  mapSizeXl: (event) => setGuessMapSizeFromShortcut('xl', event),
+  mapSizeXxl: (event) => setGuessMapSizeFromShortcut('xxl', event),
   hideHud: () => {
     if (state.phase === GAME_PHASE.GUESSING) document.body.classList.toggle('ui-hidden');
   }
@@ -513,14 +532,17 @@ async function init() {
   resultMap = new ResultMap('resultMap', settings.mapStyle);
   summaryMap = new SummaryMap('finalMap', settings.mapStyle);
   guessPanel = createGuessPanel(gmap);
+  setGuessMapSize(settings.guessMapSize, { persist: false });
   guessPanel.setup();
-  setupSettingsUI({
+  const settingsUI = setupSettingsUI({
     views: { viewer, gmap, resultMap, summaryMap },
     applyRoundLimitChange,
     roundTimer,
     keybindings,
-    scheduleGuessMapLayout: guessPanel.schedule
+    scheduleGuessMapLayout: guessPanel.schedule,
+    setGuessMapSize
   });
+  syncGuessMapSizeControl = settingsUI.syncGuessMapSizeControl;
   setupMapLibrary();
   setupMmaSync({ reloadLibrary });
 
