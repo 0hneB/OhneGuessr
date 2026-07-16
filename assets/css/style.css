@@ -206,6 +206,8 @@ body.empty-mode #guessPanel { display: none !important; }
 #guessPanel {
   --guess-map-h: 190px;
   --guess-button-h: 44px;
+  --guess-map-expanded-h: min(42vh, 420px);
+  --guess-map-expanded-w: min(46vw, 560px);
   position: fixed;
   right: 14px;
   bottom: 14px;
@@ -220,12 +222,24 @@ body.empty-mode #guessPanel { display: none !important; }
   transform-origin: bottom right;
   transition: opacity 0.08s ease;
 }
+#guessPanel[data-map-size="large"] {
+  --guess-map-expanded-h: min(56vh, 560px);
+  --guess-map-expanded-w: min(60vw, 760px);
+}
+#guessPanel[data-map-size="xl"] {
+  --guess-map-expanded-h: min(70vh, 700px);
+  --guess-map-expanded-w: min(74vw, 960px);
+}
+#guessPanel[data-map-size="xxl"] {
+  --guess-map-expanded-h: min(82vh, 820px);
+  --guess-map-expanded-w: min(86vw, 1120px);
+}
 #guessPanel:hover,
 #guessPanel.pinned { opacity: 1; }
 #guessPanel:hover,
 #guessPanel.pinned {
-  --guess-map-h: min(42vh, 420px);
-  width: min(46vw, 560px);
+  --guess-map-h: var(--guess-map-expanded-h);
+  width: var(--guess-map-expanded-w);
 }
 
 #map {
