@@ -3,6 +3,7 @@
 // transitions. Owns the #guessPanel element and drives the supplied GuessMap.
 import { $ } from '../core/dom.js';
 import { rafBurst } from '../core/raf.js';
+import { normalizeGuessMapSize } from '../core/settings.js';
 
 export function createGuessPanel(gmap) {
   let cancelLayout = () => {};
@@ -32,6 +33,15 @@ export function createGuessPanel(gmap) {
     schedule();
   }
 
+  function setSize(value) {
+    const size = normalizeGuessMapSize(value);
+    const panel = $('guessPanel');
+    if (panel.dataset.mapSize === size) return size;
+    panel.dataset.mapSize = size;
+    schedule();
+    return size;
+  }
+
   // Wire the panel's own interactions and relayout it when its size changes.
   function setup() {
     const panel = $('guessPanel');
@@ -47,5 +57,5 @@ export function createGuessPanel(gmap) {
     window.addEventListener('resize', schedule);
   }
 
-  return { schedule, setFullscreen, setPinned, isFullscreen, isPinned, setup };
+  return { schedule, setFullscreen, setPinned, setSize, isFullscreen, isPinned, setup };
 }

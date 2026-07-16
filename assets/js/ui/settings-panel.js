@@ -62,6 +62,7 @@ function setupChoiceSegmented({ segId, read, write, onCommit }) {
   });
 
   paint();
+  return paint;
 }
 
 function setupAppFullscreenToggle(scheduleGuessMapLayout) {
@@ -117,7 +118,8 @@ function setupSettingsTabs() {
 }
 
 export function setupSettingsUI({
-  views, applyRoundLimitChange, roundTimer, keybindings, scheduleGuessMapLayout
+  views, applyRoundLimitChange, roundTimer, keybindings,
+  scheduleGuessMapLayout, setGuessMapSize
 }) {
   setupSettingsTabs();
   const styleSel = $('mapStyleSel');
@@ -135,6 +137,13 @@ export function setupSettingsUI({
     views.gmap.setStyle(settings.mapStyle);
     views.resultMap.setStyle(settings.mapStyle);
     views.summaryMap.setStyle(settings.mapStyle);
+  });
+
+  const syncGuessMapSizeControl = setupChoiceSegmented({
+    segId: 'guessMapSizeSeg',
+    read: () => settings.guessMapSize,
+    write: setGuessMapSize,
+    onCommit: () => {}
   });
 
   const accentInput = $('accentColor');
@@ -210,4 +219,6 @@ export function setupSettingsUI({
     selectSettingsTab('maps'); // no maps yet, open Maps
     openSettings();
   });
+
+  return { syncGuessMapSizeControl };
 }

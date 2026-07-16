@@ -5,20 +5,29 @@ import { KEYBINDINGS } from '../config.js';
 import { saveSettings } from '../core/settings.js';
 import { settings } from '../core/state.js';
 
-// Display names and order for the Controls list; keys match the action map.
-const ACTION_LABELS = {
-  submitOrNext: 'Submit / Next / Replay',
-  zoomIn: 'Zoom in',
-  zoomOut: 'Zoom out',
-  resetView: 'Reset view',
-  checkpoint: 'Set / return checkpoint',
-  checkpointPeek: 'Peek checkpoint',
-  lookBehind: 'Look behind',
-  faceNorth: 'Face north',
-  toggleMapPinned: 'Toggle pinned map',
-  toggleMapFullscreen: 'Toggle map fullscreen',
-  hideHud: 'Hide HUD'
-};
+// Display names and order for the Controls list; actions match the action map.
+const CONTROL_ROWS = [
+  { action: 'submitOrNext', label: 'Submit / Next / Replay' },
+  { action: 'zoomIn', label: 'Zoom in' },
+  { action: 'zoomOut', label: 'Zoom out' },
+  { action: 'resetView', label: 'Reset view' },
+  { action: 'checkpoint', label: 'Set / return checkpoint' },
+  { action: 'checkpointPeek', label: 'Peek checkpoint' },
+  { action: 'lookBehind', label: 'Look behind' },
+  { action: 'faceNorth', label: 'Face north' },
+  { action: 'toggleMapPinned', label: 'Toggle pinned map' },
+  { action: 'toggleMapFullscreen', label: 'Toggle map fullscreen' },
+  {
+    label: 'Map size presets',
+    items: [
+      { action: 'mapSizeDefault', label: 'Default map size' },
+      { action: 'mapSizeLarge', label: 'Large map size' },
+      { action: 'mapSizeXl', label: 'XL map size' },
+      { action: 'mapSizeXxl', label: 'XXL map size' }
+    ]
+  },
+  { action: 'hideHud', label: 'Hide HUD' }
+];
 
 // Display label for a KeyboardEvent.code.
 function codeLabel(code) {
@@ -36,6 +45,21 @@ function codeLabel(code) {
   const np = code.match(/^Numpad(\d)$/);
   if (np) return 'Num ' + np[1];
   return code;
+}
+
+function compactCodeLabel(code) {
+  if (!code) return '—';
+  const named = {
+    Space: 'Spc', Enter: 'Ent', Backspace: 'Bksp', Delete: 'Del',
+    PageUp: 'PgUp', PageDown: 'PgDn',
+    NumpadAdd: 'N+', NumpadSubtract: 'N−',
+    NumpadMultiply: 'N×', NumpadDivide: 'N÷', NumpadDecimal: 'N.'
+  };
+  if (named[code]) return named[code];
+  const np = code.match(/^Numpad(\d)$/);
+  if (np) return `N${np[1]}`;
+  const label = codeLabel(code);
+  return label.length <= 4 ? label : `${label.slice(0, 3)}…`;
 }
 
 export class Keybindings {
@@ -101,34 +125,58 @@ export class Keybindings {
     this.render();
   }
 
+  createKeyCap(action, binds, { compact = false, label = action } = {}) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `key-cap${compact ? ' key-cap-compact' : ''}`;
+    const code = (binds[action] || [])[0] || null;
+    if (this.capturingKeyFor === action) {
+      btn.classList.add('capturing');
+      btn.textContent = compact ? '…' : 'Press a key…';
+      btn.setAttribute('aria-label', `Press a key for ${label}`);
+    } else {
+      const fullLabel = codeLabel(code);
+      btn.textContent = compact ? compactCodeLabel(code) : fullLabel;
+      btn.setAttribute('aria-label', `${label}: ${fullLabel}`);
+      if (!code) btn.classList.add('unbound');
+    }
+    btn.title = `${label} · Click, then press a key (Esc cancels · Backspace clears)`;
+    btn.addEventListener('click', (e) => { e.stopPropagation(); this.beginCapture(action); });
+    return btn;
+  }
+
   render() {
     const list = $('keyList');
     if (!list) return;
     list.innerHTML = '';
     const binds = this.current();
-    for (const action of Object.keys(ACTION_LABELS)) {
+    for (const control of CONTROL_ROWS) {
+      const grouped = Array.isArray(control.items);
       const row = document.createElement('div');
       row.className = 'key-row';
 
       const name = document.createElement('span');
       name.className = 'key-row-name';
-      name.textContent = ACTION_LABELS[action];
+      name.textContent = control.label;
       row.appendChild(name);
 
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'key-cap';
-      const code = (binds[action] || [])[0] || null;
-      if (this.capturingKeyFor === action) {
-        btn.classList.add('capturing');
-        btn.textContent = 'Press a key…';
+      if (grouped) {
+        const caps = document.createElement('div');
+        caps.className = 'key-cap-group';
+        caps.setAttribute('role', 'group');
+        caps.setAttribute('aria-label', control.label);
+        for (const preset of control.items) {
+          caps.appendChild(this.createKeyCap(preset.action, binds, {
+            compact: true,
+            label: preset.label
+          }));
+        }
+        row.appendChild(caps);
       } else {
-        btn.textContent = codeLabel(code);
-        if (!code) btn.classList.add('unbound');
+        row.appendChild(this.createKeyCap(control.action, binds, {
+          label: control.label
+        }));
       }
-      btn.title = 'Click, then press a key (Esc cancels · Backspace clears)';
-      btn.addEventListener('click', (e) => { e.stopPropagation(); this.beginCapture(action); });
-      row.appendChild(btn);
 
       list.appendChild(row);
     }
