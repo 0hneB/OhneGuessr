@@ -51,11 +51,16 @@ export const MAP_STYLES = {
 };
 
 export const DEFAULT_ACCENT_COLOR = '#22c55e';
+export const GUESS_MAP_SIZES = Object.freeze(['default', 'large', 'xl', 'xxl']);
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 let logoSvgPromise = null;
 
 export function normalizeAccentColor(value) {
   return HEX_COLOR.test(value || '') ? value.toLowerCase() : DEFAULT_ACCENT_COLOR;
+}
+
+export function normalizeGuessMapSize(value) {
+  return GUESS_MAP_SIZES.includes(value) ? value : 'default';
 }
 
 const channelHex = (value) => Math.round(value).toString(16).padStart(2, '0');
@@ -105,6 +110,7 @@ const KEY = 'ohneguessr.settings';
 const DEFAULTS = {
   mapStyle: 'osm', rounds: '5', timer: 'unlimited',
   accentColor: DEFAULT_ACCENT_COLOR,
+  guessMapSize: 'default',
   movement: 'moving', // 'moving' | 'nm' (no move) | 'nmpz' (no move/pan/zoom)
   scoring: 'world' // 'world' fixed scale, 'country' per-map
 };
@@ -114,6 +120,7 @@ export function loadSettings() {
     const loaded = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY)) || {}) };
     if (!MAP_STYLES[loaded.mapStyle]) loaded.mapStyle = DEFAULTS.mapStyle;
     loaded.accentColor = normalizeAccentColor(loaded.accentColor);
+    loaded.guessMapSize = normalizeGuessMapSize(loaded.guessMapSize);
     return loaded;
   } catch {
     return { ...DEFAULTS };

@@ -17,6 +17,10 @@ const ACTION_LABELS = {
   faceNorth: 'Face north',
   toggleMapPinned: 'Toggle pinned map',
   toggleMapFullscreen: 'Toggle map fullscreen',
+  mapSizeDefault: 'Map size: default',
+  mapSizeLarge: 'Map size: large',
+  mapSizeExtraLarge: 'Map size: extra large',
+  mapSizeExtraExtraLarge: 'Map size: extra extra large',
   hideHud: 'Hide HUD'
 };
 

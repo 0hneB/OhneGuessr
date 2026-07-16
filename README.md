@@ -76,6 +76,7 @@ That serves the folder at `http://localhost:8000` and opens your browser. Stop i
 | Hold <kbd>B</kbd> | Look behind; release to return |
 | <kbd>M</kbd> | Pin / unpin the expanded map |
 | <kbd>F</kbd> | Toggle the fullscreen map |
+| <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>4</kbd> | Select default / large / XL / XXL expanded map |
 | <kbd>H</kbd> | Hide / show the interface |
 | Click map | Place or move a guess |
 | <kbd>Shift</kbd> + click map | Place and submit a guess |
@@ -93,6 +94,7 @@ Settings open from the gear icon and are saved in your browser's `localStorage`,
 | Setting | Options | Notes |
 | --- | --- | --- |
 | Map style | OpenStreetMap, OSM Humanitarian, CartoDB Light/Voyager/Dark, Esri Light/Dark Gray, Satellite, Terrain | The base layer for the guess map |
+| Expanded map size | Default, Large, XL, XXL | Changes only the hovered or pinned guess map |
 | Accent color | Any color | Changes the UI highlights and is saved locally |
 | Application fullscreen | On / off | Puts the whole app into browser fullscreen |
 | Rounds per game | Unlimited, 5, 10, Custom | Custom takes any whole number |
