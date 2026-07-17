@@ -6,16 +6,16 @@ import { normalizeGuessMapSize } from '../core/settings.js';
 export function createGuessPanel(gmap) {
   const isFullscreen = () => $('guessPanel').classList.contains('map-fullscreen');
   const isPinned = () => $('guessPanel').classList.contains('pinned');
-  const schedule = () => gmap.applyLayout();
+  const syncLayout = () => gmap.resize();
 
   function setFullscreen(on) {
     $('guessPanel').classList.toggle('map-fullscreen', on);
-    schedule();
+    syncLayout();
   }
 
   function setPinned(on) {
     $('guessPanel').classList.toggle('pinned', on);
-    schedule();
+    syncLayout();
   }
 
   function setSize(value) {
@@ -23,7 +23,7 @@ export function createGuessPanel(gmap) {
     const panel = $('guessPanel');
     if (panel.dataset.mapSize !== size) {
       panel.dataset.mapSize = size;
-      schedule();
+      syncLayout();
     }
     return size;
   }
@@ -36,5 +36,5 @@ export function createGuessPanel(gmap) {
     }, true);
   }
 
-  return { schedule, setFullscreen, setPinned, setSize, isFullscreen, isPinned, setup };
+  return { syncLayout, setFullscreen, setPinned, setSize, isFullscreen, isPinned, setup };
 }

@@ -71,14 +71,14 @@ function setupChoiceSegmented({ segId, read, write, onCommit }) {
   return paint;
 }
 
-function setupAppFullscreenToggle(scheduleGuessMapLayout) {
+function setupAppFullscreenToggle(syncGuessMapLayout) {
   const toggle = $('appFullscreenToggle');
   const label = toggle.closest('.setting-toggle');
   const supported = Boolean(document.fullscreenEnabled && document.documentElement.requestFullscreen);
 
   const sync = () => {
     toggle.checked = Boolean(document.fullscreenElement);
-    scheduleGuessMapLayout();
+    syncGuessMapLayout();
   };
 
   if (!supported) {
@@ -125,7 +125,7 @@ function setupSettingsTabs() {
 
 export function setupSettingsUI({
   views, applyRoundLimitChange, roundTimer, keybindings,
-  scheduleGuessMapLayout, setGuessMapSize
+  syncGuessMapLayout, setGuessMapSize
 }) {
   setupSettingsTabs();
   const styleSel = $('mapStyleSel');
@@ -201,7 +201,7 @@ export function setupSettingsUI({
     saveSettings(settings);
   });
 
-  setupAppFullscreenToggle(scheduleGuessMapLayout);
+  setupAppFullscreenToggle(syncGuessMapLayout);
   setupChoiceSegmented({
     segId: 'moveSeg',
     read: () => settings.movement,
