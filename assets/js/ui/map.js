@@ -1,159 +1,187 @@
-// Leaflet maps (L is the global from index.html).
-//   GuessMap   - small in-game map for dropping a guess
-//   ResultMap  - per-round reveal with guess/answer pins
-//   SummaryMap - end-of-game overview of every round
-import { MAP_STYLES } from '../core/settings.js';
-import { rafBurst } from '../core/raf.js';
-import { ResultCanvas } from './result-canvas.js';
+// MapLibre maps:
+//   GuessMap     - permanent in-game map for dropping a guess
+//   RevealEngine - one lazy map shared by the round and final result screens
+import { DEFAULT_MAP_STYLE_KEY } from '../core/settings.js';
+import { buildMapStyle } from './map-style.js';
+import { ResultLayers } from './result-layers.js';
 
-function addBaseLayer(map, key, current) {
-  const style = MAP_STYLES[key] || MAP_STYLES.osm;
-  const layer = L.tileLayer(style.url, {
-    updateWhenIdle: false,
-    updateWhenZooming: false, // hold scaled tiles during zoom instead of blanking
-    keepBuffer: 8,
-    ...(style.options || {})
+const INITIAL_CENTER = [0, 20];
+const INITIAL_ZOOM = 0;
+const MAPLIBRE_TILE_SIZE = 512;
+
+function accentColor() {
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue('--accent').trim() || '#22c55e';
+}
+
+function createMap(container, styleKey, options = {}) {
+  const definition = buildMapStyle(styleKey);
+  const map = new maplibregl.Map({
+    container,
+    style: definition.style,
+    center: INITIAL_CENTER,
+    zoom: INITIAL_ZOOM,
+    minZoom: 0,
+    maxZoom: definition.maxZoom,
+    renderWorldCopies: true,
+    dragRotate: false,
+    pitchWithRotate: false,
+    touchPitch: false,
+    maxPitch: 0,
+    keyboard: false,
+    trackResize: false,
+    pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+    cancelPendingTileRequestsWhileZooming: false,
+    ...options
   });
-  layer.addTo(map);
-  if (layer.bringToBack) layer.bringToBack();
-  if (current) map.removeLayer(current);
-  return layer;
+  map.touchZoomRotate.disableRotation();
+  return { map, styleKey: definition.key };
 }
 
-// Grabbing cursor while panning.
-function bindDragCursor(map) {
-  const c = map.getContainer();
-  map.on('dragstart', () => { c.style.cursor = 'grabbing'; });
-  map.on('dragend', () => { c.style.cursor = ''; });
+function setMapStyle(owner, key, beforeChange) {
+  const definition = buildMapStyle(key);
+  if (definition.key === owner.styleKey) return;
+  beforeChange?.();
+  owner.styleKey = definition.key;
+  owner.map.setMaxZoom(definition.maxZoom);
+  owner.map.setStyle(definition.style);
 }
 
-// Resync Leaflet's size with its container (grey bars mean a stale size).
-function invalidateSizeNow(map) {
-  const center = map.getCenter();
-  const zoom = map.getZoom();
-  map.invalidateSize({ animate: false });
-  map.setView(center, zoom, { animate: false });
+function observeMapSize(map, container, onResize = () => {}) {
+  if (typeof ResizeObserver === 'undefined') return null;
+  const observer = new ResizeObserver(([entry]) => {
+    if (!entry || entry.contentRect.width <= 0 || entry.contentRect.height <= 0) return;
+    map.resize();
+    onResize();
+  });
+  observer.observe(container);
+  return observer;
 }
 
-function invalidateSizeBurst(map, { now = true } = {}) {
-  rafBurst(() => invalidateSizeNow(map), { now, delays: [90, 180] });
+function isPoint(value) {
+  return Number.isFinite(value?.lat) && Number.isFinite(value?.lng);
 }
 
-function minZoomToFillHeight(map) {
-  invalidateSizeNow(map);
-  const size = map.getSize();
-  if (!size.y) return map.getMinZoom() || 0;
-
-  const crs = map.options.crs || L.CRS.EPSG3857;
-  const maxZoom = map.getMaxZoom() || 19;
-  let zoom = map.options._ohneguessrBaseMinZoom ?? 0;
-  while (zoom < maxZoom && crs.scale(zoom) < size.y + 12) zoom++;
-  return zoom;
-}
-
-function clampCenterToWorld(map, center, zoom) {
-  const size = map.getSize();
-  const bounds = map.getPixelWorldBounds(zoom);
-  if (!bounds) return center;
-
-  const point = map.project(center, zoom);
-  const minY = bounds.min.y + size.y / 2;
-  const maxY = bounds.max.y - size.y / 2;
-  if (minY <= maxY) point.y = Math.max(minY, Math.min(maxY, point.y));
-  else point.y = (bounds.min.y + bounds.max.y) / 2;
-  return map.unproject(point, zoom);
-}
-
-function autoResize(map) {
-  if (typeof ResizeObserver === 'undefined') return;
-  let raf = 0;
-  new ResizeObserver(() => {
-    cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => invalidateSizeBurst(map));
-  }).observe(map.getContainer());
+function pointCoordinates(point) {
+  return [point.lng, point.lat];
 }
 
 export class GuessMap {
-  constructor(elId, onPlace, styleKey = 'osm') {
-    this.map = L.map(elId, {
-      worldCopyJump: true, zoomControl: false, maxZoom: 19,
-      attributionControl: false
-    }).setView([20, 0], 1);
-    this.map.options._ohneguessrBaseMinZoom = this.map.options.minZoom ?? 0;
-    this.baseLayer = addBaseLayer(this.map, styleKey);
-    bindDragCursor(this.map);
-    autoResize(this.map);
-    this.guessMarker = null;
+  constructor(elId, onPlace, styleKey = DEFAULT_MAP_STYLE_KEY) {
+    this.container = document.getElementById(elId);
+    const created = createMap(this.container, styleKey, {
+      attributionControl: false,
+      doubleClickZoom: false
+    });
+    this.map = created.map;
+    this.styleKey = created.styleKey;
     this.guess = null;
     this.isFullscreen = false;
     this.isConstraining = false;
+    this.accent = accentColor();
 
-    this.map.on('click', (e) => {
-      this.setGuess(e.latlng);
-      onPlace(this.guess, { submit: e.originalEvent?.shiftKey === true });
+    this.map.on('style.load', () => this.installGuessLayer());
+    this.map.on('click', (event) => {
+      this.setGuess(event.lngLat);
+      onPlace(this.guess, { submit: event.originalEvent?.shiftKey === true });
     });
-    this.map.on('moveend zoomend', () => {
-      if (this.isFullscreen && !this.isConstraining) this.constrainFullscreenView();
+    this.map.on('dragstart', () => {
+      this.map.getCanvas().style.cursor = 'grabbing';
+    });
+    this.map.on('dragend', () => {
+      this.map.getCanvas().style.cursor = 'crosshair';
+    });
+    this.map.on('moveend', () => {
+      if (this.isFullscreen) this.constrainFullscreenView();
+    });
+    this.resizeObserver = observeMapSize(this.map, this.container, () => {
+      if (this.isFullscreen) this.constrainFullscreenView();
     });
   }
 
+  installGuessLayer() {
+    if (!this.map.getSource('guess-point')) {
+      this.map.addSource('guess-point', {
+        type: 'geojson',
+        data: this.guessData()
+      });
+    }
+    if (!this.map.getLayer('guess-point')) {
+      this.map.addLayer({
+        id: 'guess-point',
+        type: 'circle',
+        source: 'guess-point',
+        paint: {
+          'circle-radius': 8,
+          'circle-color': this.accent,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 2
+        }
+      });
+    }
+    this.syncGuess();
+  }
+
+  guessData() {
+    return {
+      type: 'FeatureCollection',
+      features: this.guess ? [{
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'Point', coordinates: pointCoordinates(this.guess) }
+      }] : []
+    };
+  }
+
+  syncGuess() {
+    this.map.getSource('guess-point')?.setData(this.guessData());
+  }
+
   refresh() {
-    invalidateSizeBurst(this.map);
+    this.map.resize();
   }
 
   applyLayout(isFullscreen) {
     this.isFullscreen = isFullscreen;
-
-    if (isFullscreen) {
-      this.constrainFullscreenView();
-    } else {
-      invalidateSizeNow(this.map);
-      this.map.setMinZoom(this.map.options._ohneguessrBaseMinZoom ?? 0);
-    }
-
-    invalidateSizeBurst(this.map);
+    this.map.resize();
+    if (isFullscreen) this.constrainFullscreenView();
+    else this.map.setMinZoom(0);
   }
 
   constrainFullscreenView() {
-    if (this.isConstraining) return;
+    if (this.isConstraining || !this.container.clientHeight) return;
     this.isConstraining = true;
     try {
-      const center = this.map.getCenter();
-      const currentZoom = this.map.getZoom();
-      const minZoom = minZoomToFillHeight(this.map);
-      const targetZoom = Math.max(currentZoom, minZoom);
-      const targetCenter = clampCenterToWorld(this.map, center, targetZoom);
-
+      const fillZoom = Math.log2((this.container.clientHeight + 12) / MAPLIBRE_TILE_SIZE);
+      const minZoom = Math.max(0, Math.min(this.map.getMaxZoom(), fillZoom));
       this.map.setMinZoom(minZoom);
-      if (targetZoom !== currentZoom || center.distanceTo(targetCenter) >= 0.01) {
-        this.map.setView(targetCenter, targetZoom, { animate: false });
-      }
+      if (this.map.getZoom() < minZoom) this.map.jumpTo({ zoom: minZoom });
     } finally {
       this.isConstraining = false;
     }
   }
 
   setStyle(key) {
-    this.baseLayer = addBaseLayer(this.map, key, this.baseLayer);
+    setMapStyle(this, key);
   }
 
-  setGuess(latlng) {
-    this.guess = { lat: latlng.lat, lng: latlng.lng };
-    if (!this.guessMarker) {
-      this.guessMarker = L.circleMarker(latlng, {
-        radius: 8, color: '#ffffff', weight: 2, fillOpacity: 1,
-        className: 'guess-marker'
-      }).addTo(this.map);
-    } else {
-      this.guessMarker.setLatLng(latlng);
+  setAccent(accent) {
+    this.accent = accent;
+    if (this.map.getLayer('guess-point')) {
+      this.map.setPaintProperty('guess-point', 'circle-color', accent);
     }
+  }
+
+  setGuess(point) {
+    this.guess = { lat: point.lat, lng: point.lng };
+    this.syncGuess();
   }
 
   reset() {
     this.guess = null;
-    if (this.guessMarker) this.map.removeLayer(this.guessMarker);
-    this.guessMarker = null;
-    this.map.setView([20, 0], 1);
+    this.syncGuess();
+    this.map.stop();
+    this.map.jumpTo({ center: INITIAL_CENTER, zoom: INITIAL_ZOOM });
   }
 }
 
@@ -171,93 +199,151 @@ function openStreetView(actual) {
   window.open(streetViewUrl(actual), '_blank', 'noopener,noreferrer');
 }
 
-function collectResultPoints(results) {
+function resultPoints(results, trail = null) {
   const points = [];
   for (const { guess, actual } of results) {
-    if (guess) points.push([guess.lat, guess.lng]);
-    points.push([actual.lat, actual.lng]);
+    if (isPoint(guess)) points.push(guess);
+    if (isPoint(actual)) points.push(actual);
+  }
+  for (const segment of trail || []) {
+    for (const point of segment) if (isPoint(point)) points.push(point);
   }
   return points;
 }
 
-// Shared base for the reveal maps: owns base tiles, the batched result canvas,
-// and any extra Leaflet vector layers such as the walked path.
-class RevealMap {
-  constructor(elId, styleKey = 'osm') {
-    this.map = L.map(elId, { worldCopyJump: true, zoomControl: false, maxZoom: 19 })
-      .setView([20, 0], 2);
-    this.baseLayer = addBaseLayer(this.map, styleKey);
-    this.resultCanvas = new ResultCanvas(this.map, openStreetView);
-    bindDragCursor(this.map);
-    autoResize(this.map);
-    this.extraLayers = [];
+function equalPointBounds(bounds) {
+  const southWest = bounds.getSouthWest();
+  const northEast = bounds.getNorthEast();
+  return southWest.lat === northEast.lat && southWest.lng === northEast.lng;
+}
+
+class RevealEngine {
+  constructor(styleKey) {
+    this.styleKey = buildMapStyle(styleKey).key;
+    this.accent = accentColor();
+    this.container = document.createElement('div');
+    this.container.className = 'reveal-map';
+    this.map = null;
+    this.layers = null;
+    this.cameraRevision = 0;
+  }
+
+  mount(slotId) {
+    const slot = document.getElementById(slotId);
+    if (this.container.parentElement !== slot) slot.appendChild(this.container);
+    if (!this.map) this.create();
+    else this.map.resize();
+  }
+
+  create() {
+    const created = createMap(this.container, this.styleKey, {
+      zoom: 1
+    });
+    this.map = created.map;
+    this.styleKey = created.styleKey;
+    this.layers = new ResultLayers(this.map, openStreetView, this.accent);
+    this.map.on('style.load', () => this.layers.install());
+    this.resizeObserver = observeMapSize(this.map, this.container);
+  }
+
+  show(slotId, results, trail, paddingFactor, singlePointZoom = null) {
+    this.mount(slotId);
+    this.layers.setResults(results, trail);
+    this.fitWhenReady(resultPoints(results, trail), paddingFactor, singlePointZoom);
+  }
+
+  fitWhenReady(points, paddingFactor, singlePointZoom) {
+    const revision = ++this.cameraRevision;
+    const fit = () => requestAnimationFrame(() => {
+      if (revision !== this.cameraRevision) return;
+      this.fit(points, paddingFactor, singlePointZoom);
+    });
+    if (this.map.isStyleLoaded()) fit();
+    else this.map.once('style.load', fit);
+  }
+
+  fit(points, paddingFactor, singlePointZoom) {
+    if (!points.length) return;
+    this.map.resize();
+    this.map.stop();
+    const bounds = new maplibregl.LngLatBounds();
+    for (const point of points) bounds.extend(pointCoordinates(point));
+
+    if (points.length === 1 || equalPointBounds(bounds)) {
+      this.map.jumpTo({
+        center: pointCoordinates(points[0]),
+        zoom: Math.min(singlePointZoom ?? 4, this.map.getMaxZoom())
+      });
+      return;
+    }
+
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    const ratio = paddingFactor / (1 + paddingFactor * 2);
+    this.map.fitBounds(bounds, {
+      padding: {
+        top: Math.round(height * ratio),
+        right: Math.round(width * ratio),
+        bottom: Math.round(height * ratio),
+        left: Math.round(width * ratio)
+      },
+      duration: 0
+    });
   }
 
   setStyle(key) {
-    this.baseLayer = addBaseLayer(this.map, key, this.baseLayer);
-  }
-
-  // Resync size and clear the previous result before redrawing.
-  clear() {
-    this.resultCanvas.hide();
-    for (const layer of this.extraLayers) this.map.removeLayer(layer);
-    this.extraLayers = [];
-    invalidateSizeNow(this.map);
-  }
-
-  reveal(results, points, { padding, singlePointZoom = null }) {
-    this.resultCanvas.show(results);
-    if (points.length === 1 && singlePointZoom != null) {
-      this.map.setView(points[0], singlePointZoom, { animate: false });
-    } else {
-      this.map.fitBounds(L.latLngBounds(points).pad(padding), { animate: false });
+    if (!this.map) {
+      this.styleKey = buildMapStyle(key).key;
+      return;
     }
-    invalidateSizeBurst(this.map, { now: false });
+    setMapStyle(this, key, () => this.layers.invalidate());
+  }
+
+  setAccent(accent) {
+    this.accent = accent;
+    this.layers?.setAccent(accent);
   }
 }
 
-// Per-round reveal: guess + answer pins, the dashed link, and the walked path.
-export class ResultMap extends RevealMap {
+class ResultMap {
+  constructor(engine, slotId) {
+    this.engine = engine;
+    this.slotId = slotId;
+  }
+
   show(guess, actual, trail = null) {
-    this.clear();
-    const results = [{ guess, actual }];
-    const points = collectResultPoints(results);
-    this.drawTrail(trail, points);
-    this.reveal(results, points, { padding: 0.35, singlePointZoom: 5 });
+    this.engine.show(
+      this.slotId,
+      [{ guess, actual }],
+      trail,
+      0.35,
+      4
+    );
   }
 
-  // Paths walked from the spawn (Moving mode). Checkpoint returns start a new path
-  // so every explored branch is kept without drawing the teleport between them.
-  drawTrail(trail, points) {
-    if (!trail?.length) return;
-    const lines = trail
-      .map((segment) => segment.map((p) => [p.lat, p.lng]))
-      .filter((segment) => segment.length);
-    if (!lines.some((segment) => segment.length > 1)) return;
-
-    for (const line of lines) {
-      if (line.length > 1) {
-        this.extraLayers.push(L.polyline(line, {
-          className: 'movement-trail', weight: 3, opacity: 0.9, lineJoin: 'round'
-        }).addTo(this.map));
-      }
-      for (const point of line) points.push(point);
-    }
-
-    const end = lines[lines.length - 1].at(-1);
-    this.extraLayers.push(L.circleMarker(end, {
-      className: 'movement-trail', radius: 4, weight: 2,
-      fillColor: '#ffffff', fillOpacity: 1
-    }).addTo(this.map));
-  }
+  setStyle(key) { this.engine.setStyle(key); }
+  setAccent(accent) { this.engine.setAccent(accent); }
 }
 
-// End-of-game overview: every round's guess/answer pair on one map.
-export class SummaryMap extends RevealMap {
-  // results: [{ guess: {lat,lng}, actual: {lat,lng,panoid?} }, ...]
-  show(results) {
-    this.clear();
-    if (!results.length) return;
-    this.reveal(results, collectResultPoints(results), { padding: 0.2 });
+class SummaryMap {
+  constructor(engine, slotId) {
+    this.engine = engine;
+    this.slotId = slotId;
   }
+
+  show(results) {
+    if (!results.length) return;
+    this.engine.show(this.slotId, results, null, 0.2);
+  }
+
+  setStyle(key) { this.engine.setStyle(key); }
+  setAccent(accent) { this.engine.setAccent(accent); }
+}
+
+export function createRevealMaps(resultElId, finalElId, styleKey = DEFAULT_MAP_STYLE_KEY) {
+  const engine = new RevealEngine(styleKey);
+  return {
+    resultMap: new ResultMap(engine, resultElId),
+    summaryMap: new SummaryMap(engine, finalElId)
+  };
 }
