@@ -37,6 +37,7 @@ function loadImage(src) {
 
 const markerAssets = Promise.all([loadImage(GUESS_ASSET), loadImage(CORRECT_ASSET)]);
 let spriteCache = null;
+let correctSpritePromise = null;
 
 function colorize(image, width, height, color) {
   const canvas = document.createElement('canvas');
@@ -103,10 +104,13 @@ function markerSprites(accent) {
   const cacheKey = `${accent}:${filter}`;
   if (spriteCache?.key === cacheKey) return spriteCache.promise;
 
-  const promise = markerAssets.then(([guess, correct]) => ({
-    guess: createSprite(guess, { width: 44, height: 56 }, filter, accent),
-    correct: createSprite(correct, { width: 28, height: 28 }, filter)
-  }));
+  correctSpritePromise ||= markerAssets.then(([, correct]) =>
+    createSprite(correct, { width: 28, height: 28 }, filter));
+  const promise = Promise.all([
+    markerAssets.then(([guess]) =>
+      createSprite(guess, { width: 44, height: 56 }, filter, accent)),
+    correctSpritePromise
+  ]).then(([guess, correct]) => ({ guess, correct }));
   spriteCache = { key: cacheKey, promise };
   return promise;
 }
