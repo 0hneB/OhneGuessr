@@ -208,6 +208,14 @@ export function setupSettingsUI({
     write: (v) => { settings.movement = v; saveSettings(settings); },
     onCommit: () => views.viewer.setMode(settings.movement)
   });
+  const streetViewZoomedOutToggle = $('streetViewZoomedOutToggle');
+  streetViewZoomedOutToggle.checked = settings.streetViewZoomedOut;
+  views.viewer.setStartZoomedOut(settings.streetViewZoomedOut);
+  streetViewZoomedOutToggle.addEventListener('change', () => {
+    settings.streetViewZoomedOut = streetViewZoomedOutToggle.checked;
+    views.viewer.setStartZoomedOut(settings.streetViewZoomedOut);
+    saveSettings(settings);
+  });
   keybindings.setupUI();
 
   // Round count change restarts the game (it redefines the deck).

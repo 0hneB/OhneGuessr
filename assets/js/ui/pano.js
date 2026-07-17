@@ -5,6 +5,8 @@
 //   nmpz   — no move, pan, or zoom (locked to the spawn view)
 
 const OPENSV_SRC = 'assets/js/vendor/opensv/opensv.js';
+const DEFAULT_ZOOM = 1;
+const FULLY_ZOOMED_OUT = -3; // bottom of OpenSV's panorama zoom range
 const ZOOM_IN = 3;     // google SV zoom level for "zoomed in"
 const TWEEN_MS = 160;  // matches MMA's tweenPov feel
 const POSITION_EPSILON = 1e-5; // ~1 m; enough to bind a viewer event to its lookup
@@ -53,6 +55,7 @@ export class OpenSvViewer {
     this.onChange = null;       // callback(heading)
     this.defaultHeading = 0;
     this.defaultPitch = 0;
+    this._startZoom = DEFAULT_ZOOM;
     this._tweenId = 0;
     this._startPanoId = null;   // the round's origin pano, so resetView can walk back
     this._trail = [];           // [{lat,lng}][] paths walked this round (Moving mode)
@@ -137,6 +140,11 @@ export class OpenSvViewer {
     this.defaultPitch = pitch;
   }
 
+  setStartZoomedOut(enabled) {
+    this._startZoom = enabled ? FULLY_ZOOMED_OUT : DEFAULT_ZOOM;
+    this.pano.setZoom(this._startZoom);
+  }
+
   resetView() {
     this._cancelTween();
     // In moving mode, R also returns to where the round started.
@@ -144,7 +152,7 @@ export class OpenSvViewer {
       this.pano.setPano(this._startPanoId);
     }
     this.pano.setPov({ heading: this.defaultHeading, pitch: this.defaultPitch });
-    this.pano.setZoom(1);
+    this.pano.setZoom(this._startZoom);
   }
 
   getHeading() { return this.pano.getPov().heading; }
@@ -163,7 +171,7 @@ export class OpenSvViewer {
     const pitch = loc.pitch ?? 0;
     this.setDefaultView(heading, pitch);
     this.pano.setPov({ heading, pitch });
-    this.pano.setZoom(1);
+    this.pano.setZoom(this._startZoom);
     this._trail = [];
     const p = this.pano.getPosition?.();
     if (p) this._trail.push([{ lat: p.lat(), lng: p.lng() }]);
@@ -241,7 +249,7 @@ export class OpenSvViewer {
     this._lookBehind = {
       token: this._roundToken,
       pov: { heading: pov.heading ?? 0, pitch: pov.pitch ?? 0 },
-      zoom: this.pano.getZoom?.() ?? 1
+      zoom: this.pano.getZoom?.() ?? DEFAULT_ZOOM
     };
     this.pano.setPov({
       heading: (this._lookBehind.pov.heading + 180) % 360,
@@ -267,7 +275,7 @@ export class OpenSvViewer {
 
   zoomFull(direction) {
     if (!direction || this.mode === 'nmpz') return;
-    this.pano.setZoom(direction > 0 ? ZOOM_IN : 0);
+    this.pano.setZoom(direction > 0 ? ZOOM_IN : FULLY_ZOOMED_OUT);
   }
 
   // Resolve one exact pano before touching the shared viewer. A failed lookup may
@@ -333,7 +341,7 @@ export class OpenSvViewer {
           poll = setInterval(check, 150);
 
           this.pano.setPov({ heading: loc.heading ?? 0, pitch: loc.pitch ?? 0 });
-          this.pano.setZoom(1);
+          this.pano.setZoom(this._startZoom);
           this.pano.setPano(targetPano);
           this.pano.setVisible(true);
           if (focus && this.mode !== 'nmpz') this.pano.focus?.();
@@ -368,7 +376,7 @@ export class OpenSvViewer {
       panoid,
       position: { lat: position.lat(), lng: position.lng() },
       pov: { heading: pov.heading ?? 0, pitch: pov.pitch ?? 0 },
-      zoom: this.pano.getZoom?.() ?? 1
+      zoom: this.pano.getZoom?.() ?? DEFAULT_ZOOM
     };
   }
 
