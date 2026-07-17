@@ -389,10 +389,6 @@ class SummaryMap {
     if (!results.length) return;
     this.engine.show(this.slotId, results, null, 0.2);
   }
-
-  setStyle(key) { this.engine.setStyle(key); }
-  setAccent(accent) { this.engine.setAccent(accent); }
-  setZoomSpeed(value) { return this.engine.setZoomSpeed(value); }
 }
 
 export function createRevealMaps(resultElId, finalElId, styleKey = DEFAULT_MAP_STYLE_KEY) {

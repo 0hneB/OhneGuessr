@@ -544,7 +544,7 @@ async function init() {
   setGuessMapSize(settings.guessMapSize, { persist: false });
   guessPanel.setup();
   const settingsUI = setupSettingsUI({
-    views: { viewer, gmap, resultMap, summaryMap, compass },
+    views: { viewer, gmap, resultMap, compass },
     applyRoundLimitChange,
     roundTimer,
     keybindings,
