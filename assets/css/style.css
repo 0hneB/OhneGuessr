@@ -336,7 +336,7 @@ body.empty-mode #guessPanel { display: none !important; }
   height: var(--guess-map-h);
   flex: none;
   border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(24, 24, 24, 0.7);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   transition:
     border-radius 0.08s ease,
