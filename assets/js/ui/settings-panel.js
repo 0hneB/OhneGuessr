@@ -160,6 +160,8 @@ export function setupSettingsUI({
   const renderAccent = (color) => {
     settings.accentColor = applyAccentColor(color);
     accentInput.value = settings.accentColor;
+    views.gmap.setAccent(settings.accentColor);
+    views.resultMap.setAccent(settings.accentColor);
   };
   renderAccent(settings.accentColor);
   accentInput.addEventListener('input', () => {

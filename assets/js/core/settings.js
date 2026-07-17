@@ -1,8 +1,20 @@
 // Settings (localStorage) and the free, keyless map-tile styles.
 
-// maxNativeZoom is set where a provider stops early so Leaflet upscales instead
-// of blanking. Attributions are required by the providers.
+// maxNativeZoom is set where a provider stops early so MapLibre overzooms the
+// last available tiles instead of blanking. Attributions are provider-required.
+export const DEFAULT_MAP_STYLE_KEY = 'roadmap';
+
 export const MAP_STYLES = {
+  roadmap: {
+    name: 'Roadmap',
+    url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+    options: { maxZoom: 20, attribution: '&copy; Google' }
+  },
+  satelliteLabels: {
+    name: 'Satellite + Labels',
+    url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    options: { maxZoom: 20, attribution: '&copy; Google' }
+  },
   osm: {
     name: 'OpenStreetMap',
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -111,9 +123,13 @@ export function applyAccentColor(value) {
 }
 
 const KEY = 'ohneguessr.settings';
+const LEGACY_MAP_STYLE_KEYS = {
+  googleRoadmapTest: 'roadmap',
+  googleHybridTest: 'satelliteLabels'
+};
 // rounds: 'unlimited' or a count. timer: 'unlimited' or seconds per location.
 const DEFAULTS = {
-  mapStyle: 'osm', rounds: '5', timer: 'unlimited',
+  mapStyle: DEFAULT_MAP_STYLE_KEY, rounds: '5', timer: 'unlimited',
   accentColor: DEFAULT_ACCENT_COLOR,
   guessMapSize: 'default',
   compassStyle: 'bar',
@@ -124,6 +140,7 @@ const DEFAULTS = {
 export function loadSettings() {
   try {
     const loaded = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY)) || {}) };
+    loaded.mapStyle = LEGACY_MAP_STYLE_KEYS[loaded.mapStyle] || loaded.mapStyle;
     if (!MAP_STYLES[loaded.mapStyle]) loaded.mapStyle = DEFAULTS.mapStyle;
     loaded.accentColor = normalizeAccentColor(loaded.accentColor);
     loaded.guessMapSize = normalizeGuessMapSize(loaded.guessMapSize);

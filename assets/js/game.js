@@ -1,7 +1,7 @@
 // Game hub: owns the view singletons and round lifecycle, wires the modules together.
 import { CONFIG } from './config.js';
 import { OpenSvViewer, loadOpenSV } from './ui/pano.js';
-import { GuessMap, ResultMap, SummaryMap } from './ui/map.js';
+import { GuessMap, createRevealMaps } from './ui/map.js';
 import { haversineKm, scoreFor, formatDistance, mapDiagonalKm } from './core/scoring.js';
 import { CompassHUD } from './ui/compass.js';
 import { $, setLoading, isSettingsOpen, setHidden } from './core/dom.js';
@@ -515,7 +515,7 @@ function showFinal() {
   $('finalScore').textContent = `${state.total} / ${max}`;
   renderFinalRounds();
   setHidden('final', false);
-  applyFinalRoundSelection(); // after un-hiding so Leaflet measures correctly
+  applyFinalRoundSelection(); // after un-hiding so the shared map has a real size
 }
 
 async function init() {
@@ -537,8 +537,9 @@ async function init() {
   viewer.onChange = (heading) => compass.setHeading(heading);
   viewer.setMode(settings.movement);
   gmap = new GuessMap('map', onPlaceGuess, settings.mapStyle);
-  resultMap = new ResultMap('resultMap', settings.mapStyle);
-  summaryMap = new SummaryMap('finalMap', settings.mapStyle);
+  ({ resultMap, summaryMap } = createRevealMaps(
+    'resultMap', 'finalMap', settings.mapStyle
+  ));
   guessPanel = createGuessPanel(gmap);
   setGuessMapSize(settings.guessMapSize, { persist: false });
   guessPanel.setup();

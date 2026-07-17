@@ -122,10 +122,10 @@ html, body {
 .close-icon { --icon-url: url("../icons/close.svg"); }
 .chevron-icon { --icon-url: url("../icons/chevron.svg"); }
 .reset-icon { --icon-url: url("../icons/reset.svg"); }
-/* Map cursor: big crosshair on hover (grabbing while panning is set in JS). */
-.leaflet-container { cursor: crosshair; background: #1b1b1b; }
-.guess-marker { fill: var(--accent); }
-.movement-trail { stroke: var(--accent); }
+/* MapLibre fills its canvas during panel resizes; JS swaps to grabbing/pointer. */
+.maplibregl-map { background: #1b1b1b; }
+.maplibregl-canvas { cursor: crosshair; }
+.maplibregl-canvas:focus { outline: none; }
 
 /* Top HUD pills — same recipe as the compass HUD: 32px tall, the gradient HUD
    background and drop shadow, no blur. */
@@ -1001,14 +1001,7 @@ body.empty-mode #guessPanel { display: none !important; }
 }
 #nextBtn:hover { background: var(--accent-strong); }
 
-/* One Leaflet-tracked canvas draws result markers for both reveal screens. */
-.result-markers-canvas {
-  position: absolute;
-  left: 0;
-  top: 0;
-  pointer-events: none;
-}
-.leaflet-container.result-answer-hover { cursor: pointer; }
+.reveal-map { position: absolute; inset: 0; }
 
 /* Final screen — fullscreen summary map with a floating results card */
 #final {
