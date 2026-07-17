@@ -67,7 +67,7 @@ export const GUESS_MAP_SIZES = Object.freeze(['default', 'large', 'xl', 'xxl']);
 export const COMPASS_STYLES = Object.freeze(['bar', 'classic', 'both']);
 export const DEFAULT_MAP_ZOOM_SPEED = 1;
 const MAP_ZOOM_SPEED_MIN = 0.5;
-const MAP_ZOOM_SPEED_MAX = 2;
+const MAP_ZOOM_SPEED_MAX = 3;
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 let logoSvgPromise = null;
 
