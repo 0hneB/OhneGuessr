@@ -111,6 +111,7 @@ Settings open from the gear icon and are saved in your browser's `localStorage`,
 | Setting | Options | Notes |
 | --- | --- | --- |
 | Map style | Roadmap (default), Satellite + Labels, OpenStreetMap, OSM Humanitarian, CartoDB Light/Voyager/Dark, Esri Light/Dark Gray, Satellite, Terrain | The base layer for the guess map |
+| Map zoom speed | 0.5x–2x (default 1x) | Adjusts mouse-wheel and trackpad zoom sensitivity |
 | Expanded map size | Default, Large, XL, XXL | Changes only the hovered or pinned guess map |
 | Compass | Bar, Classic, Both | Chooses the heading bar, the classic rotating needle, or both |
 | Accent color | Any color | Changes the UI highlights and is saved locally |

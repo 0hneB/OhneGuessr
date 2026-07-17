@@ -1,7 +1,13 @@
 // Settings panel: tabs, segmented controls, toggles, and the map-style picker.
 // Wires widgets to `settings` and calls back into the game for side effects.
 import { $, setUploadMessage, isSettingsOpen, openSettings, closeSettings } from '../core/dom.js';
-import { applyAccentColor, DEFAULT_ACCENT_COLOR, saveSettings, MAP_STYLES } from '../core/settings.js';
+import {
+  applyAccentColor,
+  DEFAULT_ACCENT_COLOR,
+  MAP_STYLES,
+  normalizeMapZoomSpeed,
+  saveSettings
+} from '../core/settings.js';
 import { GAME_PHASE, state, settings } from '../core/state.js';
 
 // Assigned by setupSettingsTabs; lets the map-library error flow jump to Maps.
@@ -155,6 +161,29 @@ export function setupSettingsUI({
     },
     onCommit: () => {}
   });
+
+  const zoomSpeedInput = $('mapZoomSpeed');
+  const zoomSpeedValue = $('mapZoomSpeedValue');
+  const renderMapZoomSpeed = (value) => {
+    const speed = normalizeMapZoomSpeed(value);
+    const label = `${speed}\u00d7`;
+    const min = Number(zoomSpeedInput.min);
+    const max = Number(zoomSpeedInput.max);
+    const progress = ((speed - min) / (max - min)) * 100;
+
+    settings.mapZoomSpeed = speed;
+    zoomSpeedInput.value = String(speed);
+    zoomSpeedInput.style.setProperty('--range-progress', `${progress}%`);
+    zoomSpeedInput.setAttribute('aria-valuetext', label);
+    zoomSpeedValue.value = label;
+    views.gmap.setZoomSpeed(speed);
+    views.resultMap.setZoomSpeed(speed);
+  };
+  renderMapZoomSpeed(settings.mapZoomSpeed);
+  zoomSpeedInput.addEventListener('input', () => {
+    renderMapZoomSpeed(zoomSpeedInput.value);
+  });
+  zoomSpeedInput.addEventListener('change', () => saveSettings(settings));
 
   const accentInput = $('accentColor');
   const renderAccent = (color) => {
