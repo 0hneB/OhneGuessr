@@ -10,7 +10,8 @@ import { buildMapStyle } from './map-style.js';
 import { ResultLayers } from './result-layers.js';
 
 const INITIAL_CENTER = [0, 20];
-const INITIAL_ZOOM = 0;
+const INITIAL_ZOOM = 1;
+const MIN_ZOOM = 1;
 const MAPLIBRE_TILE_SIZE = 512;
 const WORLD_FILL_OVERSCAN = 12;
 const BASE_WHEEL_ZOOM_RATE = 1 / 360;
@@ -52,7 +53,10 @@ function keepWorldFilled(map) {
   const fillZoom = Math.log2(
     (height + WORLD_FILL_OVERSCAN) / MAPLIBRE_TILE_SIZE
   );
-  const minZoom = Math.max(0, Math.min(map.getMaxZoom(), fillZoom));
+  const minZoom = Math.max(
+    MIN_ZOOM,
+    Math.min(map.getMaxZoom(), fillZoom)
+  );
   if (map.getMinZoom() !== minZoom) map.setMinZoom(minZoom);
   if (map.getZoom() < minZoom) map.jumpTo({ zoom: minZoom });
 }
