@@ -142,7 +142,6 @@ export function setupSettingsUI({
     saveSettings(settings);
     views.gmap.setStyle(settings.mapStyle);
     views.resultMap.setStyle(settings.mapStyle);
-    views.summaryMap.setStyle(settings.mapStyle);
   });
 
   const syncGuessMapSizeControl = setupChoiceSegmented({
