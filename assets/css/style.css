@@ -1176,6 +1176,22 @@ body.empty-mode #guessPanel { display: none !important; }
 }
 #playAgain:hover { background: var(--accent-strong); }
 
+/* On narrow screens the side card leaves no usable map beside it. Treat it as
+   a compact bottom sheet so the reveal camera can keep every result above it. */
+@media (max-width: 700px) {
+  .final-card {
+    left: 50%;
+    top: auto;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: min(calc(100vw - 32px), 420px);
+    max-height: min(46vh, calc(100vh - 32px));
+    padding: 18px 20px;
+  }
+  .final-score { margin-bottom: 10px; }
+  .final-rounds { margin-bottom: 12px; }
+}
+
 /* Loading overlay */
 #loading {
   position: fixed;

@@ -18,6 +18,20 @@ const feature = (kind, geometry, properties = {}) => ({
   geometry
 });
 
+function unwrapLine(points) {
+  const line = [];
+  for (const point of points) {
+    const coordinate = coordinates(point);
+    const previousLng = line.at(-1)?.[0];
+    if (previousLng != null) {
+      while (coordinate[0] - previousLng > 180) coordinate[0] -= 360;
+      while (coordinate[0] - previousLng < -180) coordinate[0] += 360;
+    }
+    line.push(coordinate);
+  }
+  return line;
+}
+
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -250,13 +264,13 @@ export class ResultLayers {
         'link',
         {
           type: 'LineString',
-          coordinates: [coordinates(guess), coordinates(actual)]
+          coordinates: unwrapLine([guess, actual])
         }
       ));
     });
 
     const trailLines = (trail || [])
-      .map((segment) => segment.filter(isPoint).map(coordinates))
+      .map((segment) => unwrapLine(segment.filter(isPoint)))
       .filter((segment) => segment.length);
     const showTrail = trailLines.some((segment) => segment.length > 1);
     if (showTrail) {
