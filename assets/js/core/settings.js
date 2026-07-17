@@ -7,12 +7,12 @@ export const DEFAULT_MAP_STYLE_KEY = 'roadmap';
 export const MAP_STYLES = {
   roadmap: {
     name: 'Roadmap',
-    url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+    url: 'https://mt1.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
     options: { maxZoom: 20, attribution: '&copy; Google' }
   },
   satelliteLabels: {
     name: 'Satellite + Labels',
-    url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    url: 'https://mt1.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}',
     options: { maxZoom: 20, attribution: '&copy; Google' }
   },
   osm: {
