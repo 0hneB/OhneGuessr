@@ -136,10 +136,6 @@ export function applyAccentColor(value) {
 }
 
 const KEY = 'ohneguessr.settings';
-const LEGACY_MAP_STYLE_KEYS = {
-  googleRoadmapTest: 'roadmap',
-  googleHybridTest: 'satelliteLabels'
-};
 // rounds: 'unlimited' or a count. timer: 'unlimited' or seconds per location.
 const DEFAULTS = {
   mapStyle: DEFAULT_MAP_STYLE_KEY, rounds: '5', timer: 'unlimited',
@@ -154,7 +150,6 @@ const DEFAULTS = {
 export function loadSettings() {
   try {
     const loaded = { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(KEY)) || {}) };
-    loaded.mapStyle = LEGACY_MAP_STYLE_KEYS[loaded.mapStyle] || loaded.mapStyle;
     if (!MAP_STYLES[loaded.mapStyle]) loaded.mapStyle = DEFAULTS.mapStyle;
     loaded.accentColor = normalizeAccentColor(loaded.accentColor);
     loaded.guessMapSize = normalizeGuessMapSize(loaded.guessMapSize);
