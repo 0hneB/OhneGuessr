@@ -15,7 +15,10 @@ const MAPLIBRE_TILE_SIZE = 512;
 const WORLD_FILL_OVERSCAN = 12;
 const BASE_WHEEL_ZOOM_RATE = 1 / 360;
 const BASE_TRACKPAD_ZOOM_RATE = 1 / 85;
+const REVEAL_EDGE_PADDING = 64;
+const SINGLE_POINT_EPSILON = 1e-7;
 const mapViewports = new WeakMap();
+const worldFillMaps = new WeakSet();
 
 function accentColor() {
   return getComputedStyle(document.documentElement)
@@ -56,10 +59,10 @@ function keepWorldFilled(map) {
 
 function resizeMap(map) {
   map.resize();
-  keepWorldFilled(map);
+  if (worldFillMaps.has(map)) keepWorldFilled(map);
 }
 
-function createMap(container, styleKey, options = {}) {
+function createMap(container, styleKey, options = {}, { fillWorld = true } = {}) {
   const definition = buildMapStyle(styleKey);
   const renderContainer = createRenderContainer(container);
   const map = new maplibregl.Map({
@@ -82,13 +85,46 @@ function createMap(container, styleKey, options = {}) {
     ...options
   });
   mapViewports.set(map, container);
+  if (fillWorld) worldFillMaps.add(map);
   applyMapZoomSpeed(map, DEFAULT_MAP_ZOOM_SPEED);
   map.touchZoomRotate.disableRotation();
-  keepWorldFilled(map);
+  if (fillWorld) keepWorldFilled(map);
   return { map, styleKey: definition.key };
 }
 
-function fitPadding(map, factor) {
+function area(rect) {
+  return Math.max(0, rect.right - rect.left) *
+    Math.max(0, rect.bottom - rect.top);
+}
+
+// Use the largest unobstructed rectangle around an overlay. This naturally
+// puts round results above their bottom panel and final results beside the
+// desktop card (or above its responsive bottom-sheet layout).
+function clearViewportArea(viewport, obstruction) {
+  const width = viewport.clientWidth;
+  const height = viewport.clientHeight;
+  const full = { top: 0, right: width, bottom: height, left: 0 };
+  if (!obstruction) return full;
+
+  const viewportRect = viewport.getBoundingClientRect();
+  const obstructionRect = obstruction.getBoundingClientRect();
+  const blocked = {
+    top: Math.max(0, Math.min(height, obstructionRect.top - viewportRect.top)),
+    right: Math.max(0, Math.min(width, obstructionRect.right - viewportRect.left)),
+    bottom: Math.max(0, Math.min(height, obstructionRect.bottom - viewportRect.top)),
+    left: Math.max(0, Math.min(width, obstructionRect.left - viewportRect.left))
+  };
+  if (blocked.right <= blocked.left || blocked.bottom <= blocked.top) return full;
+
+  return [
+    { top: 0, right: width, bottom: blocked.top, left: 0 },
+    { top: blocked.bottom, right: width, bottom: height, left: 0 },
+    { top: 0, right: blocked.left, bottom: height, left: 0 },
+    { top: 0, right: width, bottom: height, left: blocked.right }
+  ].reduce((best, candidate) => area(candidate) > area(best) ? candidate : best);
+}
+
+function fitPadding(map, obstruction) {
   const viewport = mapViewport(map);
   const renderContainer = map.getContainer();
   const horizontalOverscan = Math.max(
@@ -99,14 +135,19 @@ function fitPadding(map, factor) {
     0,
     (renderContainer.clientHeight - viewport.clientHeight) / 2
   );
-  const ratio = factor / (1 + factor * 2);
-  const horizontal = Math.round(viewport.clientWidth * ratio + horizontalOverscan);
-  const vertical = Math.round(viewport.clientHeight * ratio + verticalOverscan);
+  const clear = clearViewportArea(viewport, obstruction);
+  const clearWidth = clear.right - clear.left;
+  const clearHeight = clear.bottom - clear.top;
+  const margin = Math.min(
+    REVEAL_EDGE_PADDING,
+    Math.max(0, clearWidth / 4),
+    Math.max(0, clearHeight / 4)
+  );
   return {
-    top: vertical,
-    right: horizontal,
-    bottom: vertical,
-    left: horizontal
+    top: Math.round(verticalOverscan + clear.top + margin),
+    right: Math.round(horizontalOverscan + viewport.clientWidth - clear.right + margin),
+    bottom: Math.round(verticalOverscan + viewport.clientHeight - clear.bottom + margin),
+    left: Math.round(horizontalOverscan + clear.left + margin)
   };
 }
 
@@ -116,15 +157,16 @@ function setMapStyle(owner, key, beforeChange) {
   beforeChange?.();
   owner.styleKey = definition.key;
   owner.map.setMaxZoom(definition.maxZoom);
-  keepWorldFilled(owner.map);
+  if (worldFillMaps.has(owner.map)) keepWorldFilled(owner.map);
   owner.map.setStyle(definition.style);
 }
 
-function observeMapSize(map, container) {
+function observeMapSize(map, container, onResize = null) {
   if (typeof ResizeObserver === 'undefined') return null;
   const observer = new ResizeObserver(([entry]) => {
     if (!entry || entry.contentRect.width <= 0 || entry.contentRect.height <= 0) return;
     resizeMap(map);
+    onResize?.();
   });
   observer.observe(container);
   return observer;
@@ -248,16 +290,55 @@ function openStreetView(actual) {
   window.open(streetViewUrl(actual), '_blank', 'noopener,noreferrer');
 }
 
-function resultPoints(results, trail = null) {
+function resultPoints(results) {
   const points = [];
   for (const { guess, actual } of results) {
     if (isPoint(guess)) points.push(guess);
     if (isPoint(actual)) points.push(actual);
   }
-  for (const segment of trail || []) {
-    for (const point of segment) if (isPoint(point)) points.push(point);
-  }
   return points;
+}
+
+const normalizedLongitude = (lng) => ((lng % 360) + 360) % 360;
+
+// LngLatBounds only treats a bounds object as dateline-crossing when west is
+// greater than east. Extending it point-by-point cannot produce that shape, so
+// unwrap all points into their smallest circular longitude interval first.
+function unwrapPoints(points) {
+  if (points.length < 2) return points;
+  const longitudes = points
+    .map((point) => normalizedLongitude(point.lng))
+    .sort((a, b) => a - b);
+  let largestGap = -1;
+  let startIndex = 0;
+  for (let index = 0; index < longitudes.length; index++) {
+    const next = index + 1 < longitudes.length
+      ? longitudes[index + 1]
+      : longitudes[0] + 360;
+    const gap = next - longitudes[index];
+    if (gap > largestGap) {
+      largestGap = gap;
+      startIndex = (index + 1) % longitudes.length;
+    }
+  }
+
+  const start = longitudes[startIndex];
+  const unwrapped = points.map((point) => {
+    let lng = normalizedLongitude(point.lng);
+    if (lng < start) lng += 360;
+    return { lat: point.lat, lng };
+  });
+  let west = Infinity;
+  let east = -Infinity;
+  for (const point of unwrapped) {
+    west = Math.min(west, point.lng);
+    east = Math.max(east, point.lng);
+  }
+  const worldOffset = Math.floor(((west + east) / 2 + 180) / 360) * 360;
+  return unwrapped.map((point) => ({
+    lat: point.lat,
+    lng: point.lng - worldOffset
+  }));
 }
 
 function equalPointBounds(bounds) {
@@ -276,6 +357,7 @@ class RevealEngine {
     this.map = null;
     this.layers = null;
     this.cameraRevision = 0;
+    this.fitRequest = null;
   }
 
   mount(slotId) {
@@ -287,51 +369,67 @@ class RevealEngine {
 
   create() {
     const created = createMap(this.container, this.styleKey, {
-      zoom: 1
-    });
+      zoom: 1,
+      minZoom: -2
+    }, { fillWorld: false });
     this.map = created.map;
     this.styleKey = created.styleKey;
     applyMapZoomSpeed(this.map, this.zoomSpeed);
     this.layers = new ResultLayers(this.map, openStreetView, this.accent);
     this.map.on('style.load', () => this.layers.install());
-    this.resizeObserver = observeMapSize(this.map, this.container);
+    this.resizeObserver = observeMapSize(
+      this.map,
+      this.container,
+      () => this.scheduleFit()
+    );
   }
 
-  show(slotId, results, trail, paddingFactor, singlePointZoom = null) {
+  show(slotId, results, trail, { obstruction = null, singlePointZoom = null } = {}) {
     this.mount(slotId);
     this.layers.setResults(results, trail);
-    this.fitWhenReady(resultPoints(results, trail), paddingFactor, singlePointZoom);
+    this.fitRequest = {
+      points: resultPoints(results),
+      obstruction,
+      singlePointZoom
+    };
+    this.scheduleFit();
   }
 
-  fitWhenReady(points, paddingFactor, singlePointZoom) {
+  scheduleFit() {
+    const request = this.fitRequest;
+    if (!request) return;
     const revision = ++this.cameraRevision;
-    const fit = () => requestAnimationFrame(() => {
-      if (revision !== this.cameraRevision) return;
-      this.fit(points, paddingFactor, singlePointZoom);
+    // Camera math is available before tiles finish loading. Waiting on
+    // style.load here can miss the event and leave the previous result view.
+    requestAnimationFrame(() => {
+      if (revision !== this.cameraRevision || request !== this.fitRequest) return;
+      this.fit(request);
     });
-    if (this.map.isStyleLoaded()) fit();
-    else this.map.once('style.load', fit);
   }
 
-  fit(points, paddingFactor, singlePointZoom) {
+  fit({ points, obstruction, singlePointZoom }) {
     if (!points.length) return;
     resizeMap(this.map);
     this.map.stop();
+    const fittedPoints = unwrapPoints(points);
     const bounds = new maplibregl.LngLatBounds();
-    for (const point of points) bounds.extend(pointCoordinates(point));
+    for (const point of fittedPoints) bounds.extend(pointCoordinates(point));
 
-    if (points.length === 1 || equalPointBounds(bounds)) {
-      this.map.jumpTo({
-        center: pointCoordinates(points[0]),
-        zoom: Math.min(singlePointZoom ?? 4, this.map.getMaxZoom())
-      });
-      return;
+    const onePoint = fittedPoints.length === 1 || equalPointBounds(bounds);
+    if (onePoint) {
+      const point = fittedPoints[0];
+      bounds.extend([point.lng - SINGLE_POINT_EPSILON, point.lat - SINGLE_POINT_EPSILON]);
+      bounds.extend([point.lng + SINGLE_POINT_EPSILON, point.lat + SINGLE_POINT_EPSILON]);
     }
 
-    this.map.fitBounds(bounds, {
-      padding: fitPadding(this.map, paddingFactor),
+    const options = {
+      padding: fitPadding(this.map, obstruction),
       duration: 0
-    });
+    };
+    if (onePoint) {
+      options.maxZoom = Math.min(singlePointZoom ?? 4, this.map.getMaxZoom());
+    }
+    this.map.fitBounds(bounds, options);
   }
 
   setStyle(key) {
@@ -355,9 +453,10 @@ class RevealEngine {
 }
 
 class ResultMap {
-  constructor(engine, slotId) {
+  constructor(engine, slotId, obstruction) {
     this.engine = engine;
     this.slotId = slotId;
+    this.obstruction = obstruction;
   }
 
   show(guess, actual, trail = null) {
@@ -365,8 +464,7 @@ class ResultMap {
       this.slotId,
       [{ guess, actual }],
       trail,
-      0.35,
-      4
+      { obstruction: this.obstruction, singlePointZoom: 4 }
     );
   }
 
@@ -376,21 +474,24 @@ class ResultMap {
 }
 
 class SummaryMap {
-  constructor(engine, slotId) {
+  constructor(engine, slotId, obstruction) {
     this.engine = engine;
     this.slotId = slotId;
+    this.obstruction = obstruction;
   }
 
   show(results) {
     if (!results.length) return;
-    this.engine.show(this.slotId, results, null, 0.2);
+    this.engine.show(this.slotId, results, null, {
+      obstruction: this.obstruction
+    });
   }
 }
 
 export function createRevealMaps(resultElId, finalElId, styleKey = DEFAULT_MAP_STYLE_KEY) {
   const engine = new RevealEngine(styleKey);
   return {
-    resultMap: new ResultMap(engine, resultElId),
-    summaryMap: new SummaryMap(engine, finalElId)
+    resultMap: new ResultMap(engine, resultElId, document.getElementById('resultPanel')),
+    summaryMap: new SummaryMap(engine, finalElId, document.querySelector('#final .final-card'))
   };
 }
