@@ -644,7 +644,6 @@ body.empty-mode #guessPanel { display: none !important; }
   text-align: right;
 }
 .setting-range input[type="range"] {
-  --range-progress: 33.333%;
   width: 100%;
   height: 18px;
   margin: 0;
