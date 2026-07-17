@@ -61,6 +61,7 @@ function createMap(container, styleKey, options = {}) {
     touchPitch: false,
     maxPitch: 0,
     keyboard: false,
+    reduceMotion: false,
     trackResize: false,
     pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
     cancelPendingTileRequestsWhileZooming: false,
