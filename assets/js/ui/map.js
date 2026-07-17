@@ -120,12 +120,11 @@ function setMapStyle(owner, key, beforeChange) {
   owner.map.setStyle(definition.style);
 }
 
-function observeMapSize(map, container, onResize = () => {}) {
+function observeMapSize(map, container) {
   if (typeof ResizeObserver === 'undefined') return null;
   const observer = new ResizeObserver(([entry]) => {
     if (!entry || entry.contentRect.width <= 0 || entry.contentRect.height <= 0) return;
     resizeMap(map);
-    onResize();
   });
   observer.observe(container);
   return observer;
