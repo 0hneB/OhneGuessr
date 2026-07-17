@@ -137,6 +137,13 @@
               <button type="button" data-value="nmpz" title="No move, pan, or zoom">NMPZ</button>
             </div>
           </div>
+          <div class="setting setting-range">
+            <div class="setting-range-head">
+              <label for="mapZoomSpeed">Map zoom speed</label>
+              <output id="mapZoomSpeedValue" for="mapZoomSpeed">1&times;</output>
+            </div>
+            <input id="mapZoomSpeed" type="range" min="0.5" max="2" step="0.1" value="1" />
+          </div>
         </section>
 
         <section class="settings-panel" id="panel-controls"

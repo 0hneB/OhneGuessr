@@ -65,6 +65,9 @@ export const MAP_STYLES = {
 export const DEFAULT_ACCENT_COLOR = '#22c55e';
 export const GUESS_MAP_SIZES = Object.freeze(['default', 'large', 'xl', 'xxl']);
 export const COMPASS_STYLES = Object.freeze(['bar', 'classic', 'both']);
+export const DEFAULT_MAP_ZOOM_SPEED = 1;
+const MAP_ZOOM_SPEED_MIN = 0.5;
+const MAP_ZOOM_SPEED_MAX = 2;
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 let logoSvgPromise = null;
 
@@ -78,6 +81,16 @@ export function normalizeGuessMapSize(value) {
 
 export function normalizeCompassStyle(value) {
   return COMPASS_STYLES.includes(value) ? value : 'bar';
+}
+
+export function normalizeMapZoomSpeed(value) {
+  if (value == null || value === '') return DEFAULT_MAP_ZOOM_SPEED;
+  const speed = Number(value);
+  if (!Number.isFinite(speed)) return DEFAULT_MAP_ZOOM_SPEED;
+  return Math.min(MAP_ZOOM_SPEED_MAX, Math.max(
+    MAP_ZOOM_SPEED_MIN,
+    Math.round(speed * 10) / 10
+  ));
 }
 
 const channelHex = (value) => Math.round(value).toString(16).padStart(2, '0');
@@ -133,6 +146,7 @@ const DEFAULTS = {
   accentColor: DEFAULT_ACCENT_COLOR,
   guessMapSize: 'default',
   compassStyle: 'bar',
+  mapZoomSpeed: DEFAULT_MAP_ZOOM_SPEED,
   movement: 'moving', // 'moving' | 'nm' (no move) | 'nmpz' (no move/pan/zoom)
   scoring: 'world' // 'world' fixed scale, 'country' per-map
 };
@@ -145,6 +159,7 @@ export function loadSettings() {
     loaded.accentColor = normalizeAccentColor(loaded.accentColor);
     loaded.guessMapSize = normalizeGuessMapSize(loaded.guessMapSize);
     loaded.compassStyle = normalizeCompassStyle(loaded.compassStyle);
+    loaded.mapZoomSpeed = normalizeMapZoomSpeed(loaded.mapZoomSpeed);
     return loaded;
   } catch {
     return { ...DEFAULTS };

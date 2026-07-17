@@ -1,17 +1,30 @@
 // MapLibre maps:
 //   GuessMap     - permanent in-game map for dropping a guess
 //   RevealEngine - one lazy map shared by the round and final result screens
-import { DEFAULT_MAP_STYLE_KEY } from '../core/settings.js';
+import {
+  DEFAULT_MAP_STYLE_KEY,
+  DEFAULT_MAP_ZOOM_SPEED,
+  normalizeMapZoomSpeed
+} from '../core/settings.js';
 import { buildMapStyle } from './map-style.js';
 import { ResultLayers } from './result-layers.js';
 
 const INITIAL_CENTER = [0, 20];
 const INITIAL_ZOOM = 0;
 const MAPLIBRE_TILE_SIZE = 512;
+const BASE_WHEEL_ZOOM_RATE = 1 / 360;
+const BASE_TRACKPAD_ZOOM_RATE = 1 / 85;
 
 function accentColor() {
   return getComputedStyle(document.documentElement)
     .getPropertyValue('--accent').trim() || '#22c55e';
+}
+
+function applyMapZoomSpeed(map, value) {
+  const speed = normalizeMapZoomSpeed(value);
+  map.scrollZoom.setWheelZoomRate(BASE_WHEEL_ZOOM_RATE * speed);
+  map.scrollZoom.setZoomRate(BASE_TRACKPAD_ZOOM_RATE * speed);
+  return speed;
 }
 
 function createMap(container, styleKey, options = {}) {
@@ -34,6 +47,7 @@ function createMap(container, styleKey, options = {}) {
     cancelPendingTileRequestsWhileZooming: false,
     ...options
   });
+  applyMapZoomSpeed(map, DEFAULT_MAP_ZOOM_SPEED);
   map.touchZoomRotate.disableRotation();
   return { map, styleKey: definition.key };
 }
@@ -172,6 +186,10 @@ export class GuessMap {
     }
   }
 
+  setZoomSpeed(value) {
+    return applyMapZoomSpeed(this.map, value);
+  }
+
   setGuess(point) {
     this.guess = { lat: point.lat, lng: point.lng };
     this.syncGuess();
@@ -221,6 +239,7 @@ class RevealEngine {
   constructor(styleKey) {
     this.styleKey = buildMapStyle(styleKey).key;
     this.accent = accentColor();
+    this.zoomSpeed = DEFAULT_MAP_ZOOM_SPEED;
     this.container = document.createElement('div');
     this.container.className = 'reveal-map';
     this.map = null;
@@ -241,6 +260,7 @@ class RevealEngine {
     });
     this.map = created.map;
     this.styleKey = created.styleKey;
+    applyMapZoomSpeed(this.map, this.zoomSpeed);
     this.layers = new ResultLayers(this.map, openStreetView, this.accent);
     this.map.on('style.load', () => this.layers.install());
     this.resizeObserver = observeMapSize(this.map, this.container);
@@ -303,6 +323,12 @@ class RevealEngine {
     this.accent = accent;
     this.layers?.setAccent(accent);
   }
+
+  setZoomSpeed(value) {
+    this.zoomSpeed = normalizeMapZoomSpeed(value);
+    if (this.map) applyMapZoomSpeed(this.map, this.zoomSpeed);
+    return this.zoomSpeed;
+  }
 }
 
 class ResultMap {
@@ -323,6 +349,7 @@ class ResultMap {
 
   setStyle(key) { this.engine.setStyle(key); }
   setAccent(accent) { this.engine.setAccent(accent); }
+  setZoomSpeed(value) { return this.engine.setZoomSpeed(value); }
 }
 
 class SummaryMap {
@@ -338,6 +365,7 @@ class SummaryMap {
 
   setStyle(key) { this.engine.setStyle(key); }
   setAccent(accent) { this.engine.setAccent(accent); }
+  setZoomSpeed(value) { return this.engine.setZoomSpeed(value); }
 }
 
 export function createRevealMaps(resultElId, finalElId, styleKey = DEFAULT_MAP_STYLE_KEY) {
