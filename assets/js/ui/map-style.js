@@ -45,7 +45,8 @@ export function buildMapStyle(key) {
         {
           id: 'basemap',
           type: 'raster',
-          source: 'basemap'
+          source: 'basemap',
+          paint: { 'raster-fade-duration': 0 }
         }
       ]
     }

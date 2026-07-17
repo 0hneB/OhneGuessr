@@ -6,7 +6,7 @@ import { normalizeGuessMapSize } from '../core/settings.js';
 export function createGuessPanel(gmap) {
   const isFullscreen = () => $('guessPanel').classList.contains('map-fullscreen');
   const isPinned = () => $('guessPanel').classList.contains('pinned');
-  const schedule = () => gmap.applyLayout(isFullscreen());
+  const schedule = () => gmap.applyLayout();
 
   function setFullscreen(on) {
     $('guessPanel').classList.toggle('map-fullscreen', on);

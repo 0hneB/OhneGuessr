@@ -12,6 +12,7 @@ import { ResultLayers } from './result-layers.js';
 const INITIAL_CENTER = [0, 20];
 const INITIAL_ZOOM = 0;
 const MAPLIBRE_TILE_SIZE = 512;
+const WORLD_FILL_OVERSCAN = 12;
 const BASE_WHEEL_ZOOM_RATE = 1 / 360;
 const BASE_TRACKPAD_ZOOM_RATE = 1 / 85;
 
@@ -25,6 +26,24 @@ function applyMapZoomSpeed(map, value) {
   map.scrollZoom.setWheelZoomRate(BASE_WHEEL_ZOOM_RATE * speed);
   map.scrollZoom.setZoomRate(BASE_TRACKPAD_ZOOM_RATE * speed);
   return speed;
+}
+
+// Horizontal world copies cover either side of the map. Vertically, keep the
+// single Mercator world just larger than the viewport so its edges never show.
+function keepWorldFilled(map) {
+  const height = map.getContainer().clientHeight;
+  if (!height) return;
+  const fillZoom = Math.log2(
+    (height + WORLD_FILL_OVERSCAN) / MAPLIBRE_TILE_SIZE
+  );
+  const minZoom = Math.max(0, Math.min(map.getMaxZoom(), fillZoom));
+  if (map.getMinZoom() !== minZoom) map.setMinZoom(minZoom);
+  if (map.getZoom() < minZoom) map.jumpTo({ zoom: minZoom });
+}
+
+function resizeMap(map) {
+  map.resize();
+  keepWorldFilled(map);
 }
 
 function createMap(container, styleKey, options = {}) {
@@ -49,6 +68,7 @@ function createMap(container, styleKey, options = {}) {
   });
   applyMapZoomSpeed(map, DEFAULT_MAP_ZOOM_SPEED);
   map.touchZoomRotate.disableRotation();
+  keepWorldFilled(map);
   return { map, styleKey: definition.key };
 }
 
@@ -58,6 +78,7 @@ function setMapStyle(owner, key, beforeChange) {
   beforeChange?.();
   owner.styleKey = definition.key;
   owner.map.setMaxZoom(definition.maxZoom);
+  keepWorldFilled(owner.map);
   owner.map.setStyle(definition.style);
 }
 
@@ -65,7 +86,7 @@ function observeMapSize(map, container, onResize = () => {}) {
   if (typeof ResizeObserver === 'undefined') return null;
   const observer = new ResizeObserver(([entry]) => {
     if (!entry || entry.contentRect.width <= 0 || entry.contentRect.height <= 0) return;
-    map.resize();
+    resizeMap(map);
     onResize();
   });
   observer.observe(container);
@@ -90,8 +111,6 @@ export class GuessMap {
     this.map = created.map;
     this.styleKey = created.styleKey;
     this.guess = null;
-    this.isFullscreen = false;
-    this.isConstraining = false;
     this.accent = accentColor();
 
     this.map.on('style.load', () => this.installGuessLayer());
@@ -105,12 +124,7 @@ export class GuessMap {
     this.map.on('dragend', () => {
       this.map.getCanvas().style.cursor = 'crosshair';
     });
-    this.map.on('moveend', () => {
-      if (this.isFullscreen) this.constrainFullscreenView();
-    });
-    this.resizeObserver = observeMapSize(this.map, this.container, () => {
-      if (this.isFullscreen) this.constrainFullscreenView();
-    });
+    this.resizeObserver = observeMapSize(this.map, this.container);
   }
 
   installGuessLayer() {
@@ -152,27 +166,11 @@ export class GuessMap {
   }
 
   refresh() {
-    this.map.resize();
+    resizeMap(this.map);
   }
 
-  applyLayout(isFullscreen) {
-    this.isFullscreen = isFullscreen;
-    this.map.resize();
-    if (isFullscreen) this.constrainFullscreenView();
-    else this.map.setMinZoom(0);
-  }
-
-  constrainFullscreenView() {
-    if (this.isConstraining || !this.container.clientHeight) return;
-    this.isConstraining = true;
-    try {
-      const fillZoom = Math.log2((this.container.clientHeight + 12) / MAPLIBRE_TILE_SIZE);
-      const minZoom = Math.max(0, Math.min(this.map.getMaxZoom(), fillZoom));
-      this.map.setMinZoom(minZoom);
-      if (this.map.getZoom() < minZoom) this.map.jumpTo({ zoom: minZoom });
-    } finally {
-      this.isConstraining = false;
-    }
+  applyLayout() {
+    resizeMap(this.map);
   }
 
   setStyle(key) {
@@ -251,7 +249,7 @@ class RevealEngine {
     const slot = document.getElementById(slotId);
     if (this.container.parentElement !== slot) slot.appendChild(this.container);
     if (!this.map) this.create();
-    else this.map.resize();
+    else resizeMap(this.map);
   }
 
   create() {
@@ -284,7 +282,7 @@ class RevealEngine {
 
   fit(points, paddingFactor, singlePointZoom) {
     if (!points.length) return;
-    this.map.resize();
+    resizeMap(this.map);
     this.map.stop();
     const bounds = new maplibregl.LngLatBounds();
     for (const point of points) bounds.extend(pointCoordinates(point));
