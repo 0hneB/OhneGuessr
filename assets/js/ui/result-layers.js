@@ -7,13 +7,6 @@ const ACTUAL_LAYER = 'result-actual-markers';
 const GUESS_LAYER = 'result-guess-markers';
 const SPRITE_SCALE = 2;
 const SPRITE_PADDING = 12;
-const DEFAULT_MARKER_FILTER = [
-  'drop-shadow(0 0 1px #fff)',
-  'drop-shadow(0 0 1px #fff)',
-  'drop-shadow(0 0 1px #fff)',
-  'drop-shadow(0 0 1px #fff)',
-  'drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4))'
-].join(' ');
 
 const emptyCollection = () => ({ type: 'FeatureCollection', features: [] });
 const isPoint = (value) =>
@@ -100,7 +93,7 @@ function createSprite(image, { width, height }, filter, color = null) {
 
 function markerSprites(accent) {
   const filter = getComputedStyle(document.documentElement)
-    .getPropertyValue('--result-marker-filter').trim() || DEFAULT_MARKER_FILTER;
+    .getPropertyValue('--result-marker-filter').trim();
   const cacheKey = `${accent}:${filter}`;
   if (spriteCache?.key === cacheKey) return spriteCache.promise;
 
