@@ -202,11 +202,7 @@ export class GuessMap {
     this.map.getSource('guess-point')?.setData(this.guessData());
   }
 
-  refresh() {
-    resizeMap(this.map);
-  }
-
-  applyLayout() {
+  resize() {
     resizeMap(this.map);
   }
 

@@ -304,7 +304,7 @@ async function loadRound(preparation = null) {
   $('guessBtn').disabled = true;
   $('guessBtn').textContent = 'Guess';
   gmap.reset();
-  gmap.refresh();
+  gmap.resize();
 
   let prepared = preparation;
   if (!preparationMatches(prepared, state.round)) prepared = prepareRound(state.round);
@@ -548,7 +548,7 @@ async function init() {
     applyRoundLimitChange,
     roundTimer,
     keybindings,
-    scheduleGuessMapLayout: guessPanel.schedule,
+    syncGuessMapLayout: guessPanel.syncLayout,
     setGuessMapSize
   });
   syncGuessMapSizeControl = settingsUI.syncGuessMapSizeControl;
