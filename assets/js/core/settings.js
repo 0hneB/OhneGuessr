@@ -143,6 +143,7 @@ const DEFAULTS = {
   guessMapSize: 'default',
   compassStyle: 'bar',
   mapZoomSpeed: DEFAULT_MAP_ZOOM_SPEED,
+  streetViewZoomedOut: false,
   movement: 'moving', // 'moving' | 'nm' (no move) | 'nmpz' (no move/pan/zoom)
   scoring: 'world' // 'world' fixed scale, 'country' per-map
 };
@@ -155,6 +156,7 @@ export function loadSettings() {
     loaded.guessMapSize = normalizeGuessMapSize(loaded.guessMapSize);
     loaded.compassStyle = normalizeCompassStyle(loaded.compassStyle);
     loaded.mapZoomSpeed = normalizeMapZoomSpeed(loaded.mapZoomSpeed);
+    loaded.streetViewZoomedOut = loaded.streetViewZoomedOut === true;
     return loaded;
   } catch {
     return { ...DEFAULTS };
