@@ -15,6 +15,7 @@ const MAPLIBRE_TILE_SIZE = 512;
 const WORLD_FILL_OVERSCAN = 12;
 const BASE_WHEEL_ZOOM_RATE = 1 / 360;
 const BASE_TRACKPAD_ZOOM_RATE = 1 / 85;
+const mapViewports = new WeakMap();
 
 function accentColor() {
   return getComputedStyle(document.documentElement)
@@ -28,10 +29,22 @@ function applyMapZoomSpeed(map, value) {
   return speed;
 }
 
+function mapViewport(map) {
+  return mapViewports.get(map) || map.getContainer();
+}
+
+function createRenderContainer(viewport) {
+  const container = document.createElement('div');
+  container.className = 'map-overscan';
+  viewport.classList.add('map-viewport');
+  viewport.appendChild(container);
+  return container;
+}
+
 // Horizontal world copies cover either side of the map. Vertically, keep the
 // single Mercator world just larger than the viewport so its edges never show.
 function keepWorldFilled(map) {
-  const height = map.getContainer().clientHeight;
+  const height = mapViewport(map).clientHeight;
   if (!height) return;
   const fillZoom = Math.log2(
     (height + WORLD_FILL_OVERSCAN) / MAPLIBRE_TILE_SIZE
@@ -48,8 +61,9 @@ function resizeMap(map) {
 
 function createMap(container, styleKey, options = {}) {
   const definition = buildMapStyle(styleKey);
+  const renderContainer = createRenderContainer(container);
   const map = new maplibregl.Map({
-    container,
+    container: renderContainer,
     style: definition.style,
     center: INITIAL_CENTER,
     zoom: INITIAL_ZOOM,
@@ -67,10 +81,33 @@ function createMap(container, styleKey, options = {}) {
     cancelPendingTileRequestsWhileZooming: false,
     ...options
   });
+  mapViewports.set(map, container);
   applyMapZoomSpeed(map, DEFAULT_MAP_ZOOM_SPEED);
   map.touchZoomRotate.disableRotation();
   keepWorldFilled(map);
   return { map, styleKey: definition.key };
+}
+
+function fitPadding(map, factor) {
+  const viewport = mapViewport(map);
+  const renderContainer = map.getContainer();
+  const horizontalOverscan = Math.max(
+    0,
+    (renderContainer.clientWidth - viewport.clientWidth) / 2
+  );
+  const verticalOverscan = Math.max(
+    0,
+    (renderContainer.clientHeight - viewport.clientHeight) / 2
+  );
+  const ratio = factor / (1 + factor * 2);
+  const horizontal = Math.round(viewport.clientWidth * ratio + horizontalOverscan);
+  const vertical = Math.round(viewport.clientHeight * ratio + verticalOverscan);
+  return {
+    top: vertical,
+    right: horizontal,
+    bottom: vertical,
+    left: horizontal
+  };
 }
 
 function setMapStyle(owner, key, beforeChange) {
@@ -296,16 +333,8 @@ class RevealEngine {
       return;
     }
 
-    const width = this.container.clientWidth;
-    const height = this.container.clientHeight;
-    const ratio = paddingFactor / (1 + paddingFactor * 2);
     this.map.fitBounds(bounds, {
-      padding: {
-        top: Math.round(height * ratio),
-        right: Math.round(width * ratio),
-        bottom: Math.round(height * ratio),
-        left: Math.round(width * ratio)
-      },
+      padding: fitPadding(this.map, paddingFactor),
       duration: 0
     });
   }

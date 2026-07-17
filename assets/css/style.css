@@ -122,6 +122,34 @@ html, body {
 .close-icon { --icon-url: url("../icons/close.svg"); }
 .chevron-icon { --icon-url: url("../icons/chevron.svg"); }
 .reset-icon { --icon-url: url("../icons/reset.svg"); }
+/* Render past the clipped frame so MapLibre fetches the next tile ring before
+   it enters view. The low-resolution basemap below covers any slower tile. */
+.map-viewport {
+  --map-overscan: 128px;
+  position: relative;
+  overflow: hidden;
+}
+.map-overscan {
+  position: absolute;
+  inset: calc(0px - var(--map-overscan));
+}
+.map-overscan .maplibregl-ctrl-top-left {
+  top: var(--map-overscan);
+  left: var(--map-overscan);
+}
+.map-overscan .maplibregl-ctrl-top-right {
+  top: var(--map-overscan);
+  right: var(--map-overscan);
+}
+.map-overscan .maplibregl-ctrl-bottom-left {
+  bottom: var(--map-overscan);
+  left: var(--map-overscan);
+}
+.map-overscan .maplibregl-ctrl-bottom-right {
+  right: var(--map-overscan);
+  bottom: var(--map-overscan);
+}
+
 /* MapLibre fills its canvas during panel resizes; JS swaps to grabbing/pointer. */
 .maplibregl-map { background: #1b1b1b; }
 .maplibregl-canvas { cursor: crosshair; }
