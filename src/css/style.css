@@ -113,6 +113,7 @@ html, body {
 .settings-icon { --icon-url: url("../icons/settings.svg"); }
 .unlimited-icon { --icon-url: url("../icons/unlimited.svg"); }
 .timer-icon { --icon-url: url("../icons/timer.svg"); }
+.search-icon { --icon-url: url("../icons/search.svg"); }
 .folder-icon { --icon-url: url("../icons/folder.svg"); }
 .refresh-icon { --icon-url: url("../icons/refresh.svg"); }
 .sync-icon { --icon-url: url("../icons/sync.svg"); }
@@ -450,11 +451,13 @@ body.empty-mode #guessPanel { display: none !important; }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 48px;
   padding: 20px 22px 0;
 }
 .settings-head-controls {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 12px;
 }
 
@@ -801,10 +804,47 @@ body.empty-mode #guessPanel { display: none !important; }
 .map-library-actions {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 6px;
 }
 .map-library-actions .icon-action,
-.mma-sync-actions .icon-action { width: 24px; height: 24px; }
+.mma-sync-actions .icon-action { flex: none; width: 24px; height: 24px; }
+.map-search {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 4px;
+}
+.map-search-input {
+  flex: 0 1 120px;
+  width: 120px;
+  min-width: 60px;
+  height: 28px;
+  padding: 4px 9px;
+  color: #fff;
+  background: #101010;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+}
+.map-search-input:focus { outline: none; border-color: var(--accent); }
+.map-search-input::-webkit-search-cancel-button {
+  width: 12px;
+  height: 12px;
+  margin-left: 5px;
+  -webkit-appearance: none;
+  background: #9aa3ad;
+  -webkit-mask: url("../icons/close.svg") center / contain no-repeat;
+  cursor: pointer;
+}
+.map-search-input::-webkit-search-cancel-button:hover { background: #fff; }
+.map-search-empty {
+  padding: 24px 8px;
+  color: #8a929d;
+  font-size: 12px;
+  text-align: center;
+}
 
 .settings-note { font-size: 12px; opacity: 0.55; line-height: 1.45; }
 
@@ -914,7 +954,8 @@ body.empty-mode #guessPanel { display: none !important; }
   cursor: pointer;
   text-align: left;
 }
-.map-folder-main:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+.map-folder-main:not(:disabled):hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+.map-folder-main:disabled { cursor: default; }
 .map-folder-chevron {
   width: 13px;
   height: 13px;

@@ -1,6 +1,9 @@
 // Settings -> Maps: folder tree, local uploads/actions, filesystem refresh, and
 // recovery when a selected map disappears or becomes invalid.
-import { $, setLoading, setEmptyState, setUploadMessage, openSettings, closeSettings } from '../core/dom.js';
+import {
+  $, SETTINGS_CLOSED_EVENT, setLoading, setEmptyState, setUploadMessage,
+  openSettings, closeSettings
+} from '../core/dom.js';
 import { GAME_PHASE, state, settings } from '../core/state.js';
 import { saveSettings } from '../core/settings.js';
 import {
@@ -73,7 +76,26 @@ export function createMapLibrary({ startGame, tryResume }) {
       }
     }
 
-    const directFolders = (parent) => [...folders]
+    const searchQuery = $('mapSearchInput').value.trim().toLocaleLowerCase();
+    const searching = Boolean(searchQuery);
+    const matchesSearch = (value) => String(value).toLocaleLowerCase().includes(searchQuery);
+    const folderMatchesSearch = (folder) => {
+      while (folder) {
+        if (matchesSearch(folderName(folder))) return true;
+        folder = parentFolder(folder);
+      }
+      return false;
+    };
+    const visibleMaps = searching
+      ? state.maps.filter((map) => matchesSearch(map.name) || folderMatchesSearch(map.folder))
+      : state.maps;
+    const visibleFolders = searching
+      ? new Set([...folders].filter((folder) =>
+          folderMatchesSearch(folder) || visibleMaps.some((map) =>
+            map.folder === folder || map.folder.startsWith(folder + '/'))))
+      : folders;
+
+    const directFolders = (parent) => [...visibleFolders]
       .filter((folder) => parentFolder(folder) === parent)
       .sort((a, b) => {
         if (!parent && a === MMA_ROOT) return -1;
@@ -81,21 +103,22 @@ export function createMapLibrary({ startGame, tryResume }) {
         return folderName(a).localeCompare(folderName(b), undefined, { sensitivity: 'base' });
       });
 
-    const directMaps = (parent) => state.maps
+    const directMaps = (parent) => visibleMaps
       .filter((map) => map.folder === parent)
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
-    const descendantCount = (folder) => state.maps.filter((map) =>
+    const descendantCount = (folder) => visibleMaps.filter((map) =>
       map.folder === folder || map.folder.startsWith(folder + '/')).length;
 
     const renderFolder = (folder, depth) => {
-      const open = expandedFolders.has(folder);
+      const open = searching || expandedFolders.has(folder);
       const row = document.createElement('div');
       row.className = 'map-folder-row' + (open ? ' open' : '');
       row.style.setProperty('--tree-depth', depth);
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'map-folder-main';
+      button.disabled = searching;
       button.setAttribute('aria-expanded', String(open));
       button.innerHTML =
         '<span class="svg-icon chevron-icon map-folder-chevron" aria-hidden="true"></span>' +
@@ -163,6 +186,12 @@ export function createMapLibrary({ startGame, tryResume }) {
     }
 
     renderChildren('', 0);
+    if (searching && !list.childElementCount) {
+      const empty = document.createElement('div');
+      empty.className = 'map-search-empty';
+      empty.textContent = 'No maps found.';
+      list.appendChild(empty);
+    }
     saveExpandedFolders(expandedFolders);
   }
 
@@ -322,6 +351,30 @@ export function createMapLibrary({ startGame, tryResume }) {
 
   function setupMapLibrary() {
     const fileInput = $('fileInput');
+    const searchInput = $('mapSearchInput');
+    const searchButton = $('mapSearchBtn');
+    const setSearchOpen = (open) => {
+      searchInput.hidden = !open;
+      searchButton.setAttribute('aria-expanded', String(open));
+      searchButton.setAttribute('aria-label', open ? 'Close map search' : 'Search maps');
+      searchButton.title = open ? 'Close map search' : 'Search maps';
+      if (open) {
+        searchInput.focus();
+      } else if (searchInput.value) {
+        searchInput.value = '';
+        renderMapList();
+      }
+    };
+    searchButton.addEventListener('click', () => setSearchOpen(searchInput.hidden));
+    searchInput.addEventListener('input', renderMapList);
+    searchInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      setSearchOpen(false);
+      searchButton.focus();
+    });
+    document.addEventListener(SETTINGS_CLOSED_EVENT, () => setSearchOpen(false));
     $('openDataFolderBtn').addEventListener('click', async () => {
       try { await openDataFolder(); }
       catch (error) { setUploadMessage(error.message || 'Could not open the data folder.'); }
