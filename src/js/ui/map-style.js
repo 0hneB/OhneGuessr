@@ -16,27 +16,30 @@ function tileUrls(url, subdomains = '') {
   return [...subdomains].map((subdomain) => url.replace('{s}', subdomain));
 }
 
-function rasterSource(tiles, minZoom, maxZoom, attribution = '') {
+function rasterSource(provider, maxZoom) {
+  const options = provider.options || {};
   return {
     type: 'raster',
-    tiles,
+    tiles: tileUrls(provider.url, options.subdomains),
     tileSize: PROVIDER_TILE_SIZE,
-    minzoom: minZoom,
-    maxzoom: maxZoom,
-    ...(attribution && { attribution })
+    minzoom: options.minZoom ?? 0,
+    maxzoom: maxZoom ?? options.maxNativeZoom ?? options.maxZoom ?? 19,
+    ...(options.attribution && { attribution: options.attribution })
   };
 }
 
-// Turn the existing XYZ provider definitions into a tiny MapLibre raster style.
-// Providers with a lower native maximum are overzoomed instead of disappearing.
+// Turn the provider definitions into a tiny MapLibre raster style. Optional
+// underlays support transparent overlays without special-casing a style key.
 export function buildMapStyle(key) {
   const resolvedKey = MAP_STYLES[key] ? key : DEFAULT_MAP_STYLE_KEY;
   const mapStyle = MAP_STYLES[resolvedKey];
   const options = mapStyle.options || {};
-  const tiles = tileUrls(mapStyle.url, options.subdomains);
+  const underlay = mapStyle.underlay;
   const minZoom = options.minZoom ?? 0;
   const maxZoom = options.maxNativeZoom ?? options.maxZoom ?? 19;
   const fallbackMaxZoom = Math.max(minZoom, Math.min(FALLBACK_MAX_ZOOM, maxZoom));
+  // A composite must not reveal an overzoomed copy of its transparent overlay.
+  const useFallback = !underlay;
 
   return {
     key: resolvedKey,
@@ -44,10 +47,15 @@ export function buildMapStyle(key) {
     style: {
       version: 8,
       sources: {
+        ...(underlay && {
+          underlay: rasterSource(underlay)
+        }),
         // Broad, cheap tiles remain behind the detailed map so a fast drag
         // reveals map imagery instead of the canvas background.
-        'basemap-fallback': rasterSource(tiles, minZoom, fallbackMaxZoom),
-        basemap: rasterSource(tiles, minZoom, maxZoom, options.attribution)
+        ...(useFallback && {
+          'basemap-fallback': rasterSource(mapStyle, fallbackMaxZoom)
+        }),
+        basemap: rasterSource(mapStyle)
       },
       layers: [
         {
@@ -55,17 +63,25 @@ export function buildMapStyle(key) {
           type: 'background',
           paint: { 'background-color': BACKGROUND_COLOR }
         },
-        {
+        ...(underlay ? [{
+          id: 'underlay',
+          type: 'raster',
+          source: 'underlay',
+          paint: { 'raster-fade-duration': 0 }
+        }] : []),
+        ...(useFallback ? [{
           id: 'basemap-fallback',
           type: 'raster',
           source: 'basemap-fallback',
           paint: { 'raster-fade-duration': 0 }
-        },
+        }] : []),
         {
           id: 'basemap',
           type: 'raster',
           source: 'basemap',
-          paint: { 'raster-fade-duration': TILE_FADE_DURATION }
+          paint: {
+            'raster-fade-duration': useFallback ? TILE_FADE_DURATION : 0
+          }
         }
       ]
     }
