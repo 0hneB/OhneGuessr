@@ -10,6 +10,16 @@ export const MAP_STYLES = {
     url: 'https://mt1.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
     options: { maxZoom: 20, attribution: '&copy; Google' }
   },
+  googleTerrain: {
+    name: 'Terrain',
+    url: 'https://mt1.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}',
+    options: { maxZoom: 20, attribution: '&copy; Google' }
+  },
+  googleSatellite: {
+    name: 'Satellite',
+    url: 'https://mt1.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}',
+    options: { maxZoom: 20, attribution: '&copy; Google' }
+  },
   satelliteLabels: {
     name: 'Satellite + Labels',
     url: 'https://mt1.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}',
@@ -19,6 +29,11 @@ export const MAP_STYLES = {
     name: 'OpenStreetMap',
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     options: { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }
+  },
+  terrain: {
+    name: 'OpenTopoMap',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    options: { maxZoom: 19, maxNativeZoom: 17, subdomains: 'abc', attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | &copy; OpenTopoMap' }
   },
   osmHot: {
     name: 'OSM Humanitarian',
@@ -51,14 +66,9 @@ export const MAP_STYLES = {
     options: { maxZoom: 19, maxNativeZoom: 16, attribution: 'Tiles &copy; Esri' }
   },
   satellite: {
-    name: 'Satellite',
+    name: 'Esri World Imagery',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     options: { maxZoom: 19, maxNativeZoom: 18, attribution: 'Tiles &copy; Esri, Maxar, Earthstar Geographics' }
-  },
-  terrain: {
-    name: 'Terrain',
-    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    options: { maxZoom: 19, maxNativeZoom: 17, subdomains: 'abc', attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | &copy; OpenTopoMap' }
   }
 };
 
