@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/images/ohneguessr-logo.svg" width="128" alt="OhneGuessr logo" />
+  <img src="src/images/ohneguessr-logo.svg" width="128" alt="OhneGuessr logo" />
 </p>
 
 <h1 align="center">OhneGuessr</h1>
@@ -48,13 +48,13 @@ Double-click **`run\serve.bat`**. It starts the local server and opens your brow
 ### macOS / Linux / manual
 
 ```bash
-python run/serve.py
+python src/serve/serve.py
 ```
 
 That serves the folder at `http://localhost:8000` and opens your browser. Stop it with Ctrl+C.
 
 > [!IMPORTANT]
-> `run/serve.py` serves the game and manages files under `data/`. A plain `python -m http.server` can play cached maps, but uploads, refresh, folder opening, and Map Making App sync require `run/serve.py`.
+> `src/serve/serve.py` serves the game and manages files under `data/`. A plain `python -m http.server` from the repository root can play cached maps at `http://localhost:8000/src/`, but uploads, refresh, folder opening, and Map Making App sync require `src/serve/serve.py`.
 
 ## Updating
 
@@ -172,7 +172,7 @@ A JSON array of location objects. Each needs `lat` and `lng`; `panoid`, `heading
 
 ### "Could not save the map. Is the local server (run/serve.bat) running?"
 
-The upload went to a server that can't write files. Make sure you started the game with `run/serve.bat` (or `python run/serve.py`) and that the browser is on `http://localhost:8000`, not a `file://` path or some other server.
+The upload went to a server that can't write files. Make sure you started the game with `run/serve.bat` (or `python src/serve/serve.py`) and that the browser is on `http://localhost:8000`, not a `file://` path or some other server.
 
 ### Panoramas don't load, or stay blurry / black
 
@@ -182,11 +182,11 @@ The upload went to a server that can't write files. Make sure you started the ga
 
 ### Browser opened but the page is blank or errors in the console
 
-You probably opened `index.html` directly. Run `run/serve.bat` / `python run/serve.py` and use the `http://localhost:8000` URL instead.
+You probably opened `src/index.html` directly. Run `run/serve.bat` / `python src/serve/serve.py` and use the `http://localhost:8000` URL instead.
 
 ### Port 8000 is already in use
 
-That usually means a server is already running. `run/serve.py` notices this and just opens the browser instead of starting a second one. If something *else* is on 8000, stop it (or stop the old game with `run/stop.bat`).
+That usually means a server is already running. `src/serve/serve.py` notices this and just opens the browser instead of starting a second one. If something *else* is on 8000, stop it (or stop the old game with `run/stop.bat`).
 
 ### `pythonw` not found
 

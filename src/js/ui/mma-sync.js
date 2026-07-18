@@ -106,7 +106,7 @@ export function setupMmaSync({ reloadLibrary }) {
       details.classList.add('hidden');
       accountRow.classList.add('hidden');
       account.textContent = '';
-      setStatusText('Start OhneGuessr with run/serve.py to use sync.', true);
+      setStatusText('Start OhneGuessr with run/serve.bat to use sync.', true);
       statusLine.classList.remove('hidden');
     }
   }

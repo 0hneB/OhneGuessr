@@ -1,10 +1,10 @@
 // Panorama viewer backed by Google's real Street View (the vendored, key-less Maps
-// JS API in assets/js/vendor/opensv/opensv.js). Movement mode is set via setMode():
+// JS API in vendor/opensv/opensv.js). Movement mode is set via setMode():
 //   moving — walk (click the road / arrows), pan, and zoom
 //   nm     — no moving; pan and zoom allowed
 //   nmpz   — no move, pan, or zoom (locked to the spawn view)
 
-const OPENSV_SRC = 'assets/js/vendor/opensv/opensv.js';
+const OPENSV_SRC = 'vendor/opensv/opensv.js';
 const DEFAULT_ZOOM = 1;
 const FULLY_ZOOMED_OUT = -3; // bottom of OpenSV's panorama zoom range
 const ZOOM_IN = 3;     // google SV zoom level for "zoomed in"
