@@ -184,7 +184,7 @@ async function startGame() {
 }
 
 // Snapshot the active game so a refresh restores either the round or its result.
-function saveProgress({ resultTrail = null } = {}) {
+function saveProgress({ resultTrail } = {}) {
   if (!state.currentKey || !state.deck.length) return;
   const snapshot = {
     map: state.currentKey,
@@ -196,6 +196,14 @@ function saveProgress({ resultTrail = null } = {}) {
     rounds: state.unlimited ? null : state.rounds,
     phase: state.phase
   };
+  // A settings change can rewrite a result snapshot after its panorama trail
+  // has been preloaded away, so retain the trail already saved for this round.
+  if (resultTrail === undefined && state.phase === GAME_PHASE.RESULT) {
+    const previous = loadGame();
+    if (previous?.map === snapshot.map && previous.round === snapshot.round) {
+      resultTrail = previous.resultTrail;
+    }
+  }
   if (resultTrail) snapshot.resultTrail = resultTrail;
   saveGame(snapshot);
 }
@@ -269,21 +277,27 @@ function applyRoundLimitChange() {
   if (state.unlimited) {
     state.rounds = Infinity; // loadRound grows the deck on demand
   } else {
-    const n = Math.min(nRaw, state.all.length);
+    const requested = Math.min(nRaw, state.all.length);
     const keep = Math.min(state.deck.length, state.round + 1); // played + current
-    if (n > keep) {
+    if (requested > keep) {
       // Grow: append locations not already in the kept deck.
       const have = new Set(state.deck.slice(0, keep));
-      let deck = state.deck.slice(0, keep).concat(shuffle(state.all).filter((l) => !have.has(l)));
-      while (deck.length < n) deck = deck.concat(shuffle(state.all)); // map smaller than n
-      state.deck = deck.slice(0, n);
+      let nextDeck = state.deck.slice(0, keep).concat(shuffle(state.all).filter((l) => !have.has(l)));
+      while (nextDeck.length < requested) nextDeck = nextDeck.concat(shuffle(state.all));
+      nextDeck.length = requested;
+
+      // An in-flight round preparation holds this array as its generation
+      // guard, so update its contents without replacing the array itself.
+      state.deck.length = nextDeck.length;
+      for (let i = 0; i < nextDeck.length; i++) state.deck[i] = nextDeck[i];
     } else {
-      state.deck = state.deck.slice(0, Math.max(n, keep)); // trim the tail
+      state.deck.length = Math.max(requested, keep); // trim only upcoming rounds
     }
-    state.rounds = Math.min(n, state.deck.length);
+    state.rounds = state.deck.length;
   }
 
   updateRoundLimitDisplay();
+  saveProgress();
   // Result screen open: its Next/See-results label may have flipped.
   if (state.phase === GAME_PHASE.RESULT) {
     $('nextBtn').textContent =
