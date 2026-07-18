@@ -170,8 +170,8 @@ export class ResultLayers {
       paint: {
         'line-color': '#000000',
         'line-width': 2,
-        'line-opacity': 0.85,
-        'line-dasharray': [1.5, 4.5]
+        'line-opacity': 1,
+        'line-dasharray': [1.5, 2.25]
       }
     });
     addLayer(this.map, {
