@@ -26,6 +26,16 @@
         <h2>Settings</h2>
         <div class="settings-head-controls">
           <div class="map-library-actions hidden">
+            <div class="map-search">
+              <input id="mapSearchInput" class="map-search-input" type="search"
+                     aria-label="Search maps" placeholder="Search maps"
+                     autocomplete="off" spellcheck="false" hidden />
+              <button id="mapSearchBtn" type="button" class="icon-action"
+                      aria-label="Search maps" title="Search maps"
+                      aria-controls="mapSearchInput" aria-expanded="false">
+                <span class="svg-icon search-icon" aria-hidden="true"></span>
+              </button>
+            </div>
             <button id="openDataFolderBtn" type="button" class="icon-action"
                     aria-label="Open data folder" title="Open data folder">
               <span class="svg-icon folder-icon" aria-hidden="true"></span>
