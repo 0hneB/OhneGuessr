@@ -1,7 +1,7 @@
 // Folder-aware map storage. The versioned manifest remains plain JSON so the
 // cached library can still run from any static HTTP server.
 
-const MANIFEST_URL = 'data/maps.json';
+const MANIFEST_URL = '/data/maps.json';
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -30,7 +30,7 @@ const folderOf = (file) => {
 };
 
 export const dataFileUrl = (file) =>
-  'data/' + cleanPath(file).split('/').map(encodeURIComponent).join('/');
+  '/data/' + cleanPath(file).split('/').map(encodeURIComponent).join('/');
 
 async function loadManifest() {
   try {
@@ -90,7 +90,7 @@ export async function getLocations(item) {
 }
 
 export async function addUserMap(name, locations) {
-  const entry = await api('api/maps', {
+  const entry = await api('/api/maps', {
     method: 'POST',
     body: JSON.stringify({ name, locations })
   });
@@ -107,25 +107,25 @@ export async function addUserMap(name, locations) {
 }
 
 export async function deleteUserMap(item) {
-  await api(`api/maps/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
+  await api(`/api/maps/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
 }
 
 export async function renameUserMap(item, name) {
-  return api(`api/maps/${encodeURIComponent(item.id)}`, {
+  return api(`/api/maps/${encodeURIComponent(item.id)}`, {
     method: 'PATCH',
     body: JSON.stringify({ name })
   });
 }
 
-export const rescanMaps = () => api('api/maps/rescan', { method: 'POST' });
-export const openDataFolder = () => api('api/open-data-folder', { method: 'POST' });
+export const rescanMaps = () => api('/api/maps/rescan', { method: 'POST' });
+export const openDataFolder = () => api('/api/open-data-folder', { method: 'POST' });
 
-export const getMmaSyncStatus = () => api('api/mma-sync/status');
-export const setMmaSyncEnabled = (enabled) => api('api/mma-sync/config', {
+export const getMmaSyncStatus = () => api('/api/mma-sync/status');
+export const setMmaSyncEnabled = (enabled) => api('/api/mma-sync/config', {
   method: 'PUT', body: JSON.stringify({ enabled })
 });
-export const saveMmaSyncKey = (apiKey) => api('api/mma-sync/key', {
+export const saveMmaSyncKey = (apiKey) => api('/api/mma-sync/key', {
   method: 'PUT', body: JSON.stringify({ apiKey })
 });
-export const forgetMmaSyncKey = () => api('api/mma-sync/key', { method: 'DELETE' });
-export const runMmaSync = () => api('api/mma-sync/run', { method: 'POST' });
+export const forgetMmaSyncKey = () => api('/api/mma-sync/key', { method: 'DELETE' });
+export const runMmaSync = () => api('/api/mma-sync/run', { method: 'POST' });

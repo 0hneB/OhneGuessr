@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Local dev server for OhneGuessr.
+"""Local server for OhneGuessr.
 
-Serves the repo over http:// and adds a write API so uploaded maps are saved as
-files under data/. Standard library only. Started by run/serve.bat, stopped by
+Serves src/ over http:// and adds a write API so uploaded maps are saved under
+data/. Standard library only. Started by run/serve.bat and stopped by
 run/stop.bat.
 
     GET    /api/health           -> {"ok": true}
@@ -24,22 +24,20 @@ import tempfile
 import threading
 import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import unquote, urlsplit
 
 import map_store
 from mma_sync import MapMakingSync
 
 PORT = 8000
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-BASE = os.path.dirname(SCRIPT_DIR)
+SRC_DIR = os.path.dirname(SCRIPT_DIR)
+BASE = os.path.dirname(SRC_DIR)
 DATA_DIR = os.path.join(BASE, "data")
 MANIFEST = os.path.join(DATA_DIR, "maps.json")
 PIDFILE = os.path.join(tempfile.gettempdir(), "ohneguessr-serve.pid")
 SYNC_CONFIG = os.path.join(DATA_DIR, ".map-making-app-sync.json")
-LEGACY_SYNC_CONFIG = os.path.join(SCRIPT_DIR, ".map-making-app-sync.json")
-PRIVATE_STATIC_PATHS = {
-    "/data/.map-making-app-sync.json",
-    "/run/.map-making-app-sync.json",
-}
+LEGACY_SYNC_CONFIG = os.path.join(BASE, "run", ".map-making-app-sync.json")
 MMA_SYNC = None
 
 
@@ -61,7 +59,7 @@ def prepare_data():
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=BASE, **kwargs)
+        super().__init__(*args, directory=SRC_DIR, **kwargs)
 
     def log_message(self, fmt, *args):
         pass
@@ -80,8 +78,32 @@ class Handler(SimpleHTTPRequestHandler):
         raw = self.rfile.read(length) if length else b""
         return json.loads(raw.decode("utf-8")) if raw else {}
 
-    def _path(self):
-        return self.path.split("?", 1)[0]
+    def _path(self, value=None):
+        return unquote(urlsplit(value or self.path).path)
+
+    def _data_file(self, value=None):
+        request_path = self._path(value)
+        if not request_path.startswith("/data/"):
+            return None
+        rel = request_path[len("/data/"):].replace("\\", "/")
+        parts = rel.split("/")
+        if (
+            not rel.lower().endswith(".json")
+            or any(not part or part in (".", "..") or part.startswith(".") for part in parts)
+        ):
+            raise ValueError("invalid public data path")
+        return map_store.resolve_data_path(DATA_DIR, rel)
+
+    def translate_path(self, path):
+        request_path = self._path(path)
+        first = request_path.lstrip("/").split("/", 1)[0].casefold()
+        if first == "serve" or first.startswith("."):
+            return os.path.join(SRC_DIR, ".not-found")
+        try:
+            data_file = self._data_file(path)
+        except ValueError:
+            return os.path.join(SRC_DIR, ".not-found")
+        return data_file if data_file is not None else super().translate_path(path)
 
     def _map_id(self):
         # /api/maps/<id>
@@ -89,9 +111,6 @@ class Handler(SimpleHTTPRequestHandler):
         return parts[-1] if len(parts) >= 4 else None
 
     def do_GET(self):
-        if self._path().lower() in PRIVATE_STATIC_PATHS:
-            self.send_error(404)
-            return
         if self._path() == "/api/health":
             self._send_json({"ok": True})
             return

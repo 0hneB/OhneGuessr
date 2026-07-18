@@ -1,5 +1,5 @@
-const GUESS_ASSET = 'assets/icons/pin-guess.svg';
-const CORRECT_ASSET = 'assets/images/correct-location.webp';
+const GUESS_ASSET = 'icons/pin-guess.svg';
+const CORRECT_ASSET = 'images/correct-location.webp';
 const GUESS_IMAGE_ID = 'result-guess-marker';
 const CORRECT_IMAGE_ID = 'result-correct-marker';
 const RESULT_SOURCE = 'result-data';

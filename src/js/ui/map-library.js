@@ -273,7 +273,7 @@ export function createMapLibrary({ startGame, tryResume }) {
       item = await addUserMap(mapNameFrom(json, file.name), locations);
       await reloadLibrary();
     } catch {
-      setUploadMessage('Could not save the map. Is run/serve.py running?');
+      setUploadMessage('Could not save the map. Is run/serve.bat running?');
       return;
     }
     setUploadMessage('');

@@ -96,7 +96,7 @@ export function normalizeMapZoomSpeed(value) {
 const channelHex = (value) => Math.round(value).toString(16).padStart(2, '0');
 
 function applyFaviconAccent(color) {
-  logoSvgPromise ||= fetch('assets/images/ohneguessr-logo.svg').then((res) => {
+  logoSvgPromise ||= fetch('images/ohneguessr-logo.svg').then((res) => {
     if (!res.ok) throw new Error(`logo ${res.status}`);
     return res.text();
   });
