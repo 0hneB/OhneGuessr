@@ -4,6 +4,7 @@
 import {
   DEFAULT_MAP_STYLE_KEY,
   DEFAULT_MAP_ZOOM_SPEED,
+  isDarkMapStyle,
   normalizeMapZoomSpeed
 } from '../core/settings.js';
 import { buildMapStyle } from './map-style.js';
@@ -379,7 +380,12 @@ class RevealEngine {
     this.map = created.map;
     this.styleKey = created.styleKey;
     applyMapZoomSpeed(this.map, this.zoomSpeed);
-    this.layers = new ResultLayers(this.map, openStreetView, this.accent);
+    this.layers = new ResultLayers(
+      this.map,
+      openStreetView,
+      this.accent,
+      isDarkMapStyle(this.styleKey)
+    );
     this.map.on('style.load', () => this.layers.install());
     this.resizeObserver = observeMapSize(
       this.map,
@@ -442,6 +448,7 @@ class RevealEngine {
       return;
     }
     setMapStyle(this, key, () => this.layers.invalidate());
+    this.layers.setDark(isDarkMapStyle(this.styleKey));
   }
 
   setAccent(accent) {
