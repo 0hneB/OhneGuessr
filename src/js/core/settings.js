@@ -27,6 +27,7 @@ export const MAP_STYLES = {
   },
   darkMode: {
     name: 'Dark Mode',
+    dark: true,
     url: 'https://mt1.google.com/vt/lyrs=h&hl=en&x={x}&y={y}&z={z}',
     underlay: {
       url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png',
@@ -65,6 +66,7 @@ export const MAP_STYLES = {
   },
   cartoDark: {
     name: 'CartoDB Dark',
+    dark: true,
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
     options: { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }
   },
@@ -75,6 +77,7 @@ export const MAP_STYLES = {
   },
   esriDarkGray: {
     name: 'Esri Dark Gray',
+    dark: true,
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     options: { maxZoom: 19, maxNativeZoom: 16, attribution: 'Tiles &copy; Esri' }
   },
@@ -84,6 +87,8 @@ export const MAP_STYLES = {
     options: { maxZoom: 19, maxNativeZoom: 18, attribution: 'Tiles &copy; Esri, Maxar, Earthstar Geographics' }
   }
 };
+
+export const isDarkMapStyle = (key) => MAP_STYLES[key]?.dark === true;
 
 export const DEFAULT_ACCENT_COLOR = '#22c55e';
 export const GUESS_MAP_SIZES = Object.freeze(['default', 'large', 'xl', 'xxl']);

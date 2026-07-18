@@ -5,6 +5,7 @@ const CORRECT_IMAGE_ID = 'result-correct-marker';
 const RESULT_SOURCE = 'result-data';
 const ACTUAL_LAYER = 'result-actual-markers';
 const GUESS_LAYER = 'result-guess-markers';
+const LIGHT_MAP_LINK_COLOR = '#000000';
 const SPRITE_SCALE = 2;
 const SPRITE_PADDING = 12;
 
@@ -133,10 +134,11 @@ function addLayer(map, layer) {
 // Native MapLibre layers keep one or one hundred result pairs equally cheap:
 // one GeoJSON source, five GPU-drawn layers, and two cached marker sprites.
 export class ResultLayers {
-  constructor(map, onAnswerClick, accent) {
+  constructor(map, onAnswerClick, accent, dark = false) {
     this.map = map;
     this.onAnswerClick = onAnswerClick;
     this.accent = accent;
+    this.dark = dark;
     this.results = [];
     this.data = emptyCollection();
     this.installRevision = 0;
@@ -168,7 +170,7 @@ export class ResultLayers {
       source: RESULT_SOURCE,
       filter: ['==', ['get', 'kind'], 'link'],
       paint: {
-        'line-color': '#000000',
+        'line-color': this.linkColor(),
         'line-width': 2,
         'line-opacity': 1,
         'line-dasharray': [1.5, 2.25]
@@ -289,6 +291,9 @@ export class ResultLayers {
   setAccent(accent) {
     if (accent === this.accent) return;
     this.accent = accent;
+    if (this.dark && this.map.getLayer('result-links')) {
+      this.map.setPaintProperty('result-links', 'line-color', accent);
+    }
     if (this.map.getLayer('movement-trail')) {
       this.map.setPaintProperty('movement-trail', 'line-color', accent);
       this.map.setPaintProperty('movement-trail-end', 'circle-stroke-color', accent);
@@ -298,6 +303,18 @@ export class ResultLayers {
         this.map.updateImage(GUESS_IMAGE_ID, guess);
       }
     }).catch(() => {});
+  }
+
+  linkColor() {
+    return this.dark ? this.accent : LIGHT_MAP_LINK_COLOR;
+  }
+
+  setDark(dark) {
+    if (dark === this.dark) return;
+    this.dark = dark;
+    if (this.map.getLayer('result-links')) {
+      this.map.setPaintProperty('result-links', 'line-color', this.linkColor());
+    }
   }
 
   answerAt(point) {
