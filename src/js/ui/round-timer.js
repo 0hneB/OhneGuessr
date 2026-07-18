@@ -9,10 +9,13 @@ export class RoundTimer {
     this.onExpire = onExpire;     // countdown reached zero
     this.id = null;
     this.remaining = 0;
+    this.deadline = 0;
+    this.pausedAt = null;
   }
 
   stop() {
     if (this.id) { clearInterval(this.id); this.id = null; }
+    this.pausedAt = null;
   }
 
   _updateDisplay() {
@@ -29,14 +32,29 @@ export class RoundTimer {
     const secs = this.getSeconds();
     if (!secs || !this.isActive()) { box.classList.add('hidden'); return; }
     this.remaining = secs;
+    const now = performance.now();
+    this.deadline = now + secs * 1000;
+    this.pausedAt = this.isPaused() ? now : null;
     box.classList.remove('hidden');
     this._updateDisplay();
     this.id = setInterval(() => {
-      if (this.isPaused()) return;
       if (!this.isActive()) { this.stop(); return; }
-      this.remaining -= 1;
-      this._updateDisplay();
-      if (this.remaining <= 0) { this.stop(); this.onExpire(); }
-    }, 1000);
+      const now = performance.now();
+      if (this.isPaused()) {
+        if (this.pausedAt === null) this.pausedAt = now;
+        return;
+      }
+      if (this.pausedAt !== null) {
+        this.deadline += now - this.pausedAt;
+        this.pausedAt = null;
+      }
+
+      const remaining = Math.max(0, Math.ceil((this.deadline - now) / 1000));
+      if (remaining !== this.remaining) {
+        this.remaining = remaining;
+        this._updateDisplay();
+      }
+      if (remaining === 0) { this.stop(); this.onExpire(); }
+    }, 250);
   }
 }
