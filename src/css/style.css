@@ -1126,18 +1126,35 @@ body.empty-mode #guessPanel { display: none !important; }
 .result-dist b { font-size: 22px; font-weight: 800; color: #fff; }
 .result-points { font-size: 14px; }
 .result-points b { font-size: 20px; font-weight: 800; color: var(--accent); }
-#nextBtn {
+.result-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-top: 4px;
-  padding: 11px 44px;
+}
+.result-actions button {
+  padding: 11px 28px;
   font-size: 15px;
   font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#nextBtn {
   color: var(--accent-ink);
   background: var(--accent);
   border: none;
-  border-radius: 10px;
-  cursor: pointer;
 }
 #nextBtn:hover { background: var(--accent-strong); }
+#endGameBtn {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+#endGameBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.34);
+}
 
 .reveal-map { position: absolute; inset: 0; }
 
