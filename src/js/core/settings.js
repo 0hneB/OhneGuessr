@@ -25,6 +25,19 @@ export const MAP_STYLES = {
     url: 'https://mt1.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}',
     options: { maxZoom: 20, attribution: '&copy; Google' }
   },
+  darkMode: {
+    name: 'Dark Mode',
+    url: 'https://mt1.google.com/vt/lyrs=h&hl=en&x={x}&y={y}&z={z}',
+    underlay: {
+      url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png',
+      options: {
+        maxZoom: 20,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+      }
+    },
+    options: { maxZoom: 20, attribution: '&copy; Google' }
+  },
   osm: {
     name: 'OpenStreetMap',
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
