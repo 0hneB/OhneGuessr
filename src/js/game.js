@@ -69,6 +69,11 @@ function hasNextRound() {
   return state.unlimited || state.round + 1 < state.rounds;
 }
 
+function updateResultActions() {
+  $('nextBtn').textContent = hasNextRound() ? 'Next' : 'See results';
+  setHidden('endGameBtn', !state.unlimited);
+}
+
 function ensureDeckIndex(index) {
   while (state.unlimited && index >= state.deck.length && state.all.length) {
     state.deck = state.deck.concat(shuffle(state.all));
@@ -298,10 +303,9 @@ function applyRoundLimitChange() {
 
   updateRoundLimitDisplay();
   saveProgress();
-  // Result screen open: its Next/See-results label may have flipped.
+  // Result screen open: its available actions may have changed.
   if (state.phase === GAME_PHASE.RESULT) {
-    $('nextBtn').textContent =
-      state.unlimited || state.round + 1 < state.rounds ? 'Next' : 'See results';
+    updateResultActions();
     scheduleNextRoundPreload();
   }
 }
@@ -462,7 +466,7 @@ function showRoundResult(result, trail = null) {
   $('total').textContent = String(state.total);
   $('resultDist').textContent = distKm == null ? '—' : formatDistance(distKm);
   $('resultPoints').textContent = String(points);
-  $('nextBtn').textContent = hasNextRound() ? 'Next' : 'See results';
+  updateResultActions();
 
   setLoading(false);
   setHidden('resultScreen', false);
@@ -483,6 +487,12 @@ async function nextRound() {
   const preload = takeRoundPreload(nextIndex);
   state.round = nextIndex;
   await loadRound(preload);
+}
+
+function endUnlimitedGame() {
+  if (state.phase !== GAME_PHASE.RESULT || !state.unlimited) return;
+  setHidden('resultScreen', true);
+  showFinal();
 }
 
 function renderFinalRounds() {
@@ -525,7 +535,7 @@ function showFinal() {
   state.phase = GAME_PHASE.FINAL;
   selectedFinalRound = null;
   clearGame(); // game over: nothing left to resume
-  const max = state.rounds * CONFIG.SCORE_MAX;
+  const max = state.results.length * CONFIG.SCORE_MAX;
   $('finalScore').textContent = `${state.total} / ${max}`;
   renderFinalRounds();
   setHidden('final', false);
@@ -571,6 +581,10 @@ async function init() {
 
   $('guessBtn').addEventListener('click', (e) => { submitGuess(); e.currentTarget.blur(); });
   $('nextBtn').addEventListener('click', (e) => { nextRound(); e.currentTarget.blur(); });
+  $('endGameBtn').addEventListener('click', (e) => { endUnlimitedGame(); e.currentTarget.blur(); });
+  $('endGameBtn').addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter') e.stopPropagation();
+  });
   $('playAgain').addEventListener('click', startGame);
   window.addEventListener('keydown', keybindings.onKeyDown);
   window.addEventListener('keyup', keybindings.onKeyUp);
