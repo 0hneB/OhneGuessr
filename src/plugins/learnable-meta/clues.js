@@ -60,7 +60,6 @@ export class LearnableMetaClues {
   }
 
   resetLayout() {
-    try { localStorage.removeItem(LAYOUT_KEY); } catch { /* private mode */ }
     this._applyLayout(this._defaultLayout());
     this._persistLayout();
   }
@@ -212,25 +211,20 @@ export class LearnableMetaClues {
   _createCarousel(images) {
     let index = 0;
     const carousel = element('section', 'lm-clue-carousel');
-    carousel.tabIndex = 0;
-    carousel.setAttribute('aria-label', 'Clue images');
     const imageWrapper = element('div', 'lm-clue-image-wrapper');
-    imageWrapper.setAttribute('role', 'img');
-    imageWrapper.setAttribute('aria-label', 'Zoomable image');
     const image = element('img', 'lm-clue-image');
     image.loading = 'eager';
     image.decoding = 'async';
     const lens = element('div', 'lm-clue-image-lens hidden');
+    lens.style.width = `${IMAGE_LENS_SIZE}px`;
+    lens.style.height = `${IMAGE_LENS_SIZE}px`;
+    lens.style.backgroundRepeat = 'no-repeat';
     const moveLens = (event) => {
       const rect = imageWrapper.getBoundingClientRect();
       const lensX = event.clientX - rect.left;
       const lensY = event.clientY - rect.top;
       lens.style.top = `${lensY - IMAGE_LENS_SIZE / 2}px`;
       lens.style.left = `${lensX - IMAGE_LENS_SIZE / 2}px`;
-      lens.style.width = `${IMAGE_LENS_SIZE}px`;
-      lens.style.height = `${IMAGE_LENS_SIZE}px`;
-      lens.style.backgroundImage = `url("${image.src}")`;
-      lens.style.backgroundRepeat = 'no-repeat';
       lens.style.backgroundSize = `${image.width * IMAGE_LENS_SCALE}px ${image.height * IMAGE_LENS_SCALE}px`;
       lens.style.backgroundPosition = `${-(lensX * IMAGE_LENS_SCALE - IMAGE_LENS_SIZE / 2)}px ${-(lensY * IMAGE_LENS_SCALE - IMAGE_LENS_SIZE / 2)}px`;
     };
@@ -243,14 +237,18 @@ export class LearnableMetaClues {
     imageWrapper.addEventListener('mouseleave', hideLens);
     imageWrapper.addEventListener('mousemove', moveLens);
     imageWrapper.append(image, lens);
-    const counter = element('span', 'lm-clue-image-count');
+    let counter = null;
     const render = () => {
       image.src = images[index];
       image.alt = `Learnable Meta clue image ${index + 1} of ${images.length}`;
-      counter.textContent = `${index + 1} / ${images.length}`;
+      lens.style.backgroundImage = `url("${image.src}")`;
+      if (counter) counter.textContent = `${index + 1} / ${images.length}`;
     };
     carousel.append(imageWrapper);
     if (images.length > 1) {
+      carousel.tabIndex = 0;
+      carousel.setAttribute('aria-label', 'Clue images');
+      counter = element('span', 'lm-clue-image-count');
       const previous = element('button', 'lm-clue-image-nav previous', '‹');
       const next = element('button', 'lm-clue-image-nav next', '›');
       previous.type = next.type = 'button';
