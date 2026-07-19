@@ -97,7 +97,6 @@ class LearnableMetaSync:
         self._lock = threading.RLock()
         self._storage_lock = storage_lock or threading.RLock()
         self._cancel = threading.Event()
-        self._thread = None
         self._runtime = {
             "running": False,
             "phase": "idle",
@@ -220,7 +219,7 @@ class LearnableMetaSync:
             self.config.save(config)
             try:
                 with self._storage_lock:
-                    self._rename_published_map(map_id, old_name, name)
+                    self._rename_published_map(map_id, name)
             except Exception:
                 current["name"] = old_name
                 self.config.save(config)
@@ -257,13 +256,13 @@ class LearnableMetaSync:
                 "error": None,
                 "lastResult": None,
             })
-            self._thread = threading.Thread(
+            thread = threading.Thread(
                 target=self._run,
                 args=(config["apiKey"], [dict(item) for item in config["maps"]]),
                 daemon=True,
                 name="ohneguessr-learnable-meta-sync",
             )
-            self._thread.start()
+            thread.start()
         return self.public_status()
 
     def cancel(self):
@@ -338,9 +337,6 @@ class LearnableMetaSync:
         except Exception as exc:  # unexpected worker failure
             with self._lock:
                 self._runtime.update(running=False, phase="error", error=str(exc))
-        finally:
-            with self._lock:
-                self._thread = None
 
     @staticmethod
     def _require_ready(config):
@@ -425,7 +421,7 @@ class LearnableMetaSync:
             self._remove_file(existing["file"])
         return changed
 
-    def _rename_published_map(self, map_id, _old_name, new_name):
+    def _rename_published_map(self, map_id, new_name):
         manifest = map_store.load_manifest(self.manifest_path)
         entry = next((
             item for item in manifest["maps"]
