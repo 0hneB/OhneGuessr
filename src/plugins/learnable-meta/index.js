@@ -22,7 +22,7 @@ export async function setupLearnableMeta(context) {
   const clues = new LearnableMetaClues();
   const settings = setupLearnableMetaSettings({ mount, clues, ...context });
   await settings.ready;
-  const unregisterMapActions = context.registerManagedMapActions('learnable-meta', {
+  context.registerManagedMapActions('learnable-meta', {
     rename: async (map, name) => {
       settings.updateStatus(await renameMap(map.source.mapId, name));
     },
@@ -30,27 +30,18 @@ export async function setupLearnableMeta(context) {
       settings.updateStatus(await removeMap(map.source.mapId));
     }
   });
-  const unsubscribers = [
-    onPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, ({ map }) => {
-      if (map?.source?.type !== 'learnable-meta') clues.hide({ resetClose: true });
-    }),
-    onPluginEvent(PLUGIN_EVENTS.GAME_RESET, () => clues.hide({ resetClose: true })),
-    onPluginEvent(PLUGIN_EVENTS.ROUND_START, () => clues.hide({ resetClose: true })),
-    onPluginEvent(PLUGIN_EVENTS.ROUND_RESULT, (detail) => {
-      clues.show({ ...detail, context: 'result' });
-    }),
-    onPluginEvent(PLUGIN_EVENTS.FINAL_ROUND_SELECTED, (detail) => {
-      if (!detail.location) clues.hide();
-      else clues.show({ ...detail, context: 'final' });
-    })
-  ];
-  instance = {
-    clues,
-    settings,
-    destroy: () => {
-      unregisterMapActions();
-      unsubscribers.forEach((unsubscribe) => unsubscribe());
-    }
-  };
+  onPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, ({ map }) => {
+    if (map?.source?.type !== 'learnable-meta') clues.hide({ resetClose: true });
+  });
+  onPluginEvent(PLUGIN_EVENTS.GAME_RESET, () => clues.hide({ resetClose: true }));
+  onPluginEvent(PLUGIN_EVENTS.ROUND_START, () => clues.hide({ resetClose: true }));
+  onPluginEvent(PLUGIN_EVENTS.ROUND_RESULT, (detail) => {
+    clues.show({ ...detail, context: 'result' });
+  });
+  onPluginEvent(PLUGIN_EVENTS.FINAL_ROUND_SELECTED, (detail) => {
+    if (!detail.location) clues.hide();
+    else clues.show({ ...detail, context: 'final' });
+  });
+  instance = { clues, settings };
   return instance;
 }
