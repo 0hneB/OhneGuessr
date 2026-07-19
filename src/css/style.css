@@ -121,6 +121,7 @@ html, body {
 .pencil-icon { --icon-url: url("../icons/pencil.svg"); }
 .rm-bookmark-icon { --icon-url: url("../icons/rm-bookmark.svg"); }
 .info-icon { --icon-url: url("../icons/info.svg"); }
+.link-icon { --icon-url: url("../icons/link.svg"); }
 .close-icon { --icon-url: url("../icons/close.svg"); }
 .chevron-icon { --icon-url: url("../icons/chevron.svg"); }
 .reset-icon { --icon-url: url("../icons/reset.svg"); }
