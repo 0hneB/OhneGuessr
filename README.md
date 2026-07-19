@@ -119,7 +119,8 @@ Settings open from the gear icon and are saved in your browser's `localStorage`,
 | Rounds per game | Unlimited, 5, 10, Custom | Custom takes any whole number |
 | Time limit | Unlimited, 2 min, 5 min, Custom | Per **location**. Custom is in minutes |
 | Scoring | World, Country | World uses a fixed world-map scale; Country scales to the loaded map's location bounds (stricter) |
-| Maps | — | Add, organize, or synchronize maps (see below) |
+| Maps | — | Add and organize maps (see below) |
+| Sync | On / off | Configure Map Making App and Learnable Meta sync |
 
 ## Maps
 
@@ -142,7 +143,7 @@ Use **Open data folder** to open `data/` in your file manager. Create folders or
 
 ### Map Making App sync
 
-1. Open **Settings → Maps** and enable **Map Making App Sync**.
+1. Open **Settings → Sync** and enable **Map Making App Sync**.
 2. Paste an API key from [map-making.app/keys](https://map-making.app/keys) and save it.
 3. The first sync starts immediately. Later updates run only when you press **Sync now**.
 
@@ -157,22 +158,21 @@ Synced maps are restored by the next sync if their JSON file is deleted. Move or
 
 ### Learnable Meta sync
 
-Learnable Meta sync downloads personal-map locations directly from Learnable Meta. It does not contact GeoGuessr and does not need a GeoGuessr login, cookie, draft, or userscript.
+OhneGuessr can download personal maps directly from Learnable Meta.
 
 1. Create or open a personal map in the [Learnable Meta portal](https://learnablemeta.com/personal).
-2. Give it a unique dummy map ID. A random 24-character hexadecimal ID matches the shape of a GeoGuessr ID and is recommended.
-3. Generate an API key under [Learnable Meta profile → API token](https://learnablemeta.com/profile/token).
-4. Open **Settings → Maps**, enable **Learnable Meta Sync**, and save the API key.
-5. Add the personal map's local name and the exact dummy/map ID used in Learnable Meta.
+2. Set a unique GeoGuessr ID for it.
+3. Create a key under [Learnable Meta profile → API token](https://learnablemeta.com/profile/token).
+4. Open **Settings → Sync**, enable **Learnable Meta Sync**, and save the API key.
+5. Add a local map name and the same GeoGuessr ID.
 
-The map is checked and downloaded immediately. Configure as many personal maps as needed, then use **Sync now** for later updates. Learnable Meta currently has no token endpoint for listing a user's personal maps, so IDs are entered manually.
+The GeoGuessr ID links the Learnable Meta map to its local copy. Each map is checked and downloaded when it is added. Learnable Meta does not currently expose personal-map discovery through API keys, so additional map IDs must also be entered manually. Use **Sync now** to fetch later changes.
 
-Downloaded maps are managed under `data/Learnable Meta/`; the private key and configured IDs are stored in `data/.learnable-meta-sync.json`. Disabling sync or forgetting the key keeps cached maps playable. Removing a configured map deletes its managed cache after confirmation.
+Downloaded maps appear in the **Learnable Meta** folder and are stored under `data/Learnable Meta/`.
 
-For Learnable Meta maps, a draggable and resizable clue window appears after each round. Its layout is saved in the browser and can be reset from the sync settings. Selecting a round on the final screen opens that round's clue. Per-location heading, pitch, and zoom are preserved; the global **Street View starts zoomed out** setting still takes priority over location zoom.
+The API key and configured IDs stay in the Git-ignored `data/.learnable-meta-sync.json`. Disabling sync or forgetting the key keeps downloaded maps playable.
 
-> [!IMPORTANT]
-> The dummy-ID workflow relies on Learnable Meta currently treating its `geoguessrId` field as an opaque unique string. This is not a documented upstream guarantee. If Learnable Meta tightens that validation, existing IDs should continue syncing, but creating new dummy-ID maps may require an upstream change.
+For Learnable Meta maps, a draggable and resizable clue window appears after each round. Its layout is saved in the browser. Selecting a round on the final screen opens that round's clue. Per-location heading, pitch, and zoom are preserved; the global **Street View starts zoomed out** setting still takes priority over location zoom.
 
 The integration is a clean-room implementation. See [`src/plugins/learnable-meta/NOTICE.md`](src/plugins/learnable-meta/NOTICE.md) for attribution.
 

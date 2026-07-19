@@ -1,51 +1,4 @@
-.lm-sync-section {
-  margin-top: 17px;
-  padding-top: 15px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-.lm-sync-toggle { margin: 0; font-size: 13px; }
-.lm-sync-details { display: flex; flex-direction: column; gap: 9px; margin-top: 10px; }
-.lm-account-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: #cbd2dd; }
-.lm-inline-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 5px; }
-.lm-button {
-  padding: 5px 8px;
-  color: #e7eaf0;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-}
-.lm-button:hover { background: rgba(255, 255, 255, 0.12); }
-.lm-button.danger:hover { color: #fecaca; border-color: rgba(248, 113, 113, 0.55); }
-.lm-button:disabled { opacity: 0.45; cursor: default; }
-.lm-form { display: grid; gap: 6px; }
-.lm-key-form { grid-template-columns: 1fr auto; }
 .lm-map-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto; }
-.lm-form input {
-  min-width: 0;
-  padding: 9px 10px;
-  color: #fff;
-  background: #222;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
-  font-size: 12px;
-}
-.lm-form input:focus { outline: none; border-color: var(--accent); }
-.lm-form .settings-action { margin: 0; }
-.lm-map-list { display: flex; max-height: 150px; flex-direction: column; gap: 5px; margin-top: 8px; overflow-y: auto; }
-.lm-map-row { display: flex; align-items: center; gap: 8px; padding: 7px 8px; background: rgba(255, 255, 255, 0.045); border-radius: 7px; }
-.lm-map-identity { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
-.lm-map-identity strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.lm-map-identity code { overflow: hidden; color: #9ca3af; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.lm-empty, .lm-help { margin: 0; color: #9ca3af; font-size: 11px; line-height: 1.4; }
-.lm-secondary-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.lm-portal-links { display: flex; gap: 9px; }
-.lm-secondary-actions a { color: #a7d8ff; font-size: 11px; text-decoration: none; }
-.lm-secondary-actions a:hover { text-decoration: underline; }
-.lm-sync-status { margin-top: 8px; }
-.lm-sync-status.error { color: #f87171; opacity: 0.9; }
 
 .lm-clue-window {
   position: fixed;
@@ -99,6 +52,4 @@
 
 @media (max-width: 620px) {
   .lm-map-form { grid-template-columns: 1fr; }
-  .lm-account-row { align-items: flex-start; flex-direction: column; }
-  .lm-inline-actions { justify-content: flex-start; }
 }

@@ -54,6 +54,29 @@ function saveExpandedFolders(folders) {
 
 export function createMapLibrary({ startGame, tryResume }) {
   const expandedFolders = loadExpandedFolders();
+  const managedMapActions = new Map();
+
+  function registerManagedMapActions(sourceType, actions) {
+    const type = String(sourceType || '').trim();
+    const entry = {
+      rename: typeof actions?.rename === 'function' ? actions.rename : null,
+      remove: typeof actions?.remove === 'function' ? actions.remove : null
+    };
+    if (!type || (!entry.rename && !entry.remove)) {
+      throw new TypeError('Managed map actions require a source type and at least one handler');
+    }
+    managedMapActions.set(type, entry);
+    renderMapList();
+    return () => {
+      if (managedMapActions.get(type) !== entry) return;
+      managedMapActions.delete(type);
+      renderMapList();
+    };
+  }
+
+  const actionsFor = (map) => map.managed
+    ? managedMapActions.get(map.source?.type)
+    : null;
 
   async function reloadLibrary() {
     const library = await loadLibrary();
@@ -146,6 +169,7 @@ export function createMapLibrary({ startGame, tryResume }) {
     };
 
     const renderMap = (map, depth) => {
+      const actions = actionsFor(map);
       const row = document.createElement('div');
       row.className = 'map-row' +
         (map.key === state.currentKey ? ' selected' : '') +
@@ -163,7 +187,7 @@ export function createMapLibrary({ startGame, tryResume }) {
       });
       row.appendChild(main);
 
-      if (!map.managed) {
+      if (!map.managed || actions?.rename) {
         const edit = document.createElement('button');
         edit.className = 'icon-action map-row-edit';
         edit.title = 'Rename map';
@@ -174,7 +198,9 @@ export function createMapLibrary({ startGame, tryResume }) {
           beginRename(map, main);
         });
         row.appendChild(edit);
+      }
 
+      if (!map.managed || actions?.remove) {
         const del = document.createElement('button');
         del.className = 'map-row-del';
         del.title = 'Delete map';
@@ -205,6 +231,8 @@ export function createMapLibrary({ startGame, tryResume }) {
   }
 
   function beginRename(map, mainButton) {
+    const rename = map.managed ? actionsFor(map)?.rename : renameUserMap;
+    if (!rename) return;
     const row = mainButton.parentElement;
     const input = document.createElement('input');
     input.className = 'map-row-rename-input';
@@ -222,7 +250,7 @@ export function createMapLibrary({ startGame, tryResume }) {
       const name = input.value.trim();
       if (!name || name === map.name) { renderMapList(); return; }
       try {
-        await renameUserMap(map, name);
+        await rename(map, name);
         await reloadLibrary();
       } catch (error) {
         setUploadMessage(error.message || 'Could not rename that map.');
@@ -279,8 +307,10 @@ export function createMapLibrary({ startGame, tryResume }) {
   }
 
   async function removeMap(map) {
+    const remove = map.managed ? actionsFor(map)?.remove : deleteUserMap;
+    if (!remove) return;
     try {
-      await deleteUserMap(map);
+      await remove(map);
       await reloadLibrary();
     } catch (error) {
       setUploadMessage(error.message || 'Could not delete that map.');
@@ -362,15 +392,6 @@ export function createMapLibrary({ startGame, tryResume }) {
     }
   }
 
-  async function reloadLibraryAndRecover() {
-    const previousKey = state.currentKey;
-    await reloadLibrary();
-    if (!previousKey || state.maps.some((map) => map.key === previousKey)) return;
-    state.currentKey = null;
-    if (state.maps[0]) await selectMap(state.maps[0].key);
-    else showNoMaps();
-  }
-
   function setupMapLibrary() {
     const fileInput = $('fileInput');
     const searchInput = $('mapSearchInput');
@@ -413,7 +434,7 @@ export function createMapLibrary({ startGame, tryResume }) {
   return {
     renderMapList,
     reloadLibrary,
-    reloadLibraryAndRecover,
+    registerManagedMapActions,
     selectMap,
     showNoMaps,
     setupMapLibrary

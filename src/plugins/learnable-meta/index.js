@@ -1,4 +1,5 @@
 import { onPluginEvent, PLUGIN_EVENTS } from '../../js/core/plugin-events.js';
+import { removeMap, renameMap } from './api.js';
 import { LearnableMetaClues } from './clues.js';
 import { setupLearnableMetaSettings } from './settings.js';
 
@@ -21,6 +22,14 @@ export async function setupLearnableMeta(context) {
   const clues = new LearnableMetaClues();
   const settings = setupLearnableMetaSettings({ mount, clues, ...context });
   await settings.ready;
+  const unregisterMapActions = context.registerManagedMapActions('learnable-meta', {
+    rename: async (map, name) => {
+      settings.updateStatus(await renameMap(map.source.mapId, name));
+    },
+    remove: async (map) => {
+      settings.updateStatus(await removeMap(map.source.mapId));
+    }
+  });
   const unsubscribers = [
     onPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, ({ map }) => {
       if (map?.source?.type !== 'learnable-meta') clues.hide({ resetClose: true });
@@ -35,6 +44,13 @@ export async function setupLearnableMeta(context) {
       else clues.show({ ...detail, context: 'final' });
     })
   ];
-  instance = { clues, settings, destroy: () => unsubscribers.forEach((unsubscribe) => unsubscribe()) };
+  instance = {
+    clues,
+    settings,
+    destroy: () => {
+      unregisterMapActions();
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    }
+  };
   return instance;
 }
