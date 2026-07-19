@@ -20,6 +20,17 @@ function element(tag, className, text) {
   return node;
 }
 
+function iconButton(iconClass, label) {
+  const button = element('button', 'icon-action lm-clue-action');
+  button.type = 'button';
+  button.title = label;
+  button.setAttribute('aria-label', label);
+  const icon = element('span', `svg-icon ${iconClass}`);
+  icon.setAttribute('aria-hidden', 'true');
+  button.append(icon);
+  return button;
+}
+
 export class LearnableMetaClues {
   constructor() {
     this.enabled = false;
@@ -47,6 +58,12 @@ export class LearnableMetaClues {
       this.viewKey = null;
       this.closedViewKey = null;
     }
+  }
+
+  resetLayout() {
+    try { localStorage.removeItem(LAYOUT_KEY); } catch { /* private mode */ }
+    this._applyLayout(this._defaultLayout());
+    this._persistLayout();
   }
 
   async show({ map, location, roundIndex, context }) {
@@ -98,15 +115,16 @@ export class LearnableMetaClues {
     root.setAttribute('aria-label', 'Learnable Meta clue');
     const header = element('div', 'lm-clue-header');
     const title = element('h2', '', 'Learnable Meta');
-    const close = element('button', 'lm-clue-close', '×');
-    close.type = 'button';
-    close.title = 'Hide this clue';
-    close.setAttribute('aria-label', 'Hide this clue');
+    const actions = element('div', 'lm-clue-header-actions');
+    const reset = iconButton('refresh-icon', 'Reset clue window');
+    reset.addEventListener('click', () => this.resetLayout());
+    const close = iconButton('close-icon', 'Hide this clue');
     close.addEventListener('click', () => {
       this.closedViewKey = this.viewKey;
       this.hide();
     });
-    header.append(title, close);
+    actions.append(reset, close);
+    header.append(title, actions);
     const content = element('div', 'lm-clue-content');
     content.setAttribute('aria-live', 'polite');
     content.addEventListener('click', (event) => {
@@ -147,7 +165,7 @@ export class LearnableMetaClues {
     const country = String(data?.country || '').trim();
     const metaName = String(data?.metaName || '').trim();
     if (country) heading.append(element('strong', '', country));
-    if (country && metaName) heading.append(document.createTextNode(' — '));
+    if (country && metaName) heading.append(document.createTextNode(' - '));
     if (metaName) heading.append(document.createTextNode(metaName));
     if (heading.childNodes.length) fragment.append(heading);
 

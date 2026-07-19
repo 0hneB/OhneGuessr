@@ -28,8 +28,8 @@
   user-select: none;
 }
 .lm-clue-header h2 { margin: 0; font-size: 18px; letter-spacing: 0.01em; }
-.lm-clue-close { width: 26px; height: 26px; padding: 0; color: #d7dbe2; background: transparent; border: 0; border-radius: 4px; font-size: 22px; line-height: 1; cursor: pointer; }
-.lm-clue-close:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.lm-clue-header-actions { display: flex; align-items: center; gap: 2px; }
+.lm-clue-action { width: 26px; height: 26px; }
 .lm-clue-content { flex: 1; min-height: 0; padding: 10px 14px 14px; overflow: auto; background: var(--settings-bg); font-size: 16px; line-height: 1.5; }
 .lm-clue-meta { margin: 0 0 12px; font-size: 17px; line-height: 1.3; }
 .lm-clue-meta strong { font-size: 20px; }
@@ -44,7 +44,7 @@
 .lm-clue-carousel { position: relative; display: grid; min-height: 150px; margin-top: 14px; overflow: hidden; place-items: center; background: var(--settings-bg); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 5px; }
 .lm-clue-carousel:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
 .lm-clue-image-wrapper { position: relative; width: fit-content; max-width: 100%; cursor: zoom-in; }
-.lm-clue-image { display: block; width: auto; max-width: 100%; height: auto; max-height: min(240px, 35vh); }
+.lm-clue-image { display: block; width: auto; max-width: 100%; height: auto; }
 .lm-clue-image-lens { position: absolute; pointer-events: none; border: 2px solid #aaa; border-radius: 50%; box-shadow: 0 0 8px rgba(0, 0, 0, 0.5); }
 .lm-clue-image-nav { position: absolute; top: 50%; width: 34px; height: 48px; padding: 0; color: #fff; background: rgba(0, 0, 0, 0.58); border: 0; border-radius: 4px; font-size: 29px; transform: translateY(-50%); cursor: pointer; }
 .lm-clue-image-nav:hover { background: rgba(0, 0, 0, 0.78); }
