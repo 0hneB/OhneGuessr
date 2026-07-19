@@ -7,6 +7,9 @@ const DEFAULT_HEIGHT = 400;
 const MIN_WIDTH = 280;
 const MIN_HEIGHT = 220;
 const EDGE = 12;
+const IMAGE_LOAD_TIMEOUT_MS = 12_000;
+const IMAGE_LENS_SIZE = 150;
+const IMAGE_LENS_SCALE = 2;
 
 const isLearnableMap = (map) => map?.source?.type === 'learnable-meta';
 
@@ -21,6 +24,7 @@ export class LearnableMetaClues {
   constructor() {
     this.enabled = false;
     this.cache = new Map();
+    this.imageLoads = new Map();
     this.requestToken = 0;
     this.viewKey = null;
     this.closedViewKey = null;
@@ -63,28 +67,28 @@ export class LearnableMetaClues {
       return;
     }
 
+    const token = ++this.requestToken;
+    this._renderLoading();
     const cacheKey = `${mapId}:${panoId}`;
     const cached = this.cache.get(cacheKey);
     if (cached) {
       if (cached.missing) this._renderMessage('No Learnable Meta clue was found for this location.');
-      else this._renderClue(cached.data);
+      else await this._renderClue(cached.data, token, nextViewKey);
       return;
     }
 
-    this._renderMessage('Loading clue…', true);
-    const token = ++this.requestToken;
     try {
       const data = await getClue(mapId, panoId);
       if (token !== this.requestToken || this.viewKey !== nextViewKey) return;
       this.cache.set(cacheKey, { data });
-      this._renderClue(data);
+      await this._renderClue(data, token, nextViewKey);
     } catch (error) {
       if (token !== this.requestToken || this.viewKey !== nextViewKey) return;
       if (error instanceof ApiError && error.status === 404) {
         this.cache.set(cacheKey, { missing: true });
         this._renderMessage('No Learnable Meta clue was found for this location.');
       } else {
-        this._renderMessage(error.message || 'Could not load this Learnable Meta clue.', false, true);
+        this._renderMessage(error.message || 'Could not load this Learnable Meta clue.', true);
       }
     }
   }
@@ -120,14 +124,24 @@ export class LearnableMetaClues {
     return root;
   }
 
-  _renderMessage(message, loading = false, error = false) {
+  _renderLoading() {
+    const row = element('div', 'lm-clue-loading');
+    const spinner = element('div', 'spinner');
+    spinner.setAttribute('role', 'status');
+    spinner.setAttribute('aria-label', 'Loading clue');
+    row.append(spinner);
+    this.content.replaceChildren(row);
+  }
+
+  _renderMessage(message, error = false) {
     const row = element('div', 'lm-clue-message', message);
-    if (loading) row.classList.add('loading');
     if (error) row.classList.add('error');
     this.content.replaceChildren(row);
   }
 
-  _renderClue(data) {
+  async _renderClue(data, token, viewKey) {
+    const images = await this._preloadImages(safeImageUrls(data?.images));
+    if (token !== this.requestToken || this.viewKey !== viewKey) return;
     const fragment = document.createDocumentFragment();
     const heading = element('p', 'lm-clue-meta');
     const country = String(data?.country || '').trim();
@@ -147,10 +161,42 @@ export class LearnableMetaClues {
       footer.append(sanitizeHtml(data.footer));
       fragment.append(footer);
     }
-    const images = safeImageUrls(data?.images);
     if (images.length) fragment.append(this._createCarousel(images));
     if (!fragment.childNodes.length) fragment.append(element('p', 'lm-clue-message', 'This clue has no content.'));
     this.content.replaceChildren(fragment);
+  }
+
+  async _preloadImages(urls) {
+    const uniqueUrls = [...new Set(urls)];
+    const loaded = await Promise.all(uniqueUrls.map((url) => this._preloadImage(url)));
+    return loaded.filter(Boolean);
+  }
+
+  _preloadImage(url) {
+    if (this.imageLoads.has(url)) return this.imageLoads.get(url);
+    const load = new Promise((resolve) => {
+      const image = new Image();
+      let timer = 0;
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        image.onload = null;
+        image.onerror = null;
+        resolve(value);
+      };
+      timer = window.setTimeout(() => finish(null), IMAGE_LOAD_TIMEOUT_MS);
+      image.decoding = 'async';
+      image.onload = async () => {
+        try { await image.decode(); } catch { /* loaded image can still be displayed */ }
+        finish(url);
+      };
+      image.onerror = () => finish(null);
+      image.src = url;
+    });
+    this.imageLoads.set(url, load);
+    return load;
   }
 
   _createCarousel(images) {
@@ -158,16 +204,42 @@ export class LearnableMetaClues {
     const carousel = element('section', 'lm-clue-carousel');
     carousel.tabIndex = 0;
     carousel.setAttribute('aria-label', 'Clue images');
+    const imageWrapper = element('div', 'lm-clue-image-wrapper');
+    imageWrapper.setAttribute('role', 'img');
+    imageWrapper.setAttribute('aria-label', 'Zoomable image');
     const image = element('img', 'lm-clue-image');
-    image.loading = 'lazy';
+    image.loading = 'eager';
     image.decoding = 'async';
+    const lens = element('div', 'lm-clue-image-lens hidden');
+    const moveLens = (event) => {
+      const rect = imageWrapper.getBoundingClientRect();
+      const lensX = event.clientX - rect.left;
+      const lensY = event.clientY - rect.top;
+      lens.style.top = `${lensY - IMAGE_LENS_SIZE / 2}px`;
+      lens.style.left = `${lensX - IMAGE_LENS_SIZE / 2}px`;
+      lens.style.width = `${IMAGE_LENS_SIZE}px`;
+      lens.style.height = `${IMAGE_LENS_SIZE}px`;
+      lens.style.backgroundImage = `url("${image.src}")`;
+      lens.style.backgroundRepeat = 'no-repeat';
+      lens.style.backgroundSize = `${image.width * IMAGE_LENS_SCALE}px ${image.height * IMAGE_LENS_SCALE}px`;
+      lens.style.backgroundPosition = `${-(lensX * IMAGE_LENS_SCALE - IMAGE_LENS_SIZE / 2)}px ${-(lensY * IMAGE_LENS_SCALE - IMAGE_LENS_SIZE / 2)}px`;
+    };
+    const showLens = (event) => {
+      moveLens(event);
+      lens.classList.remove('hidden');
+    };
+    const hideLens = () => lens.classList.add('hidden');
+    imageWrapper.addEventListener('mouseenter', showLens);
+    imageWrapper.addEventListener('mouseleave', hideLens);
+    imageWrapper.addEventListener('mousemove', moveLens);
+    imageWrapper.append(image, lens);
     const counter = element('span', 'lm-clue-image-count');
     const render = () => {
       image.src = images[index];
       image.alt = `Learnable Meta clue image ${index + 1} of ${images.length}`;
       counter.textContent = `${index + 1} / ${images.length}`;
     };
-    carousel.append(image);
+    carousel.append(imageWrapper);
     if (images.length > 1) {
       const previous = element('button', 'lm-clue-image-nav previous', '‹');
       const next = element('button', 'lm-clue-image-nav next', '›');
