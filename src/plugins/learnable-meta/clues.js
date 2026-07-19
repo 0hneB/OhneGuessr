@@ -246,8 +246,6 @@ export class LearnableMetaClues {
     };
     carousel.append(imageWrapper);
     if (images.length > 1) {
-      carousel.tabIndex = 0;
-      carousel.setAttribute('aria-label', 'Clue images');
       counter = element('span', 'lm-clue-image-count');
       const previous = element('button', 'lm-clue-image-nav previous', '‹');
       const next = element('button', 'lm-clue-image-nav next', '›');
@@ -260,10 +258,6 @@ export class LearnableMetaClues {
       };
       previous.addEventListener('click', () => move(-1));
       next.addEventListener('click', () => move(1));
-      carousel.addEventListener('keydown', (event) => {
-        if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1); }
-        if (event.key === 'ArrowRight') { event.preventDefault(); move(1); }
-      });
       carousel.append(previous, next, counter);
     }
     render();
