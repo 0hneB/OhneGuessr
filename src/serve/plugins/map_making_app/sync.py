@@ -23,12 +23,13 @@ import map_store
 
 API_BASE = "https://map-making.app"
 CONFIG_VERSION = 1
+CONFIG_NAME = ".map-making-app-sync.json"
 MAX_WORKERS = 10
 
 
 def _sync_process_main(data_dir, manifest_path, config_path, api_key, token, messages):
     """Run one sync in an isolated process that the server can terminate."""
-    worker = MapMakingSync(
+    worker = MapMakingAppSync(
         data_dir,
         manifest_path,
         config_path,
@@ -55,7 +56,23 @@ def _config_default():
     return {"version": CONFIG_VERSION, "enabled": False}
 
 
-class MapMakingSync:
+def prepare_config(data_dir, base_dir):
+    """Move the legacy config into data/ and return the active config path."""
+    config_path = os.path.join(data_dir, CONFIG_NAME)
+    legacy_path = os.path.join(base_dir, "run", CONFIG_NAME)
+    if not os.path.exists(config_path) and os.path.isfile(legacy_path):
+        try:
+            os.replace(legacy_path, config_path)
+        except OSError:
+            try:
+                shutil.copy2(legacy_path, config_path)
+                os.remove(legacy_path)
+            except OSError:
+                return legacy_path
+    return config_path
+
+
+class MapMakingAppSync:
     def __init__(self, data_dir, manifest_path, config_path, status_sink=None, staging_token=None):
         self.data_dir = data_dir
         self.manifest_path = manifest_path
@@ -118,6 +135,10 @@ class MapMakingSync:
             "lastSyncAt": config.get("lastSyncAt"),
             **runtime,
         }
+
+    def is_running(self):
+        with self._lock:
+            return bool(self._runtime["running"])
 
     def set_enabled(self, enabled):
         config = self._load_config()

@@ -119,13 +119,3 @@ export async function renameUserMap(item, name) {
 
 export const rescanMaps = () => api('/api/maps/rescan', { method: 'POST' });
 export const openDataFolder = () => api('/api/open-data-folder', { method: 'POST' });
-
-export const getMmaSyncStatus = () => api('/api/mma-sync/status');
-export const setMmaSyncEnabled = (enabled) => api('/api/mma-sync/config', {
-  method: 'PUT', body: JSON.stringify({ enabled })
-});
-export const saveMmaSyncKey = (apiKey) => api('/api/mma-sync/key', {
-  method: 'PUT', body: JSON.stringify({ apiKey })
-});
-export const forgetMmaSyncKey = () => api('/api/mma-sync/key', { method: 'DELETE' });
-export const runMmaSync = () => api('/api/mma-sync/run', { method: 'POST' });

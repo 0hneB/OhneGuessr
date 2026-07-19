@@ -196,46 +196,8 @@
 
         <section class="settings-panel" id="panel-sync"
                  role="tabpanel" aria-labelledby="tab-sync" data-panel="sync" hidden>
-          <div class="sync-section">
-            <label class="setting-toggle sync-toggle">
-              <span>Map Making App Sync</span>
-              <input id="mmaSyncToggle" type="checkbox" />
-              <span class="switch" aria-hidden="true"></span>
-            </label>
-            <div id="mmaSyncDetails" class="sync-details hidden">
-              <div class="sync-account-row hidden">
-                <div id="mmaSyncAccount" class="sync-account"></div>
-                <div class="sync-actions">
-                  <button id="mmaSyncNow" type="button" class="icon-action hidden"
-                          aria-label="Sync now" title="Sync now">
-                    <span class="svg-icon sync-icon" aria-hidden="true"></span>
-                  </button>
-                  <button id="mmaKeyReplace" type="button" class="icon-action hidden"
-                          aria-label="Replace key" title="Replace key">
-                    <span class="svg-icon pencil-icon" aria-hidden="true"></span>
-                  </button>
-                  <button id="mmaKeyForget" type="button" class="icon-action hidden"
-                          aria-label="Forget key" title="Forget key">
-                    <span class="svg-icon rm-bookmark-icon" aria-hidden="true"></span>
-                  </button>
-                </div>
-              </div>
-              <form id="mmaKeyForm" class="sync-key-form">
-                <input id="mmaApiKey" type="password" autocomplete="off"
-                       placeholder="API key" aria-label="Map Making App API key" />
-                <button id="mmaKeySave" type="submit" class="settings-action">Save key</button>
-              </form>
-            </div>
-          </div>
-          <div class="sync-footer">
-            <div id="mmaSyncStatus" class="settings-note sync-status"></div>
-            <a class="settings-info-link sync-info-link" href="https://github.com/0hneB/OhneGuessr#map-making-app-sync"
-               target="_blank" rel="noopener noreferrer"
-               aria-label="Open the Map Making App sync guide on GitHub">
-              <span class="svg-icon info-icon" aria-hidden="true"></span>
-            </a>
-          </div>
-          <div id="learnableMetaPluginMount"></div>
+          <div id="mapMakingAppPluginMount" class="sync-plugin-mount"></div>
+          <div id="learnableMetaPluginMount" class="sync-plugin-mount"></div>
         </section>
       </div>
     </div>

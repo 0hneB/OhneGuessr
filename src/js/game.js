@@ -10,7 +10,6 @@ import { GAME_PHASE, state, settings } from './core/state.js';
 import { RoundTimer } from './ui/round-timer.js';
 import { Keybindings } from './ui/keybindings.js';
 import { createMapLibrary } from './ui/map-library.js';
-import { setupMmaSync } from './ui/mma-sync.js';
 import { setupSettingsUI } from './ui/settings-panel.js';
 import { createGuessPanel } from './ui/guess-panel.js';
 import { saveGame, loadGame } from './core/persist.js';
@@ -617,7 +616,12 @@ async function init() {
   });
   syncGuessMapSizeControl = settingsUI.syncGuessMapSizeControl;
   setupMapLibrary();
-  setupMmaSync({ reloadLibrary });
+  try {
+    const { setupMapMakingApp } = await import('../plugins/map-making-app/index.js');
+    setupMapMakingApp({ reloadLibrary });
+  } catch (error) {
+    console.warn('Map Making App plugin unavailable:', error);
+  }
   try {
     const { setupLearnableMeta } = await import('../plugins/learnable-meta/index.js');
     await setupLearnableMeta({ reloadLibrary, registerManagedMapActions });

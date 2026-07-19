@@ -1,26 +1,65 @@
-// Settings -> Sync: local-server controls for manual Map Making App sync.
-// The API key is sent once to localhost and is never read back into the page.
-import { $ } from '../core/dom.js';
 import {
-  getMmaSyncStatus, setMmaSyncEnabled, saveMmaSyncKey,
-  forgetMmaSyncKey, runMmaSync
-} from '../core/maps.js';
+  forgetKey, getStatus, runSync, saveKey, setEnabled
+} from './api.js';
 
 const POLL_MS = 650;
 
-export function setupMmaSync({ reloadLibrary }) {
-  const toggle = $('mmaSyncToggle');
+export function setupMapMakingAppSettings({ mount, reloadLibrary }) {
+  mount.innerHTML = `
+    <section class="sync-section">
+      <label class="setting-toggle sync-toggle">
+        <span>Map Making App Sync</span>
+        <input id="mmaSyncToggle" type="checkbox" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+      <div id="mmaSyncDetails" class="sync-details hidden">
+        <div class="sync-account-row hidden">
+          <div id="mmaSyncAccount" class="sync-account"></div>
+          <div class="sync-actions">
+            <button id="mmaSyncNow" type="button" class="icon-action hidden"
+                    aria-label="Sync now" title="Sync now">
+              <span class="svg-icon sync-icon" aria-hidden="true"></span>
+            </button>
+            <button id="mmaKeyReplace" type="button" class="icon-action hidden"
+                    aria-label="Replace key" title="Replace key">
+              <span class="svg-icon pencil-icon" aria-hidden="true"></span>
+            </button>
+            <button id="mmaKeyForget" type="button" class="icon-action hidden"
+                    aria-label="Forget key" title="Forget key">
+              <span class="svg-icon rm-bookmark-icon" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+        <form id="mmaKeyForm" class="sync-key-form">
+          <input id="mmaApiKey" type="password" autocomplete="off"
+                 placeholder="API key" aria-label="Map Making App API key" />
+          <button id="mmaKeySave" type="submit" class="settings-action">Save key</button>
+        </form>
+      </div>
+    </section>
+    <div class="sync-footer">
+      <div id="mmaSyncStatus" class="settings-note sync-status"></div>
+      <a class="settings-info-link sync-info-link"
+         href="https://github.com/0hneB/OhneGuessr#map-making-app-sync"
+         target="_blank" rel="noopener noreferrer"
+         aria-label="Open the Map Making App sync guide on GitHub">
+        <span class="svg-icon info-icon" aria-hidden="true"></span>
+      </a>
+    </div>`;
+
+  const byId = (id) => mount.querySelector(`#${id}`);
+  const toggle = byId('mmaSyncToggle');
   const toggleLabel = toggle.closest('.setting-toggle');
-  const details = $('mmaSyncDetails');
-  const keyForm = $('mmaKeyForm');
-  const keyInput = $('mmaApiKey');
-  const saveButton = $('mmaKeySave');
-  const replaceButton = $('mmaKeyReplace');
-  const forgetButton = $('mmaKeyForget');
-  const syncButton = $('mmaSyncNow');
-  const account = $('mmaSyncAccount');
+  const details = byId('mmaSyncDetails');
+  const keyForm = byId('mmaKeyForm');
+  const keyInput = byId('mmaApiKey');
+  const saveButton = byId('mmaKeySave');
+  const replaceButton = byId('mmaKeyReplace');
+  const forgetButton = byId('mmaKeyForget');
+  const syncButton = byId('mmaSyncNow');
+  const account = byId('mmaSyncAccount');
   const accountRow = account.closest('.sync-account-row');
-  const statusLine = $('mmaSyncStatus');
+  const statusLine = byId('mmaSyncStatus');
   let status = null;
   let pollTimer = 0;
   let wasRunning = false;
@@ -93,7 +132,7 @@ export function setupMmaSync({ reloadLibrary }) {
 
   async function refreshStatus() {
     try {
-      status = await getMmaSyncStatus();
+      status = await getStatus();
       if (wasRunning && !status.running && status.phase === 'complete') await reloadLibrary();
       wasRunning = Boolean(status.running);
       render();
@@ -114,7 +153,7 @@ export function setupMmaSync({ reloadLibrary }) {
   toggle.addEventListener('change', async () => {
     toggle.disabled = true;
     try {
-      status = await setMmaSyncEnabled(toggle.checked);
+      status = await setEnabled(toggle.checked);
       replacingKey = false;
     } catch (error) {
       setStatusText(error.message || 'Could not change sync settings.', true);
@@ -130,7 +169,7 @@ export function setupMmaSync({ reloadLibrary }) {
     saveButton.disabled = true;
     setStatusText('Checking API key...');
     try {
-      status = await saveMmaSyncKey(key);
+      status = await saveKey(key);
       keyInput.value = '';
       replacingKey = false;
       wasRunning = Boolean(status.running);
@@ -150,7 +189,7 @@ export function setupMmaSync({ reloadLibrary }) {
 
   forgetButton.addEventListener('click', async () => {
     try {
-      status = await forgetMmaSyncKey();
+      status = await forgetKey();
       replacingKey = false;
       keyInput.value = '';
       render();
@@ -162,7 +201,7 @@ export function setupMmaSync({ reloadLibrary }) {
   syncButton.addEventListener('click', async () => {
     syncButton.disabled = true;
     try {
-      status = await runMmaSync();
+      status = await runSync();
       wasRunning = true;
       render();
     } catch (error) {
@@ -172,5 +211,4 @@ export function setupMmaSync({ reloadLibrary }) {
   });
 
   refreshStatus();
-  return { refreshStatus };
 }
