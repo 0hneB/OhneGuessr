@@ -35,7 +35,6 @@ export class LearnableMetaClues {
   constructor() {
     this.enabled = false;
     this.cache = new Map();
-    this.imageLoads = new Map();
     this.requestToken = 0;
     this.viewKey = null;
     this.closedViewKey = null;
@@ -187,8 +186,7 @@ export class LearnableMetaClues {
   }
 
   _preloadImage(url) {
-    if (this.imageLoads.has(url)) return this.imageLoads.get(url);
-    const load = new Promise((resolve) => {
+    return new Promise((resolve) => {
       const image = new Image();
       let timer = 0;
       let settled = false;
@@ -209,8 +207,6 @@ export class LearnableMetaClues {
       image.onerror = () => finish(null);
       image.src = url;
     });
-    this.imageLoads.set(url, load);
-    return load;
   }
 
   _createCarousel(images) {
