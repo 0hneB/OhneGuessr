@@ -13,6 +13,11 @@ const POSITION_EPSILON = 1e-5; // ~1 m; enough to bind a viewer event to its loo
 // Keys Street View uses to walk; blocked outside moving mode.
 const MOVE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
 
+export const resolveStartZoom = (locationZoom, forceZoomedOut = false) =>
+  forceZoomedOut
+    ? FULLY_ZOOMED_OUT
+    : (Number.isFinite(locationZoom) ? locationZoom : DEFAULT_ZOOM);
+
 let loadPromise = null;
 const streetViewReady = () =>
   Boolean(window.google?.maps?.StreetViewPanorama && window.google?.maps?.StreetViewService);
@@ -55,7 +60,9 @@ export class OpenSvViewer {
     this.onChange = null;       // callback(heading)
     this.defaultHeading = 0;
     this.defaultPitch = 0;
-    this._startZoom = DEFAULT_ZOOM;
+    this._locationZoom = DEFAULT_ZOOM;
+    this._roundStartZoom = DEFAULT_ZOOM;
+    this._forceStartZoomedOut = false;
     this._tweenId = 0;
     this._startPanoId = null;   // the round's origin pano, so resetView can walk back
     this._trail = [];           // [{lat,lng}][] paths walked this round (Moving mode)
@@ -141,8 +148,9 @@ export class OpenSvViewer {
   }
 
   setStartZoomedOut(enabled) {
-    this._startZoom = enabled ? FULLY_ZOOMED_OUT : DEFAULT_ZOOM;
-    this.pano.setZoom(this._startZoom);
+    this._forceStartZoomedOut = Boolean(enabled);
+    this._roundStartZoom = resolveStartZoom(this._locationZoom, this._forceStartZoomedOut);
+    this.pano.setZoom(this._roundStartZoom);
   }
 
   resetView() {
@@ -152,7 +160,7 @@ export class OpenSvViewer {
       this.pano.setPano(this._startPanoId);
     }
     this.pano.setPov({ heading: this.defaultHeading, pitch: this.defaultPitch });
-    this.pano.setZoom(this._startZoom);
+    this.pano.setZoom(this._roundStartZoom);
   }
 
   getHeading() { return this.pano.getPov().heading; }
@@ -169,9 +177,11 @@ export class OpenSvViewer {
     this._cancelTween();
     const heading = loc.heading ?? 0;
     const pitch = loc.pitch ?? 0;
+    this._locationZoom = resolveStartZoom(loc.zoom);
+    this._roundStartZoom = resolveStartZoom(this._locationZoom, this._forceStartZoomedOut);
     this.setDefaultView(heading, pitch);
     this.pano.setPov({ heading, pitch });
-    this.pano.setZoom(this._startZoom);
+    this.pano.setZoom(this._roundStartZoom);
     this._trail = [];
     const p = this.pano.getPosition?.();
     if (p) this._trail.push([{ lat: p.lat(), lng: p.lng() }]);
@@ -341,7 +351,7 @@ export class OpenSvViewer {
           poll = setInterval(check, 150);
 
           this.pano.setPov({ heading: loc.heading ?? 0, pitch: loc.pitch ?? 0 });
-          this.pano.setZoom(this._startZoom);
+          this.pano.setZoom(resolveStartZoom(loc.zoom, this._forceStartZoomedOut));
           this.pano.setPano(targetPano);
           this.pano.setVisible(true);
           if (focus && this.mode !== 'nmpz') this.pano.focus?.();

@@ -62,7 +62,7 @@ export async function loadLibrary() {
       file: cleanPath(m.file),
       folder: folderOf(m.file),
       source: m.source && typeof m.source === 'object' ? m.source : null,
-      managed: m.source?.type === 'map-making-app'
+      managed: m.source?.managed === true || m.source?.type === 'map-making-app'
     }));
 
   const folders = new Set(

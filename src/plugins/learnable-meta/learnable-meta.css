@@ -1,0 +1,104 @@
+.lm-sync-section {
+  margin-top: 17px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.lm-sync-toggle { margin: 0; font-size: 13px; }
+.lm-sync-details { display: flex; flex-direction: column; gap: 9px; margin-top: 10px; }
+.lm-account-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: #cbd2dd; }
+.lm-inline-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 5px; }
+.lm-button {
+  padding: 5px 8px;
+  color: #e7eaf0;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.lm-button:hover { background: rgba(255, 255, 255, 0.12); }
+.lm-button.danger:hover { color: #fecaca; border-color: rgba(248, 113, 113, 0.55); }
+.lm-button:disabled { opacity: 0.45; cursor: default; }
+.lm-form { display: grid; gap: 6px; }
+.lm-key-form { grid-template-columns: 1fr auto; }
+.lm-map-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto; }
+.lm-form input {
+  min-width: 0;
+  padding: 9px 10px;
+  color: #fff;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.lm-form input:focus { outline: none; border-color: var(--accent); }
+.lm-form .settings-action { margin: 0; }
+.lm-map-list { display: flex; max-height: 150px; flex-direction: column; gap: 5px; margin-top: 8px; overflow-y: auto; }
+.lm-map-row { display: flex; align-items: center; gap: 8px; padding: 7px 8px; background: rgba(255, 255, 255, 0.045); border-radius: 7px; }
+.lm-map-identity { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 2px; }
+.lm-map-identity strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.lm-map-identity code { overflow: hidden; color: #9ca3af; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.lm-empty, .lm-help { margin: 0; color: #9ca3af; font-size: 11px; line-height: 1.4; }
+.lm-secondary-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lm-portal-links { display: flex; gap: 9px; }
+.lm-secondary-actions a { color: #a7d8ff; font-size: 11px; text-decoration: none; }
+.lm-secondary-actions a:hover { text-decoration: underline; }
+.lm-sync-status { margin-top: 8px; }
+.lm-sync-status.error { color: #f87171; opacity: 0.9; }
+
+.lm-clue-window {
+  position: fixed;
+  z-index: 840;
+  display: flex;
+  min-width: 280px;
+  min-height: 220px;
+  overflow: hidden;
+  resize: both;
+  color: #eef1f6;
+  background: rgba(17, 19, 23, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  flex-direction: column;
+}
+.lm-clue-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 11px 10px 14px;
+  background: rgba(255, 255, 255, 0.055);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}
+.lm-clue-header h2 { margin: 0; font-size: 15px; letter-spacing: 0.01em; }
+.lm-clue-close { width: 26px; height: 26px; padding: 0; color: #d7dbe2; background: transparent; border: 0; border-radius: 6px; font-size: 22px; line-height: 1; cursor: pointer; }
+.lm-clue-close:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.lm-clue-content { flex: 1; min-height: 0; padding: 14px; overflow: auto; font-size: 14px; line-height: 1.5; }
+.lm-clue-meta { margin: 0 0 12px; font-size: 15px; }
+.lm-clue-note, .lm-clue-footer { overflow-wrap: anywhere; }
+.lm-clue-note > :first-child, .lm-clue-footer > :first-child { margin-top: 0; }
+.lm-clue-note > :last-child, .lm-clue-footer > :last-child { margin-bottom: 0; }
+.lm-clue-note a, .lm-clue-footer a { color: #7dd3fc; }
+.lm-clue-footer { margin-top: 14px; padding-top: 11px; color: #b9c0cc; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 12px; }
+.lm-clue-message { display: grid; min-height: 100%; place-items: center; margin: 0; color: #c8ced8; text-align: center; }
+.lm-clue-message.loading { opacity: 0.75; }
+.lm-clue-message.error { color: #fca5a5; }
+.lm-clue-carousel { position: relative; display: grid; min-height: 150px; margin-top: 14px; overflow: hidden; place-items: center; background: #090a0c; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 9px; }
+.lm-clue-carousel:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lm-clue-image { display: block; width: 100%; height: min(240px, 35vh); object-fit: contain; }
+.lm-clue-image-nav { position: absolute; top: 50%; width: 34px; height: 48px; padding: 0; color: #fff; background: rgba(0, 0, 0, 0.58); border: 0; border-radius: 7px; font-size: 29px; transform: translateY(-50%); cursor: pointer; }
+.lm-clue-image-nav:hover { background: rgba(0, 0, 0, 0.78); }
+.lm-clue-image-nav.previous { left: 7px; }
+.lm-clue-image-nav.next { right: 7px; }
+.lm-clue-image-count { position: absolute; right: 8px; bottom: 7px; padding: 3px 7px; background: rgba(0, 0, 0, 0.68); border-radius: 10px; font-size: 11px; }
+
+@media (max-width: 620px) {
+  .lm-map-form { grid-template-columns: 1fr; }
+  .lm-account-row { align-items: flex-start; flex-direction: column; }
+  .lm-inline-actions { justify-content: flex-start; }
+}
