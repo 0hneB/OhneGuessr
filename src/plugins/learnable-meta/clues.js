@@ -2,8 +2,8 @@ import { ApiError, getClue } from './api.js';
 import { safeImageUrls, sanitizeHtml } from './sanitizer.js';
 
 const LAYOUT_KEY = 'ohneguessr.learnableMeta.clue.layout';
-const DEFAULT_WIDTH = 500;
-const DEFAULT_HEIGHT = 400;
+const DEFAULT_WIDTH = 450;
+const DEFAULT_HEIGHT = 550;
 const MIN_WIDTH = 280;
 const MIN_HEIGHT = 220;
 const EDGE = 12;
@@ -20,15 +20,15 @@ function element(tag, className, text) {
   return node;
 }
 
-function iconButton(iconClass, label) {
-  const button = element('button', 'icon-action lm-clue-action');
-  button.type = 'button';
-  button.title = label;
-  button.setAttribute('aria-label', label);
+function iconControl(tag, iconClass, label) {
+  const control = element(tag, 'icon-action lm-clue-action');
+  if (tag === 'button') control.type = 'button';
+  control.title = label;
+  control.setAttribute('aria-label', label);
   const icon = element('span', `svg-icon ${iconClass}`);
   icon.setAttribute('aria-hidden', 'true');
-  button.append(icon);
-  return button;
+  control.append(icon);
+  return control;
 }
 
 export class LearnableMetaClues {
@@ -116,26 +116,21 @@ export class LearnableMetaClues {
     const header = element('div', 'lm-clue-header');
     const title = element('h2', '', 'Learnable Meta');
     const actions = element('div', 'lm-clue-header-actions');
-    const reset = iconButton('refresh-icon', 'Reset clue window');
+    const website = iconControl('a', 'link-icon', 'Open Learnable Meta');
+    website.href = 'https://learnablemeta.com/';
+    website.target = '_blank';
+    website.rel = 'noopener noreferrer';
+    const reset = iconControl('button', 'refresh-icon', 'Reset clue window');
     reset.addEventListener('click', () => this.resetLayout());
-    const close = iconButton('close-icon', 'Hide this clue');
+    const close = iconControl('button', 'close-icon', 'Hide this clue');
     close.addEventListener('click', () => {
       this.closedViewKey = this.viewKey;
       this.hide();
     });
-    actions.append(reset, close);
+    actions.append(website, reset, close);
     header.append(title, actions);
     const content = element('div', 'lm-clue-content');
     content.setAttribute('aria-live', 'polite');
-    content.addEventListener('click', (event) => {
-      const link = event.target.closest?.('a[data-lm-external-link="true"]');
-      if (!link || !content.contains(link)) return;
-      event.preventDefault();
-      const href = link.href;
-      if (window.confirm(`Open this site in a new tab?\n\n${href}`)) {
-        window.open(href, '_blank', 'noopener,noreferrer');
-      }
-    });
     root.append(header, content);
     this.header = header;
     this.content = content;
@@ -176,6 +171,7 @@ export class LearnableMetaClues {
     }
     if (data?.footer) {
       const footer = element('div', 'lm-clue-footer');
+      if (images.length) footer.classList.add('before-images');
       footer.append(sanitizeHtml(data.footer));
       fragment.append(footer);
     }
@@ -282,7 +278,7 @@ export class LearnableMetaClues {
 
   _bindLayout() {
     this.header.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0 || event.target.closest('button')) return;
+      if (event.button !== 0 || event.target.closest('button, a')) return;
       const rect = this.root.getBoundingClientRect();
       this.drag = { x: event.clientX - rect.left, y: event.clientY - rect.top };
       this.header.setPointerCapture(event.pointerId);
@@ -324,8 +320,8 @@ export class LearnableMetaClues {
     return {
       width,
       height,
-      left: Math.max(EDGE, window.innerWidth - width - 24),
-      top: Math.max(EDGE, Math.min(72, window.innerHeight - height - EDGE))
+      left: EDGE,
+      top: EDGE
     };
   }
 
