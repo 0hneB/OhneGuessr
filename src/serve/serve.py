@@ -11,6 +11,7 @@ run/stop.bat.
     PATCH  /api/maps/<id>        -> rename a local map
     DELETE /api/maps/<id>        -> delete a local map
     *      /api/mma-sync/*       -> local Map Making App sync controls
+    *      /api/learnable-meta/* -> local Learnable Meta sync and clues
     GET    /*                    -> static files
 """
 
@@ -24,10 +25,11 @@ import tempfile
 import threading
 import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import map_store
 from mma_sync import MapMakingSync
+from plugins.learnable_meta import LearnableMetaRoutes, LearnableMetaSync
 
 PORT = 8000
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -37,8 +39,13 @@ DATA_DIR = os.path.join(BASE, "data")
 MANIFEST = os.path.join(DATA_DIR, "maps.json")
 PIDFILE = os.path.join(tempfile.gettempdir(), "ohneguessr-serve.pid")
 SYNC_CONFIG = os.path.join(DATA_DIR, ".map-making-app-sync.json")
+LEARNABLE_META_CONFIG = os.path.join(DATA_DIR, ".learnable-meta-sync.json")
 LEGACY_SYNC_CONFIG = os.path.join(BASE, "run", ".map-making-app-sync.json")
 MMA_SYNC = None
+LEARNABLE_META_SYNC = None
+LEARNABLE_META_ROUTES = None
+SYNC_START_LOCK = threading.Lock()
+MAP_STORE_LOCK = threading.RLock()
 
 
 def prepare_data():
@@ -111,11 +118,15 @@ class Handler(SimpleHTTPRequestHandler):
         return parts[-1] if len(parts) >= 4 else None
 
     def do_GET(self):
-        if self._path() == "/api/health":
+        path = self._path()
+        if path == "/api/health":
             self._send_json({"ok": True})
             return
-        if self._path() == "/api/mma-sync/status":
+        if path == "/api/mma-sync/status":
             self._send_json(MMA_SYNC.public_status())
+            return
+        if LEARNABLE_META_ROUTES.handles(path):
+            self._dispatch_learnable_meta("GET")
             return
         super().do_GET()
 
@@ -128,6 +139,8 @@ class Handler(SimpleHTTPRequestHandler):
             self._open_data_folder()
         elif self._path() == "/api/mma-sync/run":
             self._sync_run()
+        elif LEARNABLE_META_ROUTES.handles(self._path()):
+            self._dispatch_learnable_meta("POST")
         else:
             self.send_error(404)
 
@@ -136,11 +149,15 @@ class Handler(SimpleHTTPRequestHandler):
             self._sync_config()
         elif self._path() == "/api/mma-sync/key":
             self._sync_key()
+        elif LEARNABLE_META_ROUTES.handles(self._path()):
+            self._dispatch_learnable_meta("PUT")
         else:
             self.send_error(404)
 
     def do_PATCH(self):
-        if self._path().startswith("/api/maps/"):
+        if LEARNABLE_META_ROUTES.handles(self._path()):
+            self._dispatch_learnable_meta("PATCH")
+        elif self._path().startswith("/api/maps/"):
             self._rename_map()
         else:
             self.send_error(404)
@@ -148,6 +165,8 @@ class Handler(SimpleHTTPRequestHandler):
     def do_DELETE(self):
         if self._path() == "/api/mma-sync/key":
             self._send_json(MMA_SYNC.forget_key())
+        elif LEARNABLE_META_ROUTES.handles(self._path()):
+            self._dispatch_learnable_meta("DELETE")
         elif self._path().startswith("/api/maps/"):
             self._delete_map()
         else:
@@ -158,7 +177,8 @@ class Handler(SimpleHTTPRequestHandler):
             body = self._read_body()
             name = (body.get("name") or "").strip() or "Untitled map"
             locations = body.get("locations")
-            entry = map_store.create_local_map(DATA_DIR, MANIFEST, name, locations)
+            with MAP_STORE_LOCK:
+                entry = map_store.create_local_map(DATA_DIR, MANIFEST, name, locations)
             self._send_json(entry)
         except ValueError as exc:
             self._send_json({"error": str(exc)}, 400)
@@ -169,7 +189,8 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             mid = self._map_id()
             name = (self._read_body().get("name") or "").strip()
-            entry = map_store.rename_local_map(DATA_DIR, MANIFEST, mid, name)
+            with MAP_STORE_LOCK:
+                entry = map_store.rename_local_map(DATA_DIR, MANIFEST, mid, name)
             self._send_json(entry)
         except ValueError as exc:
             self._send_json({"error": str(exc)}, 400)
@@ -183,7 +204,8 @@ class Handler(SimpleHTTPRequestHandler):
     def _delete_map(self):
         try:
             mid = self._map_id()
-            map_store.delete_local_map(DATA_DIR, MANIFEST, mid)
+            with MAP_STORE_LOCK:
+                map_store.delete_local_map(DATA_DIR, MANIFEST, mid)
             self._send_json({"ok": True})
         except PermissionError as exc:
             self._send_json({"error": str(exc)}, 409)
@@ -192,7 +214,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _rescan_maps(self):
         try:
-            result = map_store.rescan(DATA_DIR, MANIFEST)
+            with MAP_STORE_LOCK:
+                result = map_store.rescan(DATA_DIR, MANIFEST)
             self._send_json({
                 "ok": True,
                 "maps": len(result["manifest"]["maps"]),
@@ -225,15 +248,46 @@ class Handler(SimpleHTTPRequestHandler):
     def _sync_key(self):
         try:
             body = self._read_body()
-            self._send_json(MMA_SYNC.save_key(body.get("apiKey")))
+            with SYNC_START_LOCK:
+                if LEARNABLE_META_SYNC.is_running():
+                    raise RuntimeError("Learnable Meta synchronization is running")
+                self._send_json(MMA_SYNC.save_key(body.get("apiKey")))
         except Exception as exc:  # noqa: BLE001
             self._send_json({"error": str(exc)}, 400)
 
     def _sync_run(self):
         try:
-            self._send_json(MMA_SYNC.start(), 202)
+            with SYNC_START_LOCK:
+                if LEARNABLE_META_SYNC.is_running():
+                    raise RuntimeError("Learnable Meta synchronization is running")
+                self._send_json(MMA_SYNC.start(), 202)
         except Exception as exc:  # noqa: BLE001
             self._send_json({"error": str(exc)}, 400)
+
+    def _dispatch_learnable_meta(self, method):
+        try:
+            path = self._path()
+            body = self._read_body() if method in ("POST", "PUT", "PATCH", "DELETE") else {}
+            if not isinstance(body, dict):
+                raise ValueError("request body must be a JSON object")
+            query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+            mutates_maps = (
+                path in ("/api/learnable-meta/maps", "/api/learnable-meta/sync")
+                and method in ("POST", "PATCH", "DELETE")
+            )
+            if mutates_maps:
+                with SYNC_START_LOCK:
+                    if MMA_SYNC.public_status().get("running"):
+                        self._send_json({"error": "Map Making App synchronization is running"}, 409)
+                        return
+                    payload, status = LEARNABLE_META_ROUTES.dispatch(method, path, query, body)
+            else:
+                payload, status = LEARNABLE_META_ROUTES.dispatch(method, path, query, body)
+            self._send_json(payload, status)
+        except (ValueError, json.JSONDecodeError) as exc:
+            self._send_json({"error": str(exc) or "invalid request"}, 400)
+        except Exception:  # noqa: BLE001
+            self._send_json({"error": "Learnable Meta request failed"}, 500)
 
 
 def port_in_use(port):
@@ -243,7 +297,7 @@ def port_in_use(port):
 
 
 def main():
-    global MMA_SYNC
+    global MMA_SYNC, LEARNABLE_META_SYNC, LEARNABLE_META_ROUTES
     url = "http://localhost:%d/" % PORT
     # Already running: reopen the browser and exit.
     if port_in_use(PORT):
@@ -251,6 +305,13 @@ def main():
         return
 
     MMA_SYNC = MapMakingSync(DATA_DIR, MANIFEST, prepare_data())
+    LEARNABLE_META_SYNC = LearnableMetaSync(
+        DATA_DIR,
+        MANIFEST,
+        LEARNABLE_META_CONFIG,
+        storage_lock=MAP_STORE_LOCK,
+    )
+    LEARNABLE_META_ROUTES = LearnableMetaRoutes(LEARNABLE_META_SYNC)
     try:
         with open(PIDFILE, "w", encoding="utf-8") as f:
             f.write(str(os.getpid()))

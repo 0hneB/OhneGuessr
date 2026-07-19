@@ -16,7 +16,7 @@
 - Multiple free map styles (OSM, Carto, Esri, satellite, terrain).
 - Distance-based scoring, per-round result screen, end-of-game summary map.
 - Adjustable rounds per game and per-location time limit.
-- Folder-based map library with optional Map Making App sync.
+- Folder-based map library with optional Map Making App and Learnable Meta sync.
 
 ## Setup
 
@@ -54,7 +54,7 @@ python src/serve/serve.py
 That serves the folder at `http://localhost:8000` and opens your browser. Stop it with Ctrl+C.
 
 > [!IMPORTANT]
-> `src/serve/serve.py` serves the game and manages files under `data/`. A plain `python -m http.server` from the repository root can play cached maps at `http://localhost:8000/src/`, but uploads, refresh, folder opening, and Map Making App sync require `src/serve/serve.py`.
+> `src/serve/serve.py` serves the game and manages files under `data/`. A plain `python -m http.server` from the repository root can play cached maps at `http://localhost:8000/src/`, but uploads, refresh, folder opening, synchronization, and Learnable Meta clues require `src/serve/serve.py`.
 
 ## Updating
 
@@ -64,7 +64,7 @@ If you cloned the repository, stop OhneGuessr and update it from inside the repo
 git pull --ff-only
 ```
 
-Everything under `data/` is local and ignored by Git, including maps, the generated map index, synchronized maps, and Map Making App credentials. Browser settings remain in `localStorage`.
+Everything under `data/` is local and ignored by Git, including maps, the generated map index, synchronized maps, and synchronization credentials. Browser settings remain in `localStorage`.
 
 If you use the ZIP, extract the new version and copy the old `data/` folder into it before starting the server.
 
@@ -155,13 +155,34 @@ The API key is stored locally in the Git-ignored `data/.map-making-app-sync.json
 
 Synced maps are restored by the next sync if their JSON file is deleted. Move or rename them inside `data/map-making-app/` and press **Refresh maps** to keep a local organization override.
 
+### Learnable Meta sync
+
+Learnable Meta sync downloads personal-map locations directly from Learnable Meta. It does not contact GeoGuessr and does not need a GeoGuessr login, cookie, draft, or userscript.
+
+1. Create or open a personal map in the [Learnable Meta portal](https://learnablemeta.com/personal).
+2. Give it a unique dummy map ID. A random 24-character hexadecimal ID matches the shape of a GeoGuessr ID and is recommended.
+3. Generate an API key under [Learnable Meta profile → API token](https://learnablemeta.com/profile/token).
+4. Open **Settings → Maps**, enable **Learnable Meta Sync**, and save the API key.
+5. Add the personal map's local name and the exact dummy/map ID used in Learnable Meta.
+
+The map is checked and downloaded immediately. Configure as many personal maps as needed, then use **Sync now** for later updates. Learnable Meta currently has no token endpoint for listing a user's personal maps, so IDs are entered manually.
+
+Downloaded maps are managed under `data/Learnable Meta/`; the private key and configured IDs are stored in `data/.learnable-meta-sync.json`. Disabling sync or forgetting the key keeps cached maps playable. Removing a configured map deletes its managed cache after confirmation.
+
+For Learnable Meta maps, a draggable and resizable clue window appears after each round. Its layout is saved in the browser and can be reset from the sync settings. Selecting a round on the final screen opens that round's clue. Per-location heading, pitch, and zoom are preserved; the global **Street View starts zoomed out** setting still takes priority over location zoom.
+
+> [!IMPORTANT]
+> The dummy-ID workflow relies on Learnable Meta currently treating its `geoguessrId` field as an opaque unique string. This is not a documented upstream guarantee. If Learnable Meta tightens that validation, existing IDs should continue syncing, but creating new dummy-ID maps may require an upstream change.
+
+The integration is a clean-room implementation. See [`src/plugins/learnable-meta/NOTICE.md`](src/plugins/learnable-meta/NOTICE.md) for attribution.
+
 ### Map file format
 
-A JSON array of location objects. Each needs `lat` and `lng`; `panoid`, `heading`, and `pitch` are optional. Without a pano ID, the game asks Street View for imagery nearest the coordinates.
+A JSON array of location objects. Each needs `lat` and `lng`; `panoid`, `heading`, `pitch`, and `zoom` are optional. Without a pano ID, the game asks Street View for imagery nearest the coordinates.
 
 ```json
 [
-  { "lat": 48.8584, "lng": 2.2945, "panoid": "…", "heading": 0, "pitch": 0 }
+  { "lat": 48.8584, "lng": 2.2945, "panoid": "…", "heading": 0, "pitch": 0, "zoom": 1 }
 ]
 ```
 

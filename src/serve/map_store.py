@@ -14,6 +14,7 @@ import uuid
 MANIFEST_VERSION = 2
 MANIFEST_NAME = "maps.json"
 MMA_ROOT = "map-making-app"
+LEARNABLE_META_ROOT = "Learnable Meta"
 _INVALID_COMPONENT = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 _WINDOWS_RESERVED = {
     "con", "prn", "aux", "nul",
@@ -240,8 +241,29 @@ def _scan_files(data_dir):
     return sorted(found, key=lambda item: item[0].casefold())
 
 
-def _under_mma_root(rel_file):
-    return rel_file == MMA_ROOT or rel_file.startswith(MMA_ROOT + "/")
+def _is_managed_source(source):
+    return bool(
+        isinstance(source, dict)
+        and (source.get("managed") is True or source.get("type") == "map-making-app")
+    )
+
+
+def _managed_root(source):
+    if not isinstance(source, dict):
+        return None
+    if source.get("type") == "map-making-app":
+        return MMA_ROOT
+    if source.get("type") == "learnable-meta":
+        return LEARNABLE_META_ROOT
+    return None
+
+
+def _under_root(rel_file, root):
+    if not root:
+        return False
+    rel_key = rel_file.casefold()
+    root_key = root.casefold()
+    return rel_key == root_key or rel_key.startswith(root_key + "/")
 
 
 def rescan(data_dir, manifest_path):
@@ -298,7 +320,8 @@ def rescan(data_dir, manifest_path):
         if len(candidates) == 1:
             candidate = candidates[0]
             source = candidate.get("source") or {}
-            if source.get("type") == "map-making-app" and not _under_mma_root(item["rel"]):
+            managed_root = _managed_root(source)
+            if _is_managed_source(source) and managed_root and not _under_root(item["rel"], managed_root):
                 candidate = None
             if candidate:
                 entry = dict(candidate)
@@ -388,8 +411,8 @@ def rename_local_map(data_dir, manifest_path, map_id, name):
     entry = next((item for item in manifest["maps"] if item["id"] == map_id), None)
     if entry is None:
         raise KeyError("map not found")
-    if (entry.get("source") or {}).get("type") == "map-making-app":
-        raise PermissionError("synced maps are managed through the data folder")
+    if _is_managed_source(entry.get("source") or {}):
+        raise PermissionError("synced maps are managed by their synchronization settings")
     folder = _folder_from_file(entry["file"])
     reserved = {item["file"] for item in manifest["maps"] if item is not entry}
     new_rel = unique_relative_file(data_dir, folder, clean_name, reserved)
@@ -412,7 +435,7 @@ def delete_local_map(data_dir, manifest_path, map_id):
     entry = next((item for item in manifest["maps"] if item["id"] == map_id), None)
     if entry is None:
         return False
-    if (entry.get("source") or {}).get("type") == "map-making-app":
+    if _is_managed_source(entry.get("source") or {}):
         raise PermissionError("synced maps are restored by synchronization")
     path = resolve_data_path(data_dir, entry["file"])
     try:

@@ -13,8 +13,9 @@ import { createMapLibrary } from './ui/map-library.js';
 import { setupMmaSync } from './ui/mma-sync.js';
 import { setupSettingsUI } from './ui/settings-panel.js';
 import { createGuessPanel } from './ui/guess-panel.js';
-import { saveGame, loadGame, clearGame } from './core/persist.js';
+import { saveGame, loadGame } from './core/persist.js';
 import { saveSettings } from './core/settings.js';
+import { emitPluginEvent, PLUGIN_EVENTS } from './core/plugin-events.js';
 
 // World: fixed scale. Country: the loaded map's bbox diagonal.
 const effectiveScaleKm = () =>
@@ -36,6 +37,11 @@ const panoLoad = { controller: null };
 let roundPreload = null;
 let preloadFrame = 0;
 let selectedFinalRound = null;
+
+const currentMapItem = () => {
+  const map = state.maps.find((item) => item.key === state.currentKey);
+  return map ? { ...map, source: map.source ? { ...map.source } : null } : null;
+};
 
 // Countdown policy for the current round; RoundTimer handles the ticking.
 const roundTimer = new RoundTimer({
@@ -174,6 +180,7 @@ function updateRoundLimitDisplay() {
 async function startGame() {
   cancelRoundPreload();
   roundTimer.stop();
+  emitPluginEvent(PLUGIN_EVENTS.GAME_RESET, { map: currentMapItem() });
   state.phase = GAME_PHASE.LOADING;
   setHidden('resultScreen', true);
   setHidden('final', true);
@@ -188,7 +195,7 @@ async function startGame() {
   await loadRound();
 }
 
-// Snapshot the active game so a refresh restores either the round or its result.
+// Snapshot the game so a refresh restores its active or completed screen.
 function saveProgress({ resultTrail } = {}) {
   if (!state.currentKey || !state.deck.length) return;
   const snapshot = {
@@ -216,6 +223,12 @@ function saveProgress({ resultTrail } = {}) {
 const isPoint = (point) =>
   Number.isFinite(point?.lat) && Number.isFinite(point?.lng);
 
+const isSavedResult = (result) => result &&
+  isPoint(result.actual) &&
+  (!result.guess || isPoint(result.guess)) &&
+  (result.distKm == null || Number.isFinite(result.distKm)) &&
+  Number.isFinite(result.points);
+
 function cleanSavedTrail(value) {
   if (!Array.isArray(value)) return null;
   const trail = value
@@ -227,7 +240,7 @@ function cleanSavedTrail(value) {
   return trail.length ? trail : null;
 }
 
-// Restore a saved game for the loaded map and show its round or completed result.
+// Restore a saved game for the loaded map and show its active or completed screen.
 // False means there is nothing valid to resume and the caller should start fresh.
 async function tryResume() {
   cancelRoundPreload();
@@ -250,12 +263,17 @@ async function tryResume() {
   state.phase = GAME_PHASE.LOADING;
   setHidden('final', true);
 
+  if (snap.phase === GAME_PHASE.FINAL) {
+    const validFinal = state.results.length === round + 1 &&
+      state.results.every(isSavedResult);
+    if (!validFinal) return false;
+    state.current = state.deck[round] || state.results.at(-1).actual;
+    showFinal();
+    return true;
+  }
+
   const savedResult = snap.phase === GAME_PHASE.RESULT ? state.results[round] : null;
-  const validResult = savedResult &&
-    isPoint(savedResult.actual) &&
-    (!savedResult.guess || isPoint(savedResult.guess)) &&
-    Number.isFinite(savedResult.points);
-  if (validResult) {
+  if (savedResult && isSavedResult(savedResult)) {
     state.phase = GAME_PHASE.RESULT;
     state.current = state.deck[round] || savedResult.actual;
     guessPanel.setFullscreen(false);
@@ -264,6 +282,8 @@ async function tryResume() {
     showRoundResult(savedResult, cleanSavedTrail(snap.resultTrail));
     return true;
   }
+  if (snap.phase === GAME_PHASE.RESULT) return false;
+  if (snap.phase !== GAME_PHASE.LOADING && snap.phase !== GAME_PHASE.GUESSING) return false;
 
   await loadRound();
   return true;
@@ -323,6 +343,7 @@ async function loadRound(preparation = null) {
   $('guessBtn').textContent = 'Guess';
   gmap.reset();
   gmap.resize();
+  saveProgress(); // commit the transition before panorama loading can be interrupted
 
   let prepared = preparation;
   if (!preparationMatches(prepared, state.round)) prepared = prepareRound(state.round);
@@ -341,6 +362,11 @@ async function loadRound(preparation = null) {
   setLoading(false);
   saveProgress(); // persist the (resolved) round so a refresh resumes here
   roundTimer.start(); // start after load so loading time isn't counted
+  emitPluginEvent(PLUGIN_EVENTS.ROUND_START, {
+    map: currentMapItem(),
+    location: { ...state.current },
+    roundIndex: state.round
+  });
 }
 
 function onPlaceGuess(_guess, { submit = false } = {}) {
@@ -420,6 +446,7 @@ const keybindings = new Keybindings({
 
 const {
   reloadLibrary,
+  reloadLibraryAndRecover,
   selectMap,
   showNoMaps,
   setupMapLibrary
@@ -471,14 +498,18 @@ function showRoundResult(result, trail = null) {
   setLoading(false);
   setHidden('resultScreen', false);
   resultMap.show(guess, actual, trail);
+  emitPluginEvent(PLUGIN_EVENTS.ROUND_RESULT, {
+    map: currentMapItem(),
+    location: { ...actual },
+    result,
+    roundIndex: state.round
+  });
   scheduleNextRoundPreload();
 }
 
 async function nextRound() {
   if (state.phase !== GAME_PHASE.RESULT) return;
   if (!hasNextRound()) {
-    cancelRoundPreload();
-    setHidden('resultScreen', true);
     showFinal();
     return;
   }
@@ -491,7 +522,6 @@ async function nextRound() {
 
 function endUnlimitedGame() {
   if (state.phase !== GAME_PHASE.RESULT || !state.unlimited) return;
-  setHidden('resultScreen', true);
   showFinal();
 }
 
@@ -528,16 +558,26 @@ function applyFinalRoundSelection() {
     ? state.results
     : [state.results[selectedFinalRound]];
   summaryMap.show(results);
+  const selectedResult = selectedFinalRound == null ? null : state.results[selectedFinalRound];
+  emitPluginEvent(PLUGIN_EVENTS.FINAL_ROUND_SELECTED, {
+    map: currentMapItem(),
+    location: selectedResult?.actual ? { ...selectedResult.actual } : null,
+    result: selectedResult || null,
+    roundIndex: selectedFinalRound
+  });
 }
 
 function showFinal() {
   cancelRoundPreload();
+  roundTimer.stop();
   state.phase = GAME_PHASE.FINAL;
   selectedFinalRound = null;
-  clearGame(); // game over: nothing left to resume
+  saveProgress();
   const max = state.results.length * CONFIG.SCORE_MAX;
   $('finalScore').textContent = `${state.total} / ${max}`;
   renderFinalRounds();
+  setLoading(false);
+  setHidden('resultScreen', true);
   setHidden('final', false);
   applyFinalRoundSelection(); // after un-hiding so the shared map has a real size
 }
@@ -578,6 +618,12 @@ async function init() {
   syncGuessMapSizeControl = settingsUI.syncGuessMapSizeControl;
   setupMapLibrary();
   setupMmaSync({ reloadLibrary });
+  try {
+    const { setupLearnableMeta } = await import('../plugins/learnable-meta/index.js');
+    await setupLearnableMeta({ reloadLibrary, reloadLibraryAndRecover });
+  } catch (error) {
+    console.warn('Learnable Meta plugin unavailable:', error);
+  }
 
   $('guessBtn').addEventListener('click', (e) => { submitGuess(); e.currentTarget.blur(); });
   $('nextBtn').addEventListener('click', (e) => { nextRound(); e.currentTarget.blur(); });

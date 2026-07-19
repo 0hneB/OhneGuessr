@@ -12,9 +12,11 @@ import {
 } from '../core/maps.js';
 import { normalizeLocations, mapNameFrom } from '../core/locations.js';
 import { selectSettingsTab } from './settings-panel.js';
+import { emitPluginEvent, PLUGIN_EVENTS } from '../core/plugin-events.js';
 
 const FOLDER_STATE_KEY = 'ohneguessr.mapFolders';
 const MMA_ROOT = 'map-making-app';
+const LEARNABLE_META_ROOT = 'Learnable Meta';
 
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -24,9 +26,17 @@ const parentFolder = (path) => {
   parts.pop();
   return parts.join('/');
 };
-const folderName = (path) => path === MMA_ROOT
-  ? 'Map Making App'
-  : path.split('/').pop();
+const folderName = (path) => {
+  if (path === MMA_ROOT) return 'Map Making App';
+  if (path === LEARNABLE_META_ROOT) return 'Learnable Meta';
+  return path.split('/').pop();
+};
+
+const rootRank = (path) => {
+  if (path === MMA_ROOT) return 0;
+  if (path === LEARNABLE_META_ROOT) return 1;
+  return 2;
+};
 
 function loadExpandedFolders() {
   try {
@@ -98,8 +108,7 @@ export function createMapLibrary({ startGame, tryResume }) {
     const directFolders = (parent) => [...visibleFolders]
       .filter((folder) => parentFolder(folder) === parent)
       .sort((a, b) => {
-        if (!parent && a === MMA_ROOT) return -1;
-        if (!parent && b === MMA_ROOT) return 1;
+        if (!parent && rootRank(a) !== rootRank(b)) return rootRank(a) - rootRank(b);
         return folderName(a).localeCompare(folderName(b), undefined, { sensitivity: 'base' });
       });
 
@@ -233,6 +242,9 @@ export function createMapLibrary({ startGame, tryResume }) {
     state.phase = GAME_PHASE.LOADING;
     setEmptyState(false);
     state.currentKey = item.key;
+    emitPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, {
+      map: { ...item, source: item.source ? { ...item.source } : null }
+    });
     settings.currentMap = item.key;
     saveSettings(settings);
     revealSelectedFolder();
@@ -285,6 +297,7 @@ export function createMapLibrary({ startGame, tryResume }) {
     state.phase = GAME_PHASE.EMPTY;
     setLoading(false);
     state.currentKey = null;
+    emitPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, { map: null });
     renderMapList();
     closeSettings();
     setEmptyState(true);
@@ -349,6 +362,15 @@ export function createMapLibrary({ startGame, tryResume }) {
     }
   }
 
+  async function reloadLibraryAndRecover() {
+    const previousKey = state.currentKey;
+    await reloadLibrary();
+    if (!previousKey || state.maps.some((map) => map.key === previousKey)) return;
+    state.currentKey = null;
+    if (state.maps[0]) await selectMap(state.maps[0].key);
+    else showNoMaps();
+  }
+
   function setupMapLibrary() {
     const fileInput = $('fileInput');
     const searchInput = $('mapSearchInput');
@@ -391,6 +413,7 @@ export function createMapLibrary({ startGame, tryResume }) {
   return {
     renderMapList,
     reloadLibrary,
+    reloadLibraryAndRecover,
     selectMap,
     showNoMaps,
     setupMapLibrary
