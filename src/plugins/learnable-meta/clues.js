@@ -6,7 +6,7 @@ const DEFAULT_WIDTH = 450;
 const DEFAULT_HEIGHT = 550;
 const MIN_WIDTH = 280;
 const MIN_HEIGHT = 220;
-const EDGE = 12;
+const DEFAULT_INSET = 12;
 const IMAGE_LOAD_TIMEOUT_MS = 12_000;
 const IMAGE_LENS_SIZE = 150;
 const IMAGE_LENS_SCALE = 2;
@@ -303,13 +303,13 @@ export class LearnableMetaClues {
   }
 
   _defaultLayout() {
-    const width = Math.max(MIN_WIDTH, Math.min(DEFAULT_WIDTH, window.innerWidth - EDGE * 2));
-    const height = Math.max(MIN_HEIGHT, Math.min(DEFAULT_HEIGHT, window.innerHeight - EDGE * 2));
+    const width = Math.max(MIN_WIDTH, Math.min(DEFAULT_WIDTH, window.innerWidth - DEFAULT_INSET * 2));
+    const height = Math.max(MIN_HEIGHT, Math.min(DEFAULT_HEIGHT, window.innerHeight - DEFAULT_INSET * 2));
     return {
       width,
       height,
-      left: EDGE,
-      top: EDGE
+      left: DEFAULT_INSET,
+      top: DEFAULT_INSET
     };
   }
 
@@ -335,10 +335,10 @@ export class LearnableMetaClues {
     const styledHeight = parseFloat(this.root.style.height);
     const requestedWidth = Number.isFinite(width) ? width : (rect.width || styledWidth || DEFAULT_WIDTH);
     const requestedHeight = Number.isFinite(height) ? height : (rect.height || styledHeight || DEFAULT_HEIGHT);
-    const nextWidth = Math.max(MIN_WIDTH, Math.min(requestedWidth, window.innerWidth - EDGE * 2));
-    const nextHeight = Math.max(MIN_HEIGHT, Math.min(requestedHeight, window.innerHeight - EDGE * 2));
-    const left = Math.max(EDGE, Math.min(parseFloat(this.root.style.left) || EDGE, window.innerWidth - nextWidth - EDGE));
-    const top = Math.max(EDGE, Math.min(parseFloat(this.root.style.top) || EDGE, window.innerHeight - nextHeight - EDGE));
+    const nextWidth = Math.max(MIN_WIDTH, Math.min(requestedWidth, window.innerWidth));
+    const nextHeight = Math.max(MIN_HEIGHT, Math.min(requestedHeight, window.innerHeight));
+    const left = Math.max(0, Math.min(parseFloat(this.root.style.left) || 0, window.innerWidth - nextWidth));
+    const top = Math.max(0, Math.min(parseFloat(this.root.style.top) || 0, window.innerHeight - nextHeight));
     this.root.style.width = `${nextWidth}px`;
     this.root.style.height = `${nextHeight}px`;
     this.root.style.left = `${left}px`;
