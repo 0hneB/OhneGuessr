@@ -89,12 +89,6 @@ export class LearnableMetaClues {
     }
   }
 
-  resetLayout() {
-    try { localStorage.removeItem(LAYOUT_KEY); } catch { /* private mode */ }
-    this._applyLayout(this._defaultLayout());
-    this._persistLayout();
-  }
-
   _createWindow() {
     const root = element('aside', 'lm-clue-window hidden');
     root.setAttribute('aria-label', 'Learnable Meta clue');

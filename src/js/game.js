@@ -446,7 +446,7 @@ const keybindings = new Keybindings({
 
 const {
   reloadLibrary,
-  reloadLibraryAndRecover,
+  registerManagedMapActions,
   selectMap,
   showNoMaps,
   setupMapLibrary
@@ -620,7 +620,7 @@ async function init() {
   setupMmaSync({ reloadLibrary });
   try {
     const { setupLearnableMeta } = await import('../plugins/learnable-meta/index.js');
-    await setupLearnableMeta({ reloadLibrary, reloadLibraryAndRecover });
+    await setupLearnableMeta({ reloadLibrary, registerManagedMapActions });
   } catch (error) {
     console.warn('Learnable Meta plugin unavailable:', error);
   }

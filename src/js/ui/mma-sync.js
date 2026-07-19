@@ -1,4 +1,4 @@
-// Settings -> Maps: local-server controls for manual Map Making App sync.
+// Settings -> Sync: local-server controls for manual Map Making App sync.
 // The API key is sent once to localhost and is never read back into the page.
 import { $ } from '../core/dom.js';
 import {
@@ -19,7 +19,7 @@ export function setupMmaSync({ reloadLibrary }) {
   const forgetButton = $('mmaKeyForget');
   const syncButton = $('mmaSyncNow');
   const account = $('mmaSyncAccount');
-  const accountRow = account.closest('.mma-sync-account-row');
+  const accountRow = account.closest('.sync-account-row');
   const statusLine = $('mmaSyncStatus');
   let status = null;
   let pollTimer = 0;
@@ -51,7 +51,7 @@ export function setupMmaSync({ reloadLibrary }) {
     }
     if (value.lastSyncAt) {
       const date = new Date(value.lastSyncAt);
-      return Number.isNaN(date.getTime()) ? 'Ready to sync.' : `Last synced ${date.toLocaleString()}`;
+      return Number.isNaN(date.getTime()) ? 'Ready to sync.' : `Last sync ${date.toLocaleString()}`;
     }
     return value.hasKey ? 'Ready to sync.' : 'Add an API key to connect.';
   }

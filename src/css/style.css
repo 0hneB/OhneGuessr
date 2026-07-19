@@ -808,7 +808,7 @@ body.empty-mode #guessPanel { display: none !important; }
   gap: 6px;
 }
 .map-library-actions .icon-action,
-.mma-sync-actions .icon-action { flex: none; width: 24px; height: 24px; }
+.sync-actions .icon-action { flex: none; width: 24px; height: 24px; }
 .map-search {
   display: flex;
   align-items: center;
@@ -1047,30 +1047,35 @@ body.empty-mode #guessPanel { display: none !important; }
 .map-row-rename-input:focus { outline: none; border-color: var(--accent); }
 .settings-note:empty { display: none; }
 
-/* Optional Map Making App sync. Cached maps remain available while disabled. */
+/* Optional map synchronization. Cached maps remain available while disabled. */
 #panel-maps:not([hidden]) {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 .maps-bottom { flex: none; padding-top: 10px; }
-.mma-sync-section {
+.sync-section {
   margin-top: 17px;
   padding-top: 15px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
-.mma-sync-toggle { margin: 0; font-size: 13px; }
-.mma-sync-details {
+#panel-sync > .sync-section:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.sync-toggle { margin: 0; font-size: 13px; }
+.sync-details {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-top: 10px;
 }
-.mma-sync-account-row { display: flex; align-items: center; gap: 10px; }
-.mma-sync-account { flex: 1; min-width: 0; font-size: 12px; color: #cbd2dd; }
-.mma-sync-account:empty { display: none; }
-.mma-key-form { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
-.mma-key-form input {
+.sync-account-row { display: flex; align-items: center; gap: 10px; }
+.sync-account { flex: 1; min-width: 0; font-size: 12px; color: #cbd2dd; }
+.sync-account:empty { display: none; }
+.sync-key-form { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+.sync-key-form input {
   min-width: 0;
   padding: 9px 10px;
   color: #fff;
@@ -1079,19 +1084,19 @@ body.empty-mode #guessPanel { display: none !important; }
   border-radius: 8px;
   font-size: 12px;
 }
-.mma-key-form input:focus { outline: none; border-color: var(--accent); }
-.mma-key-form .settings-action { margin: 0; }
-.mma-sync-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.maps-footer {
+.sync-key-form input:focus { outline: none; border-color: var(--accent); }
+.sync-key-form .settings-action { margin: 0; }
+.sync-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.sync-footer {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 20px;
   margin-top: 10px;
 }
-.mma-sync-status { flex: 1; min-width: 0; }
-.mma-sync-status.error { color: #f87171; opacity: 0.9; }
-.maps-info-link {
+.sync-status { flex: 1; min-width: 0; }
+.sync-status.error { color: #f87171; opacity: 0.9; }
+.sync-info-link {
   flex: none;
   margin-left: auto;
 }

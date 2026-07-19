@@ -42,7 +42,6 @@ export const removeMap = (mapId) => api('/maps', {
   method: 'DELETE', body: JSON.stringify({ mapId })
 });
 export const runSync = () => api('/sync', { method: 'POST' });
-export const cancelSync = () => api('/cancel', { method: 'POST' });
 export const getClue = (mapId, panoId) => api(
   `/clue?mapId=${encodeURIComponent(mapId)}&panoId=${encodeURIComponent(panoId)}`
 );
