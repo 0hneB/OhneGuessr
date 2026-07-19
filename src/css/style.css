@@ -1061,7 +1061,7 @@ body.empty-mode #guessPanel { display: none !important; }
   padding-top: 15px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
-#panel-sync > .sync-section:first-child {
+#panel-sync > .sync-plugin-mount:first-child > .sync-section {
   margin-top: 0;
   padding-top: 0;
   border-top: 0;

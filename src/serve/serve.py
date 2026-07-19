@@ -17,7 +17,6 @@ run/stop.bat.
 
 import json
 import os
-import shutil
 import socket
 import subprocess
 import sys
@@ -28,8 +27,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlsplit
 
 import map_store
-from mma_sync import MapMakingSync
 from plugins.learnable_meta import LearnableMetaRoutes, LearnableMetaSync
+from plugins.map_making_app import MapMakingAppRoutes, MapMakingAppSync, prepare_config
 
 PORT = 8000
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,10 +37,9 @@ BASE = os.path.dirname(SRC_DIR)
 DATA_DIR = os.path.join(BASE, "data")
 MANIFEST = os.path.join(DATA_DIR, "maps.json")
 PIDFILE = os.path.join(tempfile.gettempdir(), "ohneguessr-serve.pid")
-SYNC_CONFIG = os.path.join(DATA_DIR, ".map-making-app-sync.json")
 LEARNABLE_META_CONFIG = os.path.join(DATA_DIR, ".learnable-meta-sync.json")
-LEGACY_SYNC_CONFIG = os.path.join(BASE, "run", ".map-making-app-sync.json")
 MMA_SYNC = None
+MMA_ROUTES = None
 LEARNABLE_META_SYNC = None
 LEARNABLE_META_ROUTES = None
 SYNC_START_LOCK = threading.Lock()
@@ -50,18 +48,7 @@ MAP_STORE_LOCK = threading.RLock()
 
 def prepare_data():
     os.makedirs(DATA_DIR, exist_ok=True)
-    sync_config = SYNC_CONFIG
-    if not os.path.exists(SYNC_CONFIG) and os.path.isfile(LEGACY_SYNC_CONFIG):
-        try:
-            os.replace(LEGACY_SYNC_CONFIG, SYNC_CONFIG)
-        except OSError:
-            try:
-                shutil.copy2(LEGACY_SYNC_CONFIG, SYNC_CONFIG)
-                os.remove(LEGACY_SYNC_CONFIG)
-            except OSError:
-                sync_config = LEGACY_SYNC_CONFIG
     map_store.rescan(DATA_DIR, MANIFEST)
-    return sync_config
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -122,8 +109,8 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/health":
             self._send_json({"ok": True})
             return
-        if path == "/api/mma-sync/status":
-            self._send_json(MMA_SYNC.public_status())
+        if MMA_ROUTES.handles(path):
+            self._dispatch_map_making_app("GET")
             return
         if LEARNABLE_META_ROUTES.handles(path):
             self._dispatch_learnable_meta("GET")
@@ -137,25 +124,25 @@ class Handler(SimpleHTTPRequestHandler):
             self._rescan_maps()
         elif self._path() == "/api/open-data-folder":
             self._open_data_folder()
-        elif self._path() == "/api/mma-sync/run":
-            self._sync_run()
+        elif MMA_ROUTES.handles(self._path()):
+            self._dispatch_map_making_app("POST")
         elif LEARNABLE_META_ROUTES.handles(self._path()):
             self._dispatch_learnable_meta("POST")
         else:
             self.send_error(404)
 
     def do_PUT(self):
-        if self._path() == "/api/mma-sync/config":
-            self._sync_config()
-        elif self._path() == "/api/mma-sync/key":
-            self._sync_key()
+        if MMA_ROUTES.handles(self._path()):
+            self._dispatch_map_making_app("PUT")
         elif LEARNABLE_META_ROUTES.handles(self._path()):
             self._dispatch_learnable_meta("PUT")
         else:
             self.send_error(404)
 
     def do_PATCH(self):
-        if LEARNABLE_META_ROUTES.handles(self._path()):
+        if MMA_ROUTES.handles(self._path()):
+            self._dispatch_map_making_app("PATCH")
+        elif LEARNABLE_META_ROUTES.handles(self._path()):
             self._dispatch_learnable_meta("PATCH")
         elif self._path().startswith("/api/maps/"):
             self._rename_map()
@@ -163,8 +150,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(404)
 
     def do_DELETE(self):
-        if self._path() == "/api/mma-sync/key":
-            self._send_json(MMA_SYNC.forget_key())
+        if MMA_ROUTES.handles(self._path()):
+            self._dispatch_map_making_app("DELETE")
         elif LEARNABLE_META_ROUTES.handles(self._path()):
             self._dispatch_learnable_meta("DELETE")
         elif self._path().startswith("/api/maps/"):
@@ -238,31 +225,25 @@ class Handler(SimpleHTTPRequestHandler):
         except Exception:  # noqa: BLE001
             self._send_json({"error": "could not open data folder"}, 500)
 
-    def _sync_config(self):
+    def _dispatch_map_making_app(self, method):
         try:
-            body = self._read_body()
-            self._send_json(MMA_SYNC.set_enabled(bool(body.get("enabled"))))
-        except Exception as exc:  # noqa: BLE001
-            self._send_json({"error": str(exc)}, 400)
-
-    def _sync_key(self):
-        try:
-            body = self._read_body()
-            with SYNC_START_LOCK:
-                if LEARNABLE_META_SYNC.is_running():
-                    raise RuntimeError("Learnable Meta synchronization is running")
-                self._send_json(MMA_SYNC.save_key(body.get("apiKey")))
-        except Exception as exc:  # noqa: BLE001
-            self._send_json({"error": str(exc)}, 400)
-
-    def _sync_run(self):
-        try:
-            with SYNC_START_LOCK:
-                if LEARNABLE_META_SYNC.is_running():
-                    raise RuntimeError("Learnable Meta synchronization is running")
-                self._send_json(MMA_SYNC.start(), 202)
-        except Exception as exc:  # noqa: BLE001
-            self._send_json({"error": str(exc)}, 400)
+            path = self._path()
+            body = self._read_body() if method in ("POST", "PUT", "PATCH", "DELETE") else {}
+            if not isinstance(body, dict):
+                raise ValueError("request body must be a JSON object")
+            if MMA_ROUTES.requires_exclusive_sync(method, path):
+                with SYNC_START_LOCK:
+                    if LEARNABLE_META_SYNC.is_running():
+                        self._send_json({"error": "Learnable Meta synchronization is running"}, 409)
+                        return
+                    payload, status = MMA_ROUTES.dispatch(method, path, body)
+            else:
+                payload, status = MMA_ROUTES.dispatch(method, path, body)
+            self._send_json(payload, status)
+        except (ValueError, json.JSONDecodeError) as exc:
+            self._send_json({"error": str(exc) or "invalid request"}, 400)
+        except Exception:  # noqa: BLE001
+            self._send_json({"error": "Map Making App request failed"}, 500)
 
     def _dispatch_learnable_meta(self, method):
         try:
@@ -277,7 +258,7 @@ class Handler(SimpleHTTPRequestHandler):
             )
             if mutates_maps:
                 with SYNC_START_LOCK:
-                    if MMA_SYNC.public_status().get("running"):
+                    if MMA_SYNC.is_running():
                         self._send_json({"error": "Map Making App synchronization is running"}, 409)
                         return
                     payload, status = LEARNABLE_META_ROUTES.dispatch(method, path, query, body)
@@ -297,14 +278,16 @@ def port_in_use(port):
 
 
 def main():
-    global MMA_SYNC, LEARNABLE_META_SYNC, LEARNABLE_META_ROUTES
+    global MMA_SYNC, MMA_ROUTES, LEARNABLE_META_SYNC, LEARNABLE_META_ROUTES
     url = "http://localhost:%d/" % PORT
     # Already running: reopen the browser and exit.
     if port_in_use(PORT):
         webbrowser.open(url)
         return
 
-    MMA_SYNC = MapMakingSync(DATA_DIR, MANIFEST, prepare_data())
+    prepare_data()
+    MMA_SYNC = MapMakingAppSync(DATA_DIR, MANIFEST, prepare_config(DATA_DIR, BASE))
+    MMA_ROUTES = MapMakingAppRoutes(MMA_SYNC)
     LEARNABLE_META_SYNC = LearnableMetaSync(
         DATA_DIR,
         MANIFEST,
