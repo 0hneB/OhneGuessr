@@ -36,8 +36,6 @@ class LearnableMetaRoutes:
                 return self.service.remove_map(body.get("mapId")), 200
             if method == "POST" and subpath == "/sync":
                 return self.service.start(), 202
-            if method == "POST" and subpath == "/cancel":
-                return self.service.cancel(), 202
             return {"error": "not found"}, 404
         except LearnableMetaApiError as exc:
             status = exc.status if exc.status in (401, 403, 404, 429) else 502

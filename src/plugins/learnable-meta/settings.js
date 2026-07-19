@@ -6,7 +6,7 @@ const POLL_MS = 650;
 
 export function setupLearnableMetaSettings({ mount, clues, reloadLibrary }) {
   mount.innerHTML = `
-    <section class="sync-section lm-sync-section">
+    <section class="sync-section">
       <label class="setting-toggle sync-toggle">
         <span>Learnable Meta Sync</span>
         <input id="lmSyncToggle" type="checkbox" />
@@ -45,7 +45,7 @@ export function setupLearnableMetaSettings({ mount, clues, reloadLibrary }) {
       </div>
     </section>
     <div class="sync-footer">
-      <div id="lmSyncStatus" class="settings-note sync-status lm-sync-status"></div>
+      <div id="lmSyncStatus" class="settings-note sync-status"></div>
       <a class="settings-info-link sync-info-link"
          href="https://github.com/0hneB/OhneGuessr#learnable-meta-sync"
          target="_blank" rel="noopener noreferrer"
@@ -269,5 +269,5 @@ export function setupLearnableMetaSettings({ mount, clues, reloadLibrary }) {
   });
 
   const ready = refreshStatus();
-  return { refreshStatus, updateStatus, ready };
+  return { updateStatus, ready };
 }

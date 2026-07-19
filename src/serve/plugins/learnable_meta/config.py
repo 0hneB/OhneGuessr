@@ -1,6 +1,5 @@
 """Private configuration storage and input validation for Learnable Meta."""
 
-import copy
 import json
 import os
 import re
@@ -102,4 +101,3 @@ class ConfigStore:
             os.chmod(self.path, 0o600)
         except OSError:
             pass
-        return copy.deepcopy(clean)
