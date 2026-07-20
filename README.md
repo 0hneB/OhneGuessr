@@ -161,12 +161,12 @@ Synced maps are restored by the next sync if their JSON file is deleted. Move or
 OhneGuessr can download personal maps directly from Learnable Meta.
 
 1. Create or open a personal map in the [Learnable Meta portal](https://learnablemeta.com/personal).
-2. Set a unique GeoGuessr ID for it.
+2. Set a unique identifier in its **GeoGuessr ID** field. It does not need to be a real GeoGuessr ID unless you also want to upload the map to GeoGuessr.
 3. Create a key under [Learnable Meta profile → API token](https://learnablemeta.com/profile/token).
 4. Open **Settings → Sync**, enable **Learnable Meta Sync**, and save the API key.
-5. Add a local map name and the same GeoGuessr ID.
+5. Add a local map name and enter the same identifier in the **GeoGuessr ID** field.
 
-The GeoGuessr ID links the Learnable Meta map to its local copy. Each map is checked and downloaded when it is added. Learnable Meta does not currently expose personal-map discovery through API keys, so additional map IDs must also be entered manually. Use **Sync now** to fetch later changes.
+This identifier links the Learnable Meta map to its local copy. Each map is checked and downloaded when it is added. Learnable Meta does not currently expose personal-map discovery through API keys, so additional map IDs must also be entered manually. Use **Sync now** to fetch later changes.
 
 Downloaded maps appear in the **Learnable Meta** folder and are stored under `data/Learnable Meta/`.
 
