@@ -1,0 +1,4 @@
+* text=auto
+*.bat text eol=crlf
+dist/** linguist-generated=true
+public/vendor/** linguist-vendored=true
