@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/images/ohneguessr-logo.svg" width="128" alt="OhneGuessr logo" />
+  <img src="public/images/ohneguessr-logo.svg" width="128" alt="OhneGuessr logo" />
 </p>
 
 <h1 align="center">OhneGuessr</h1>
@@ -48,13 +48,13 @@ Double-click **`run\serve.bat`**. It starts the local server and opens your brow
 ### macOS / Linux / manual
 
 ```bash
-python src/serve/serve.py
+python server/serve.py
 ```
 
-That serves the folder at `http://localhost:8000` and opens your browser. Stop it with Ctrl+C.
+That serves the app at `http://localhost:8000` and opens your browser. Stop it with Ctrl+C.
 
 > [!IMPORTANT]
-> `src/serve/serve.py` serves the game and manages files under `data/`. A plain `python -m http.server` from the repository root can play cached maps at `http://localhost:8000/src/`, but uploads, refresh, folder opening, synchronization, and Learnable Meta clues require `src/serve/serve.py`.
+> `server/serve.py` serves the ready-built app from `dist/` and manages files under `data/`. A plain `python -m http.server` from the repository root can play cached maps at `http://localhost:8000/dist/`, but uploads, refresh, folder opening, synchronization, and Learnable Meta clues require `server/serve.py`.
 
 ## Updating
 
@@ -72,6 +72,50 @@ If you use the ZIP, extract the new version and copy the old `data/` folder into
 > When updating an older Git clone for the first time, back up `data/`, run `git restore data/maps.json`, pull the update, then restore the backup into `data/`. Later updates need only `git pull --ff-only`.
 
 The first launch after updating an older installation automatically moves `run/.map-making-app-sync.json` into `data/` and rebuilds the map index.
+
+## Development
+
+Players only need Python because the production build is committed in `dist/`. To change the frontend, install a supported Node.js version (20.19+, 22.12+, or 24+) and run:
+
+```bash
+npm ci
+npm run dev
+```
+
+Vite runs at `http://localhost:5173` and proxies `/api` and `/data` to the Python server. Start that server in a second terminal:
+
+```bash
+python server/serve.py --no-browser
+```
+
+Before committing frontend changes:
+
+```bash
+npm run build
+```
+
+That command performs the strict Svelte/TypeScript check and completely regenerates `dist/`. Do not edit `dist/` by hand.
+
+### Repository structure
+
+```text
+OhneGuessr/
+|-- src/                 Svelte 5 + TypeScript source and regular CSS
+|   |-- game/            round lifecycle, panorama, scoring, compass
+|   |-- maps/            MapLibre maps and map library
+|   |-- plugins/         optional sync and clue integrations
+|   `-- settings/        settings and keybindings UI
+|-- public/              copied assets, vendored runtime, and notices
+|-- server/              standard-library Python server and sync backends
+|-- data/                local user maps and credentials (Git-ignored)
+|-- dist/                generated, ready-to-run production app (tracked)
+|-- run/                 Windows launch and stop scripts
+|-- index.html           Vite development entry point
+|-- package.json         frontend scripts and pinned dependencies
+`-- vite.config.ts       build, asset base, and development proxy
+```
+
+Keeping source and `dist/` in one repository is intentional: contributors get the complete project, while players can clone or download the same repository and run it without installing Node.js.
 
 ## Usage
 
@@ -193,7 +237,7 @@ A JSON array of location objects. Each needs `lat` and `lng`; `panoid`, `heading
 
 ### "Could not save the map. Is the local server (run/serve.bat) running?"
 
-The upload went to a server that can't write files. Make sure you started the game with `run/serve.bat` (or `python src/serve/serve.py`) and that the browser is on `http://localhost:8000`, not a `file://` path or some other server.
+The upload went to a server that can't write files. Make sure you started the game with `run/serve.bat` (or `python server/serve.py`) and that the browser is on `http://localhost:8000`, not a `file://` path or some other server.
 
 ### Panoramas don't load, or stay blurry / black
 
@@ -203,11 +247,11 @@ The upload went to a server that can't write files. Make sure you started the ga
 
 ### Browser opened but the page is blank or errors in the console
 
-You probably opened `src/index.html` directly. Run `run/serve.bat` / `python src/serve/serve.py` and use the `http://localhost:8000` URL instead.
+You probably opened an HTML file directly or downloaded a copy without `dist/`. Run `run/serve.bat` / `python server/serve.py` and use the `http://localhost:8000` URL instead.
 
 ### Port 8000 is already in use
 
-That usually means a server is already running. `src/serve/serve.py` notices this and just opens the browser instead of starting a second one. If something *else* is on 8000, stop it (or stop the old game with `run/stop.bat`).
+That usually means a server is already running. `server/serve.py` notices this and just opens the browser instead of starting a second one. If something *else* is on 8000, stop it (or stop the old game with `run/stop.bat`).
 
 ### `pythonw` not found
 

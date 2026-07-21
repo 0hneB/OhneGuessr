@@ -1,0 +1,1286 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Default accent; the Display picker overrides these four at runtime. */
+  --accent: #22c55e;        /* base accent */
+  --accent-strong: #16a34a; /* hover / pressed */
+  --accent-ink: #06240f;    /* text/icon on top of the accent */
+  --accent-rgb: 34, 197, 94; /* for rgba() tints */
+  --settings-bg: #181818;
+  --result-marker-filter:
+    drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
+    drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
+    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4));
+
+  /* Translucent HUD background, mirroring the compass bar (compass.js CONFIG):
+     top layer = subtle dark bottom shade (no white highlight), bottom layer =
+     horizontal black fill that darkens toward the ends. No blur, to match the
+     canvas compass. */
+  --hud-bg:
+    linear-gradient(180deg,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0) 32%,
+      rgba(0, 0, 0, 0.06) 72%,
+      rgba(0, 0, 0, 0.16) 100%),
+    linear-gradient(90deg,
+      rgba(0, 0, 0, 0.58) 0%,
+      rgba(0, 0, 0, 0.60) 32%,
+      rgba(0, 0, 0, 0.54) 50%,
+      rgba(0, 0, 0, 0.62) 72%,
+      rgba(0, 0, 0, 0.68) 100%);
+  --hud-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --timer-top: 52px;
+}
+
+:root[data-compass-style="classic"] {
+  --timer-top: 12px;
+}
+
+/* Keep every scroll area compact and visually consistent. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+@supports selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+  *::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+    background: transparent;
+  }
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner { background: transparent; }
+  *::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
+    -webkit-appearance: none;
+  }
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #111;
+  color: #fff;
+}
+
+#pano {
+  position: fixed;
+  inset: 0;
+}
+
+/* Hide Street View's chrome: the Google logo (bottom-left) and the copyright /
+   Terms / Report / keyboard-shortcuts bar (bottom-right). */
+#pano img[alt="Google"],
+#pano .gm-style-cc,
+#pano button[aria-label="Keyboard shortcuts"] {
+  display: none !important;
+}
+
+/* opensv draws a blue focus ring when the pano is focused on each round load. */
+#pano .mapsImagerySceneScene__focusOutline {
+  display: none !important;
+}
+#pano *:focus {
+  outline: none !important;
+}
+
+.svg-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  flex: none;
+  background: currentColor;
+  vertical-align: -0.12em;
+  -webkit-mask-image: var(--icon-url);
+  mask-image: var(--icon-url);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.settings-icon { --icon-url: url("/icons/settings.svg"); }
+.unlimited-icon { --icon-url: url("/icons/unlimited.svg"); }
+.timer-icon { --icon-url: url("/icons/timer.svg"); }
+.search-icon { --icon-url: url("/icons/search.svg"); }
+.folder-icon { --icon-url: url("/icons/folder.svg"); }
+.refresh-icon { --icon-url: url("/icons/refresh.svg"); }
+.sync-icon { --icon-url: url("/icons/sync.svg"); }
+.pencil-icon { --icon-url: url("/icons/pencil.svg"); }
+.rm-bookmark-icon { --icon-url: url("/icons/rm-bookmark.svg"); }
+.info-icon { --icon-url: url("/icons/info.svg"); }
+.link-icon { --icon-url: url("/icons/link.svg"); }
+.close-icon { --icon-url: url("/icons/close.svg"); }
+.chevron-icon { --icon-url: url("/icons/chevron.svg"); }
+.reset-icon { --icon-url: url("/icons/reset.svg"); }
+/* Render past the clipped frame so MapLibre fetches the next tile ring before
+   it enters view. The low-resolution basemap below covers any slower tile. */
+.map-viewport {
+  --map-overscan: 128px;
+  position: relative;
+  overflow: hidden;
+}
+.map-overscan {
+  position: absolute;
+  inset: calc(0px - var(--map-overscan));
+}
+.map-overscan .maplibregl-ctrl-top-left {
+  top: var(--map-overscan);
+  left: var(--map-overscan);
+}
+.map-overscan .maplibregl-ctrl-top-right {
+  top: var(--map-overscan);
+  right: var(--map-overscan);
+}
+.map-overscan .maplibregl-ctrl-bottom-left {
+  bottom: var(--map-overscan);
+  left: var(--map-overscan);
+}
+.map-overscan .maplibregl-ctrl-bottom-right {
+  right: var(--map-overscan);
+  bottom: var(--map-overscan);
+}
+
+/* MapLibre fills its canvas during panel resizes; JS swaps to grabbing/pointer. */
+.maplibregl-map { background: #1b1b1b; }
+.maplibregl-canvas { cursor: crosshair; }
+.maplibregl-canvas:focus { outline: none; }
+
+/* Top HUD pills — same recipe as the compass HUD: 32px tall, the gradient HUD
+   background and drop shadow, no blur. */
+.hud-pill {
+  position: fixed;
+  top: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 32px;
+  padding: 0 15px;
+  background: var(--hud-bg);
+  border-radius: 16px;
+  box-shadow: var(--hud-shadow);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #fbfbfd;
+  z-index: 500;
+  white-space: nowrap;
+}
+.hud-pill b { color: #fff; font-weight: 800; }
+#topLeft { left: 54px; }
+#scoreBox { right: 14px; }
+#rounds.rounds-unlimited {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: text-bottom;
+}
+
+#rounds .unlimited-icon {
+  width: 18px;
+  height: 18px;
+  transform: translateY(1px);
+}
+
+/* Round timer — centred just below the compass; turns red in the last seconds. */
+#timerBox {
+  left: 50%;
+  top: var(--timer-top);
+  transform: translateX(-50%);
+  gap: 6px;
+  padding-left: 12px; /* the icon glyph has transparent margin; trim to balance */
+}
+#timerBox .timer-icon { width: 15px; height: 15px; } /* inherits currentColor (red when .low) */
+#timerBox.low { color: #fca5a5; }
+#timerBox.low b { color: #f87171; }
+
+/* 'H' on the guess page leaves only the panorama. */
+body.ui-hidden #settingsBtn,
+body.ui-hidden #topLeft,
+body.ui-hidden #compass-hud,
+body.ui-hidden #classicCompass,
+body.ui-hidden #timerBox,
+body.ui-hidden #scoreBox,
+body.ui-hidden #guessPanel { display: none !important; }
+
+/* OpenSV injects Street View navigation arrows as SVG paths. */
+body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+body.empty-mode #topLeft,
+body.empty-mode #compass-hud,
+body.empty-mode #classicCompass,
+body.empty-mode #timerBox,
+body.empty-mode #scoreBox,
+body.empty-mode #guessPanel { display: none !important; }
+
+/* Compass HUD: the heading bar stays top-centre; the classic needle sits bottom-left. */
+#compass-hud {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  display: none;
+  transform: translateX(-50%);
+  cursor: pointer;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
+  z-index: 500;
+}
+
+.classic-compass {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  display: none;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  place-items: center;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow:
+    inset 0 0 0 12px rgba(246, 249, 251, 0.32),
+    0 2px 5px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  transition: box-shadow 80ms ease-out;
+  z-index: 500;
+}
+
+.classic-compass:hover {
+  box-shadow:
+    inset 0 0 0 12px rgba(246, 249, 251, 0.4),
+    0 2px 5px rgba(0, 0, 0, 0.22);
+}
+
+.classic-compass:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 2px;
+}
+
+.classic-compass-needle {
+  width: 48px;
+  height: 48px;
+  transform-box: view-box;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.classic-compass-north { fill: var(--accent); }
+.classic-compass-south { fill: #d8dee4; }
+
+:root[data-compass-style="bar"] #compass-hud,
+:root[data-compass-style="both"] #compass-hud {
+  display: block;
+}
+
+:root[data-compass-style="classic"] .classic-compass,
+:root[data-compass-style="both"] .classic-compass {
+  display: grid;
+}
+
+/* Guess panel (bottom-right, expands on hover) */
+#guessPanel {
+  --guess-map-h: 190px;
+  --guess-button-h: 44px;
+  --guess-map-expanded-h: min(42vh, 420px);
+  --guess-map-expanded-w: min(46vw, 560px);
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  width: 300px;
+  height: calc(var(--guess-map-h) + 8px + var(--guess-button-h));
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0.62;
+  overflow: visible;
+  transform-origin: bottom right;
+  transition: opacity 0.08s ease;
+}
+#guessPanel[data-map-size="large"] {
+  --guess-map-expanded-h: min(56vh, 560px);
+  --guess-map-expanded-w: min(60vw, 760px);
+}
+#guessPanel[data-map-size="xl"] {
+  --guess-map-expanded-h: min(70vh, 700px);
+  --guess-map-expanded-w: min(74vw, 960px);
+}
+#guessPanel[data-map-size="xxl"] {
+  --guess-map-expanded-h: min(82vh, 820px);
+  --guess-map-expanded-w: min(86vw, 1120px);
+}
+#guessPanel:hover,
+#guessPanel.pinned { opacity: 1; }
+#guessPanel:hover,
+#guessPanel.pinned {
+  --guess-map-h: var(--guess-map-expanded-h);
+  width: var(--guess-map-expanded-w);
+}
+
+#map {
+  width: 100%;
+  height: var(--guess-map-h);
+  flex: none;
+  border-radius: 10px;
+  border: 2px solid rgba(24, 24, 24, 0.7);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transition:
+    border-radius 0.08s ease,
+    border-color 0.11s ease,
+    box-shadow 0.11s ease;
+}
+
+#guessBtn {
+  width: 100%;
+  height: var(--guess-button-h);
+  flex: none;
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+#guessBtn:hover:not(:disabled) { background: var(--accent-strong); }
+#guessBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* In-page fullscreen map mode (F): keep HUD/settings visible above it. */
+#guessPanel.map-fullscreen {
+  left: 0;
+  top: 0;
+  right: auto;
+  bottom: auto;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 450;
+  opacity: 1;
+  gap: 0;
+  overflow: hidden;
+  transition: opacity 0.08s ease;
+}
+#guessPanel.map-fullscreen:hover {
+  --guess-map-h: 190px;
+  width: 100vw;
+}
+#guessPanel.map-fullscreen #map,
+#guessPanel.map-fullscreen:hover #map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+#guessPanel.map-fullscreen #guessBtn {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 2;
+  width: min(360px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* Settings */
+#settingsBtn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 700;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  line-height: 1;
+  color: #fbfbfd;
+  background: var(--hud-bg);
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  box-shadow: var(--hud-shadow);
+}
+/* Darken with an overlay so the gradient underneath is preserved. */
+#settingsBtn:hover {
+  background: linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), var(--hud-bg);
+}
+#settingsBtn .settings-icon {
+  width: 18px;
+  height: 18px;
+}
+
+#settings {
+  position: fixed;
+  inset: 0;
+  z-index: 850;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+.settings-card {
+  display: flex;
+  flex-direction: column;
+  width: min(92vw, 380px);
+  max-height: 88vh;            /* never taller than the viewport... */
+  background: var(--settings-bg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  overflow: hidden;           /* ...clip the scroll body to the rounded corners */
+}
+.settings-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 48px;
+  padding: 20px 22px 0;
+}
+.settings-head-controls {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+
+/* Tab bar */
+.settings-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 14px 22px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.settings-tab {
+  flex: 1;
+  padding: 9px 6px;
+  margin-bottom: -1px;        /* sit the underline on the bar's border */
+  font-size: 13px;
+  font-weight: 600;
+  color: #9aa3ad;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.settings-tab:hover { color: #fff; }
+.settings-tab.active { color: #fff; border-bottom-color: var(--accent); }
+
+/* Scrollable panel body. A fixed height keeps the window the SAME size on every
+   tab (independent of how much a given tab holds); tall tabs scroll inside it. */
+.settings-body {
+  height: clamp(340px, 62vh, 520px);
+  overflow-y: auto;
+  padding: 18px 22px 12px;
+}
+.settings-panel[hidden] { display: none; }
+.settings-panel .setting:last-child { margin-bottom: 0; }
+.settings-head h2 { font-size: 18px; }
+#settingsClose {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+}
+#settingsClose .svg-icon { width: 18px; height: 18px; }
+#settingsClose:hover { color: #fff; }
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.setting span { opacity: 0.8; }
+.setting select {
+  padding: 10px;
+  font-size: 14px;
+  color: #fff;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.setting-sub { font-size: 11px; font-weight: 400; opacity: 0.6; }
+
+.setting-color {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+.accent-color-actions { display: flex; align-items: center; gap: 6px; }
+.setting-color input {
+  width: 46px;
+  height: 30px;
+  padding: 3px;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.setting-color input::-webkit-color-swatch { border: none; border-radius: 5px; }
+.setting-color input::-moz-color-swatch { border: none; border-radius: 5px; }
+.settings-action.accent-reset { margin: 0; padding: 6px 10px; }
+
+.setting-toggle {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  cursor: pointer;
+}
+.setting-toggle.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.setting-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #cbd2dd;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.setting-toggle input:checked + .switch {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.setting-toggle input:checked + .switch::after {
+  transform: translateX(20px);
+  background: var(--accent-ink);
+}
+
+/* Segmented switch (4-option toggle) used for rounds + time limit. */
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+}
+.segmented button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd2dd;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.segmented button:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.segmented button.active { background: var(--accent); color: var(--accent-ink); }
+.segmented button.active .svg-icon { background: var(--accent-ink); }
+.segmented .unlimited-icon {
+  width: 19px;
+  height: 19px;
+}
+.seg-custom {
+  padding: 10px;
+  font-size: 14px;
+  color: #fff;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  -moz-appearance: textfield;  /* hide the number spinner (Firefox) */
+  appearance: textfield;
+}
+/* hide the number spinner (Chrome/Edge/Safari) */
+.seg-custom::-webkit-outer-spin-button,
+.seg-custom::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.seg-custom::placeholder { color: #6b7280; }
+
+.setting-range-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.setting-range-head label { opacity: 0.8; }
+.setting-range output {
+  min-width: 32px;
+  color: #cbd2dd;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.setting-range input[type="range"] {
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  accent-color: var(--accent);
+  background: transparent;
+  cursor: pointer;
+}
+.setting-range input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0 var(--range-progress),
+    rgba(255, 255, 255, 0.16) var(--range-progress) 100%
+  );
+}
+.setting-range input[type="range"]::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--accent);
+  border: 2px solid #181818;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+.setting-range input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.16);
+  border: none;
+  border-radius: 999px;
+}
+.setting-range input[type="range"]::-moz-range-progress {
+  height: 4px;
+  background: var(--accent);
+  border-radius: 999px;
+}
+.setting-range input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border: 2px solid #181818;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+.setting-range input[type="range"]:focus-visible { outline: none; }
+.setting-range input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.28);
+}
+.setting-range input[type="range"]:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.28);
+}
+
+/* Editable keyboard shortcuts (Controls tab) */
+#panel-controls {
+  position: relative;
+  min-height: 100%;
+  padding-bottom: 28px;
+}
+.key-list { display: flex; flex-direction: column; gap: 6px; }
+.key-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.key-row-name { font-size: 13px; opacity: 0.85; }
+.key-cap {
+  min-width: 70px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.key-cap-group {
+  display: grid;
+  grid-template-columns: repeat(4, 42px);
+  gap: 4px;
+}
+.key-cap.key-cap-compact {
+  width: 42px;
+  min-width: 0;
+  padding-inline: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.key-cap:hover { border-color: rgba(255, 255, 255, 0.35); }
+.key-cap.unbound { color: #6b7280; font-weight: 600; }
+.key-cap.capturing {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.settings-info-link {
+  display: block;
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+  line-height: 0;
+}
+.settings-info-link:visited,
+.settings-info-link:hover,
+.settings-info-link:active { color: var(--accent); }
+.settings-info-link .info-icon { width: 20px; height: 20px; }
+.controls-info-link {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+.controls-reset {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+}
+.controls-reset .svg-icon { width: 20px; height: 20px; }
+.settings-action {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #cbd2dd;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.settings-action:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.settings-action:disabled { opacity: 0.45; cursor: default; }
+.settings-action:disabled:hover { color: #cbd2dd; background: rgba(255, 255, 255, 0.06); }
+.icon-action {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #8a8a8a;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.icon-action:hover { color: var(--accent); }
+.icon-action:disabled { opacity: 0.45; cursor: default; }
+.icon-action:disabled:hover { color: #8a8a8a; }
+.icon-action .svg-icon { width: 17px; height: 17px; }
+.map-library-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 6px;
+}
+.map-library-actions .icon-action,
+.sync-actions .icon-action { flex: none; width: 24px; height: 24px; }
+.map-search {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 4px;
+}
+.map-search-input {
+  flex: 0 1 120px;
+  width: 120px;
+  min-width: 60px;
+  height: 28px;
+  padding: 4px 9px;
+  color: #fff;
+  background: #101010;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+}
+.map-search-input:focus { outline: none; border-color: var(--accent); }
+.map-search-input::-webkit-search-cancel-button {
+  width: 12px;
+  height: 12px;
+  margin-left: 5px;
+  -webkit-appearance: none;
+  background: #9aa3ad;
+  -webkit-mask: url("/icons/close.svg") center / contain no-repeat;
+  cursor: pointer;
+}
+.map-search-input::-webkit-search-cancel-button:hover { background: #fff; }
+.map-search-empty {
+  padding: 24px 8px;
+  color: #8a929d;
+  font-size: 12px;
+  text-align: center;
+}
+
+.settings-note { font-size: 12px; opacity: 0.55; line-height: 1.45; }
+
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: center;
+  border: 1.5px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.drop-zone:hover { border-color: rgba(var(--accent-rgb), 0.6); background: rgba(var(--accent-rgb), 0.06); }
+.drop-zone.dragover { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.12); }
+.drop-zone b { font-size: 13px; }
+.drop-zone small { font-size: 11px; opacity: 0.55; }
+.drop-zone-large {
+  min-height: 132px;
+  padding: 24px;
+}
+.drop-zone-large b { font-size: 16px; }
+.drop-zone-large small { font-size: 12px; }
+
+/* First-run map import */
+#emptyState {
+  position: fixed;
+  inset: 0;
+  z-index: 820;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.72);
+}
+.empty-card {
+  width: min(92vw, 440px);
+  padding: 26px;
+  background: rgba(24, 24, 24, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+}
+.empty-card h1 {
+  margin-bottom: 18px;
+  font-size: 24px;
+  line-height: 1.1;
+}
+#emptyUploadInfo {
+  margin-top: 10px;
+  min-height: 18px;
+}
+#emptySettingsBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 42px;
+  margin-top: 14px;
+  color: #cbd2dd;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+#emptySettingsBtn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+#emptySettingsBtn .settings-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Map library list */
+.map-list {
+  flex: 1 1 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 120px;
+  overflow-y: auto;
+  margin: 0 -18px 0 0;
+  padding-right: 6px;
+}
+.map-folder-row {
+  --tree-depth: 0;
+  flex: 0 0 auto;
+  display: flex;
+  min-height: 34px;
+}
+.map-folder-main {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px 7px calc(8px + var(--tree-depth) * 15px);
+  color: #cbd2dd;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+.map-folder-main:not(:disabled):hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+.map-folder-main:disabled { cursor: default; }
+.map-folder-chevron {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  transition: transform 0.12s ease;
+}
+.map-folder-row.open > .map-folder-main .map-folder-chevron { transform: rotate(90deg); }
+.map-folder-icon { width: 16px; height: 16px; flex: none; color: var(--accent); }
+.map-folder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 650;
+}
+.map-folder-count { flex: none; font-size: 10px; color: #737b86; }
+.map-row {
+  --tree-depth: 0;
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.map-row:hover { border-color: rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.05); }
+.map-row.selected { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.08); }
+.map-row-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px 10px calc(12px + var(--tree-depth) * 15px);
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.map-row-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.map-row-count {
+  flex: none;
+  font-size: 11px;
+  color: #9aa3ad;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.map-row-del {
+  flex: none;
+  width: 34px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: none;
+  color: #8a8a8a;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.map-row-del .svg-icon { width: 14px; height: 14px; }
+.map-row-del:hover { color: #f87171; }
+.map-row-edit {
+  flex: none;
+  width: 32px;
+  padding-left: 8px; /* nudge the pencil slightly right */
+}
+.map-row-edit .svg-icon { width: 14px; height: 14px; }
+.map-row-rename-input {
+  position: absolute;
+  left: calc(4px + var(--tree-depth) * 15px);
+  top: 4px;
+  bottom: 4px;
+  right: 70px; /* clear the edit (32px) + delete (34px) buttons on the right */
+  padding: 0 10px;
+  background: #101010;
+  border: 1px solid rgba(var(--accent-rgb), 0.6);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.map-row-rename-input:focus { outline: none; border-color: var(--accent); }
+.settings-note:empty { display: none; }
+
+/* Optional map synchronization. Cached maps remain available while disabled. */
+#panel-maps:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.maps-bottom { flex: none; padding-top: 10px; }
+.sync-section {
+  margin-top: 17px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+#panel-sync > .sync-plugin-mount:first-child > .sync-section {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.sync-toggle { margin: 0; font-size: 13px; }
+.sync-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.sync-account-row { display: flex; align-items: center; gap: 10px; }
+.sync-account { flex: 1; min-width: 0; font-size: 12px; color: #cbd2dd; }
+.sync-account:empty { display: none; }
+.sync-key-form { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+.sync-key-form input {
+  min-width: 0;
+  padding: 9px 10px;
+  color: #fff;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.sync-key-form input:focus { outline: none; border-color: var(--accent); }
+.sync-key-form .settings-action { margin: 0; }
+.sync-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.sync-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 20px;
+  margin-top: 10px;
+}
+.sync-status { flex: 1; min-width: 0; }
+.sync-status.error { color: #f87171; opacity: 0.9; }
+.sync-info-link {
+  flex: none;
+  margin-left: auto;
+}
+
+/* Round result (fullscreen map + floating panel) */
+#resultScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 750;
+  background: #0b0b0b;
+}
+#resultMap { position: absolute; inset: 0; }
+#resultPanel {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 760;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 30px;
+  background: rgba(17, 17, 17, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  backdrop-filter: blur(6px);
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.result-dist { font-size: 15px; opacity: 0.85; }
+.result-dist b { font-size: 22px; font-weight: 800; color: #fff; }
+.result-points { font-size: 14px; }
+.result-points b { font-size: 20px; font-weight: 800; color: var(--accent); }
+.result-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.result-actions button {
+  padding: 11px 28px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#nextBtn {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: none;
+}
+#nextBtn:hover { background: var(--accent-strong); }
+#endGameBtn {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+#endGameBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.reveal-map { position: absolute; inset: 0; }
+
+/* Final screen — fullscreen summary map with a floating results card */
+#final {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  background: #0b0b0b;
+}
+#finalMap { position: absolute; inset: 0; }
+.final-card {
+  position: absolute;
+  left: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 810;
+  display: flex;
+  flex-direction: column;
+  width: min(86vw, 320px);
+  max-height: calc(100vh - 56px);
+  text-align: center;
+  padding: 24px 28px;
+  background: rgba(17, 17, 17, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.final-card h1 { font-size: 24px; margin-bottom: 8px; }
+.final-score { font-size: 30px; font-weight: 800; color: var(--accent); margin-bottom: 14px; }
+
+.final-rounds {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  margin-bottom: 20px;
+  overflow-y: auto;
+}
+.final-round {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+  padding: 7px 12px;
+  font-family: inherit;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.final-round:hover { background: rgba(255, 255, 255, 0.08); }
+.final-round.selected {
+  background: rgba(var(--accent-rgb), 0.1);
+  border-color: rgba(var(--accent-rgb), 0.65);
+}
+.final-round:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.final-round.selected .fr-no { color: var(--accent); }
+.fr-no { color: #9aa3ad; font-weight: 700; text-align: left; }
+.fr-dist { color: #cbd2dd; text-align: left; }
+.fr-pts { color: var(--accent); font-weight: 800; }
+#playAgain {
+  align-self: center;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+#playAgain:hover { background: var(--accent-strong); }
+
+/* On narrow screens the side card leaves no usable map beside it. Treat it as
+   a compact bottom sheet so the reveal camera can keep every result above it. */
+@media (max-width: 700px) {
+  .final-card {
+    left: 50%;
+    top: auto;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: min(calc(100vw - 32px), 420px);
+    max-height: min(46vh, calc(100vh - 32px));
+    padding: 18px 20px;
+  }
+  .final-score { margin-bottom: 10px; }
+  .final-rounds { margin-bottom: 12px; }
+}
+
+/* Loading overlay */
+#loading {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  grid-auto-flow: row;
+  background: rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+#loading p { font-size: 14px; opacity: 0.85; max-width: 320px; }
+.spinner {
+  width: 42px;
+  height: 42px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.hidden { display: none !important; }

@@ -1,4 +1,6 @@
 run/.map-making-app-sync.json
+node_modules/
+*.tsbuildinfo
 __pycache__/
 /data/*
 !/data/.gitkeep
