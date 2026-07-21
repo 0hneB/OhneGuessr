@@ -132,7 +132,7 @@ html, body {
   position: relative;
   overflow: hidden;
 }
-.map-overscan {
+.map-overscan.maplibregl-map {
   position: absolute;
   inset: calc(0px - var(--map-overscan));
 }
