@@ -26,8 +26,7 @@ export const ui = $state({
   timerRemaining: 0,
   timerLow: false,
   selectedFinalRound: null as number | null,
-  hudHidden: false,
-  stopped: false
+  hudHidden: false
 });
 
 export const gameActions = {

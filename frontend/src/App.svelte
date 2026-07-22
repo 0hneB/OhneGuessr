@@ -34,14 +34,7 @@
   }
 </script>
 
-<svelte:body class:empty-mode={ui.empty} class:ui-hidden={ui.hudHidden} class:app-stopped={ui.stopped} />
-
-<div id="stoppedState" class:hidden={!ui.stopped} role="status">
-  <div class="stopped-card">
-    <h1>OhneGuessr has stopped</h1>
-    <p>You can close this tab.</p>
-  </div>
-</div>
+<svelte:body class:empty-mode={ui.empty} class:ui-hidden={ui.hudHidden} />
 
 <div id="pano"></div>
 

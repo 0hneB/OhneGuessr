@@ -2,3 +2,10 @@ node_modules/
 *.tsbuildinfo
 /bin/
 /data/
+/.cache/
+/frontend/.wailsjs/
+/build/bin/
+/build/windows/*.syso
+/build/windows/installer/wails_tools.nsh
+/build/windows/installer/tmp/
+/frontend/package.json.md5

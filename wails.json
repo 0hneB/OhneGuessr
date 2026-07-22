@@ -1,0 +1,22 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "OhneGuessr",
+  "outputfilename": "OhneGuessr.exe",
+  "assetdir": "frontend/dist",
+  "frontend:dir": "frontend",
+  "frontend:install": "npm ci",
+  "frontend:build": "npm run build",
+  "frontend:dev:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "wailsjsdir": "frontend/.wailsjs",
+  "author": {
+    "name": "OhneB"
+  },
+  "info": {
+    "companyName": "OhneB",
+    "productName": "OhneGuessr",
+    "productVersion": "0.0.0",
+    "copyright": "Copyright (c) 2026 OhneB",
+    "comments": "A free, lean, local GeoGuessr alternative."
+  }
+}
