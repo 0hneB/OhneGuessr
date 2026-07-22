@@ -958,7 +958,10 @@ body.empty-mode #guessPanel { display: none !important; }
   flex-direction: column;
   gap: 6px;
   min-height: 120px;
+  margin-right: -22px;
+  padding-right: 19px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 .map-folder-row {
   --tree-depth: 0;
