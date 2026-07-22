@@ -4,6 +4,7 @@ node_modules/
 /data/
 /.cache/
 /frontend/.wailsjs/
+/frontend/dist/
 /build/bin/
 /build/windows/*.syso
 /build/windows/installer/wails_tools.nsh
