@@ -3,8 +3,13 @@ type WailsRuntime = {
   Quit(): void;
   WindowFullscreen(): void;
   WindowIsFullscreen(): Promise<boolean>;
+  WindowIsMaximised(): Promise<boolean>;
+  WindowMaximise(): void;
   WindowUnfullscreen(): void;
+  WindowUnmaximise(): void;
 };
+
+let restoreMaximised = false;
 
 declare global {
   interface Window {
@@ -16,9 +21,22 @@ export function quitApplication() {
   window.runtime?.Quit();
 }
 
-export function setFullscreen(enabled: boolean) {
-  if (enabled) window.runtime?.WindowFullscreen();
-  else window.runtime?.WindowUnfullscreen();
+export async function setFullscreen(enabled: boolean) {
+  const runtime = window.runtime;
+  if (!runtime) return;
+
+  if (enabled) {
+    restoreMaximised = await runtime.WindowIsMaximised();
+    runtime.WindowFullscreen();
+  } else {
+    runtime.WindowUnfullscreen();
+    if (restoreMaximised) {
+      setTimeout(() => {
+        runtime.WindowUnmaximise();
+        setTimeout(() => runtime.WindowMaximise(), 50);
+      }, 50);
+    }
+  }
 }
 
 export async function isFullscreen() {
