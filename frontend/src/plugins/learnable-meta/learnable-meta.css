@@ -1,4 +1,8 @@
-.lm-map-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto; }
+.lm-map-form {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto;
+  align-items: center;
+}
+.lm-map-add { width: 24px; height: 24px; }
 
 .lm-clue-window {
   position: fixed;
@@ -54,7 +58,3 @@
 .lm-clue-image-nav.previous { left: 7px; }
 .lm-clue-image-nav.next { right: 7px; }
 .lm-clue-image-count { position: absolute; right: 8px; bottom: 7px; padding: 3px 7px; background: rgba(0, 0, 0, 0.68); border-radius: 4px; font-size: 11px; }
-
-@media (max-width: 620px) {
-  .lm-map-form { grid-template-columns: 1fr; }
-}

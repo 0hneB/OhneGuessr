@@ -117,6 +117,7 @@ html, body {
 .search-icon { --icon-url: url("/icons/search.svg"); }
 .folder-icon { --icon-url: url("/icons/folder.svg"); }
 .refresh-icon { --icon-url: url("/icons/refresh.svg"); }
+.plus-icon { --icon-url: url("/icons/plus.svg"); }
 .sync-icon { --icon-url: url("/icons/sync.svg"); }
 .pencil-icon { --icon-url: url("/icons/pencil.svg"); }
 .rm-bookmark-icon { --icon-url: url("/icons/rm-bookmark.svg"); }

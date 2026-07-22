@@ -87,12 +87,7 @@
   });
 </script>
 
-<svelte:window onkeydown={(event) => {
-  if (event.key === 'Escape' && ui.settingsOpen) closeSettings();
-}} />
-
 <div id="settings" role="presentation" class:hidden={!ui.settingsOpen}
-     onkeydown={(event) => { if (event.key === 'Escape') closeSettings(); }}
      onclick={(event) => { if (event.target === event.currentTarget) closeSettings(); }}>
   <div class="settings-card">
     <div class="settings-head">
