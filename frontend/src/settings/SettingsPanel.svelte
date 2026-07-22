@@ -146,12 +146,15 @@
            hidden={ui.settingsTab !== 'display'}>
         <label class="setting">
           <span>Map style</span>
-          <select value={settings.mapStyle}
-                  onchange={(event) => gameActions.setMapStyle(event.currentTarget.value)}>
-            {#each Object.entries(MAP_STYLES) as [key, style]}
-              <option value={key}>{style.name}</option>
-            {/each}
-          </select>
+          <div class="map-style-select">
+            <select value={settings.mapStyle}
+                    onchange={(event) => gameActions.setMapStyle(event.currentTarget.value)}>
+              {#each Object.entries(MAP_STYLES) as [key, style]}
+                <option value={key}>{style.name}</option>
+              {/each}
+            </select>
+            <span class="svg-icon chevron-icon" aria-hidden="true"></span>
+          </div>
         </label>
         <div class="setting">
           <span>Expanded map size</span>

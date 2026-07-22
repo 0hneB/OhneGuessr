@@ -517,13 +517,30 @@ body.empty-mode #guessPanel { display: none !important; }
 }
 .setting span { opacity: 0.8; }
 .setting select {
-  padding: 10px;
-  font-size: 14px;
+  width: 100%;
+  padding: 8px 38px 8px 10px;
+  appearance: none;
+  font-size: 13px;
   color: #fff;
   background: #222;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
   cursor: pointer;
+}
+.setting select:focus { outline: none; }
+.map-style-select { position: relative; width: 100%; }
+.map-style-select .chevron-icon {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: transform 0.15s ease;
+}
+.map-style-select select:open + .chevron-icon {
+  transform: translateY(-50%) rotate(90deg);
 }
 .setting-sub { font-size: 11px; font-weight: 400; opacity: 0.6; }
 
@@ -603,6 +620,7 @@ body.empty-mode #guessPanel { display: none !important; }
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 27px;
   padding: 4px 6px;
   font-size: 13px;
   font-weight: 600;
