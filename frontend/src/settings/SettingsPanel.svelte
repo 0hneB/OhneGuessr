@@ -176,8 +176,11 @@
           <div class="accent-color-actions">
             <input type="color" value={settings.accentColor} aria-label="Accent color"
                    oninput={(event) => gameActions.setAccentColor(event.currentTarget.value)} />
-            <button type="button" class="settings-action accent-reset"
-                    onclick={() => gameActions.setAccentColor(DEFAULT_ACCENT_COLOR)}>Reset</button>
+            <button type="button" class="icon-action accent-reset"
+                    aria-label="Reset accent color" title="Reset accent color"
+                    onclick={() => gameActions.setAccentColor(DEFAULT_ACCENT_COLOR)}>
+              <span class="svg-icon reset-icon" aria-hidden="true"></span>
+            </button>
           </div>
         </div>
         <label class="setting setting-toggle" title="Use the widest view at the start of each round">
