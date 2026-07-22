@@ -1014,6 +1014,7 @@ body.empty-mode #guessPanel { display: none !important; }
   overflow: hidden;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
+.map-row.nested { margin-left: calc(var(--tree-depth) * 15px); }
 .map-row:hover { border-color: rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.05); }
 .map-row.selected { border-color: rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.08); }
 .map-row-main {
@@ -1022,7 +1023,7 @@ body.empty-mode #guessPanel { display: none !important; }
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px 10px calc(12px + var(--tree-depth) * 15px);
+  padding: 10px 12px;
   background: none;
   border: none;
   color: #fff;
@@ -1030,6 +1031,7 @@ body.empty-mode #guessPanel { display: none !important; }
   text-align: left;
   cursor: pointer;
 }
+.map-row.nested .map-row-main { padding-block: 8px; }
 .map-row-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-row-count {
   flex: none;
@@ -1060,7 +1062,7 @@ body.empty-mode #guessPanel { display: none !important; }
 .map-row-edit .svg-icon { width: 14px; height: 14px; }
 .map-row-rename-input {
   position: absolute;
-  left: calc(4px + var(--tree-depth) * 15px);
+  left: 4px;
   top: 4px;
   bottom: 4px;
   right: 70px; /* clear the edit (32px) + delete (34px) buttons on the right */
