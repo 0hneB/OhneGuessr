@@ -58,7 +58,8 @@
       </div>
     {:else}
       <div class="map-row" class:selected={row.map.key === gameState.currentKey}
-           class:managed={row.map.managed} style={`--tree-depth: ${row.depth}`}>
+           class:managed={row.map.managed} class:nested={row.depth > 0}
+           style={`--tree-depth: ${row.depth}`}>
         <button class="map-row-main"
                 style:visibility={libraryUi.renamingKey === row.map.key ? 'hidden' : 'visible'}
                 onclick={() => { closeSettings(); void selectMap(row.map.key); }}>
