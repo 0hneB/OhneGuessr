@@ -103,11 +103,12 @@ API keys stay only in `plugin-data/`; they are never included in `maps.json` or 
 | <kbd>F</kbd> | Toggle the fullscreen map |
 | <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>4</kbd> | Select expanded map size |
 | <kbd>H</kbd> | Hide / show the interface |
+| <kbd>Esc</kbd> | Open / close settings |
 | Click map | Place or move a guess |
 | <kbd>Shift</kbd> + click map | Place and submit a guess |
 | Double-click map | Toggle the fullscreen map |
 
-Shortcuts are rebindable under **Settings -> Controls**.
+Gameplay bindings are rebindable under **Settings -> Controls**.
 
 ## Development
 

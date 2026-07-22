@@ -22,6 +22,12 @@
     }
   }
 
+  function handleEscape(event: KeyboardEvent) {
+    if (event.key !== 'Escape' || event.repeat || event.defaultPrevented) return;
+    event.preventDefault();
+    toggleSettings();
+  }
+
   function openMapSettings() {
     setUploadMessage('');
     selectSettingsTab('maps');
@@ -34,6 +40,7 @@
   }
 </script>
 
+<svelte:window onkeydown={handleEscape} />
 <svelte:body class:empty-mode={ui.empty} class:ui-hidden={ui.hudHidden} />
 
 <div id="pano"></div>

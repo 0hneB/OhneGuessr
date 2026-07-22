@@ -238,7 +238,10 @@
              placeholder="Local map name" aria-label="Local map name" disabled={busy || running} />
       <input bind:value={mapId} type="text" maxlength="200" autocomplete="off" spellcheck="false"
              placeholder="GeoGuessr ID" aria-label="Learnable Meta GeoGuessr ID" disabled={busy || running} />
-      <button type="submit" class="settings-action" disabled={busy || running}>Add map</button>
+      <button type="submit" class="icon-action lm-map-add" disabled={busy || running}
+              aria-label="Add map" title="Add map">
+        <span class="svg-icon plus-icon" aria-hidden="true"></span>
+      </button>
     </form>
   </div>
 </section>
