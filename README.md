@@ -146,7 +146,7 @@ Builds go to `build/bin/`. To build only the frontend, run:
 npm --prefix frontend run build
 ```
 
-The **Check** workflow can also build temporary Windows files from GitHub Actions. It does not create a release. The **Release** workflow only uploads files to an existing release.
+This creates the ignored `frontend/dist/` directory. The **Check** workflow runs source checks on pushes and pull requests; its temporary Windows package is manual. The **Release** workflow only uploads files to an existing release.
 
 ### Repository structure
 
@@ -157,7 +157,7 @@ OhneGuessr/
 |-- frontend/
 |   |-- src/               Svelte and TypeScript source
 |   |-- public/            static files and vendored OpenSV
-|   |-- dist/              built frontend
+|   |-- dist/              generated frontend (ignored)
 |   `-- package.json       frontend dependencies and scripts
 |-- internal/app/          Go backend and tests
 |-- main.go                Wails entry point
@@ -173,7 +173,7 @@ The release is unsigned. Verify that it came from this repository, optionally co
 
 ### The app window is blank
 
-Download the release executable rather than an individual source file. Source builds require a current tracked `frontend/dist/`, generated with `npm --prefix frontend run build`. Windows 10 also needs the Microsoft WebView2 Runtime; release builds embed its official bootstrapper and offer to install it when missing.
+Download the release executable rather than an individual source file. `wails dev` and `wails build` generate `frontend/dist/` automatically; build it first with `npm --prefix frontend run build` only when running Go directly. Windows 10 also needs the Microsoft WebView2 Runtime; release builds embed its official bootstrapper and offer to install it when missing.
 
 ### An update fails
 
