@@ -34,7 +34,7 @@
     if (actionMessage) return actionMessage;
     if (status?.error) return { text: status.error, error: true };
     if (!available) {
-      return { text: 'Start OhneGuessr with run/serve.bat to use sync.', error: true };
+      return { text: 'Start the OhneGuessr app to use sync.', error: true };
     }
     if (running) {
       const phases: Record<string, string> = {

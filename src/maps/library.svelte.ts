@@ -293,7 +293,7 @@ export async function readUpload(file: File) {
     setEmptyState(false);
     await selectMap(item.key);
   } catch {
-    setUploadMessage('Could not save the map. Is run/serve.bat running?');
+    setUploadMessage('Could not save the map. Is the OhneGuessr app running?');
   }
 }
 

@@ -705,6 +705,32 @@ body.empty-mode #guessPanel { display: none !important; }
   box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.28);
 }
 
+.app-quit {
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.settings-action.quit-action {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+.settings-action.quit-action:hover:not(:disabled) { background: rgba(239, 68, 68, 0.18); }
+
+#stoppedState {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #fff;
+  background: #111;
+}
+.stopped-card { text-align: center; }
+.stopped-card h1 { margin-bottom: 8px; font-size: 24px; }
+.stopped-card p { color: #aab2bd; }
+body.app-stopped { overflow: hidden; }
+
 /* Editable keyboard shortcuts (Controls tab) */
 #panel-controls {
   position: relative;

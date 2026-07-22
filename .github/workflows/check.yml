@@ -3,12 +3,13 @@ name: Check
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -18,21 +19,42 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - name: Verify tracked build
+      - name: Verify tracked frontend build
         run: git diff --exit-code -- dist
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-go@v6
         with:
-          python-version: '3.12'
-      - run: python -m compileall -q server
-      - name: Smoke-test production server
+          go-version: '1.26.x'
+          cache: false
+      - name: Check Go formatting
+        run: test -z "$(gofmt -l $(git ls-files '*.go'))"
+      - run: go vet ./...
+      - run: go test -race ./...
+      - run: go build -trimpath -o bin/OhneGuessr .
+      - name: Smoke-test production executable
         shell: bash
         run: |
-          python server/serve.py --no-browser &
-          server_pid=$!
-          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
-          for attempt in {1..20}; do
-            curl --fail --silent http://127.0.0.1:8000/api/health && break
+          test_data="$(mktemp -d)"
+          ./bin/OhneGuessr --no-browser --data-dir "$test_data" &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:8000/api/health | grep --quiet '"app":"ohneguessr"'; then
+              break
+            fi
             sleep 0.25
           done
-          curl --fail --silent http://127.0.0.1:8000/api/health
           curl --fail --silent http://127.0.0.1:8000/ | grep --quiet '<div id="app"></div>'
+          curl --fail --silent --request POST http://127.0.0.1:8000/api/shutdown
+          wait "$app_pid"
+          test -f "$test_data/maps/maps.json"
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.x'
+          cache: false
+      - run: go test ./...
+      - run: go build -trimpath -ldflags="-H=windowsgui" -o bin/OhneGuessr.exe .
