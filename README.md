@@ -12,17 +12,15 @@
 
 ## Download
 
-Open the latest [GitHub release](https://github.com/0hneB/OhneGuessr/releases) and download the file for your computer.
+Download the latest version from [GitHub Releases](https://github.com/0hneB/OhneGuessr/releases).
 
 ### Windows
 
-For the easiest setup, download `OhneGuessr-windows-x64-setup.exe`. It installs OhneGuessr for your Windows user, adds a Start menu shortcut, and can optionally add a desktop shortcut. No administrator permission is required.
+Use `OhneGuessr-windows-x64-setup.exe` for a normal install, or `OhneGuessr-windows-x64.exe` for a portable copy. The installer does not need administrator permission.
 
-Alternatively, download `OhneGuessr-windows-x64.exe` for a portable copy that can be placed anywhere. Both editions open the same native desktop app and use the same application data.
+Windows may warn that the app is unsigned. Choose **More info -> Run anyway**. SHA-256 checksums are included in `SHA256SUMS.txt`.
 
-The executable is not code-signed, so Windows SmartScreen may show a warning. If you downloaded it from this repository, choose **More info -> Run anyway**. The release also includes `SHA256SUMS.txt` for checksum verification.
-
-Linux and macOS builds are not published currently.
+Windows only for now.
 
 ## Features
 
@@ -32,11 +30,10 @@ Linux and macOS builds are not published currently.
 - World- or map-scaled scoring, result maps, and a final summary.
 - Rebindable controls, configurable compass, map size, zoom speed, and accent color.
 - Optional Map Making App and Learnable Meta synchronization.
-- One self-contained native app; Python, Node.js, and a separate web server are not required to play.
 
-## Data and updates
+## Data
 
-The executable never stores maps beside itself. On first launch it creates:
+OhneGuessr keeps maps and settings in:
 
 ```text
 Windows: %LOCALAPPDATA%\OhneGuessr\
@@ -53,9 +50,7 @@ OhneGuessr/
 `-- webview/                  UI settings, keybindings, and window storage
 ```
 
-Replacing or moving the executable does not affect this folder. A newer executable automatically reuses the same maps, plugin settings, and native UI storage. Uninstalling the app leaves this data intact.
-
-Installed copies check GitHub releases after launch. When an update is available, **Settings -> Display** can download, verify, install, and restart into it. Update downloads are protected by an app-specific Ed25519 signature even though the Windows executable itself remains unsigned. Portable copies show the update and open its download page, but must be replaced manually.
+Your data stays in this folder when you update, move, or uninstall the app.
 
 > [!CAUTION]
 > Deleting a local map removes its JSON file permanently. Keep a copy if you may need it again.
@@ -116,63 +111,58 @@ Shortcuts are rebindable under **Settings -> Controls**.
 
 ## Development
 
-The backend uses Go 1.26 and Wails v2.13.0. The frontend uses Svelte 5, Vite, strict TypeScript, regular CSS, MapLibre, and the vendored OpenSV runtime.
+Backend: Go 1.26 and Wails v2.13.0. Frontend: Svelte 5, Vite, and TypeScript.
 
-Install Go 1.26, a supported Node.js version (20.19+, 22.12+, or 24+), and the pinned Wails CLI:
+Install Go 1.26, Node.js 20.19+, 22.12+, or 24+, then install Wails:
 
 ```powershell
 go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+```
+
+Start the development app with:
+
+```powershell
 wails dev -appargs "--data-dir ./data"
 ```
 
-Wails runs `npm ci` inside `frontend/`, builds into `frontend/dist/`, opens the native development app, and reloads it when Vite rebuilds. Wails v2 cannot combine its dynamic internal handler with the Vite 8 dev server, so development uses fast full-page reloads rather than Vite HMR.
+The `--data-dir ./data` flag keeps development data inside the repository. Leave it out to use `%LOCALAPPDATA%\OhneGuessr`.
 
-The development override stores maps under the ignored `data/maps/` directory and plugin settings under `data/plugin-data/`. Omit it to use the normal `%LOCALAPPDATA%\OhneGuessr` folder.
-
-Build the portable production executable with:
+Build the portable EXE with:
 
 ```powershell
 wails build -clean -trimpath -skipbindings -webview2 embed -o OhneGuessr.exe
 ```
 
-The output is `build/bin/OhneGuessr.exe`. To also build the Setup EXE, install [NSIS](https://nsis.sourceforge.io/) and add `-nsis`:
+For the Setup EXE, install [NSIS](https://nsis.sourceforge.io/) and run:
 
 ```powershell
 wails build -clean -trimpath -skipbindings -webview2 embed -nsis -o OhneGuessr.exe
 ```
 
-To check and rebuild only the frontend, run `npm --prefix frontend run build`. This regenerates tracked `frontend/dist/`; Wails embeds that directory in the executable. Building never commits, pushes, tags, or publishes anything automatically.
+Builds go to `build/bin/`. To build only the frontend, run:
 
-The **Check** workflow can be run from the GitHub Actions UI. Its temporary artifact contains a testable portable EXE and Setup EXE without creating a release. Publishing an existing GitHub release runs the **Release** workflow and uploads the Windows x64 files, SHA-256 checksums, and signed updater metadata. The workflow can also rebuild an existing release tag; it never creates a release itself.
+```powershell
+npm --prefix frontend run build
+```
+
+The **Check** workflow can also build temporary Windows files from GitHub Actions. It does not create a release. The **Release** workflow only uploads files to an existing release.
 
 ### Repository structure
 
 ```text
 OhneGuessr/
-|-- .github/workflows/     checks and release builds
-|-- build/                 Wails icons, Windows metadata, installer, and ignored binaries
-|-- frontend/              everything owned by Svelte and Vite
-|   |-- src/               Svelte 5 + TypeScript source
-|   |   |-- game/          game lifecycle, panorama, scoring, compass
-|   |   |-- maps/          MapLibre maps and map library
-|   |   |-- plugins/       synchronization and clue UI
-|   |   `-- settings/      settings, updates, and keybindings UI
-|   |-- public/            static assets, licenses, and vendored OpenSV
-|   |-- dist/              generated production frontend, tracked and embedded
-|   |-- index.html         Vite entry point
-|   |-- package.json       pinned frontend dependencies and scripts
-|   |-- package-lock.json  reproducible frontend dependency lock
-|   |-- tsconfig.json      strict TypeScript configuration
-|   `-- vite.config.ts     frontend build configuration
-|-- internal/app/          Go storage, API handlers, sync, updater, and colocated tests
-|-- main.go                Wails desktop entry point and embedded frontend
-|-- go.mod / go.sum        Go toolchain and pinned Wails dependencies
-`-- wails.json             pinned desktop build metadata and commands
+|-- .github/workflows/     GitHub Actions
+|-- build/                 Wails icons and Windows installer files
+|-- frontend/
+|   |-- src/               Svelte and TypeScript source
+|   |-- public/            static files and vendored OpenSV
+|   |-- dist/              built frontend
+|   `-- package.json       frontend dependencies and scripts
+|-- internal/app/          Go backend and tests
+|-- main.go                Wails entry point
+|-- go.mod / go.sum        Go dependencies
+`-- wails.json             Wails configuration
 ```
-
-Keeping `frontend/src/` and `frontend/dist/` in one repository is intentional. Contributors get the complete source, while Wails release builds embed a verified frontend without downloading JavaScript dependencies during end-user startup.
-
-There is intentionally no automatic importer for the retired repository-local Python data layout. For a manual development migration, copy desired map JSON files into the new `maps/` directory and configure sync keys again.
 
 ## Troubleshooting
 
