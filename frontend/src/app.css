@@ -491,7 +491,7 @@ body.empty-mode #guessPanel { display: none !important; }
 .settings-body {
   height: clamp(340px, 62vh, 520px);
   overflow-y: auto;
-  padding: 18px 22px 12px;
+  padding: 18px 22px 22px;
 }
 .settings-panel[hidden] { display: none; }
 .settings-panel .setting:last-child { margin-bottom: 0; }
@@ -705,31 +705,26 @@ body.empty-mode #guessPanel { display: none !important; }
   box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.28);
 }
 
-.app-quit {
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+.app-update { align-items: flex-start; }
+.update-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  text-align: right;
 }
-.settings-action.quit-action {
-  color: #fecaca;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(248, 113, 113, 0.35);
+.update-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.update-copy b { font-size: 12px; }
+.update-copy progress { width: min(220px, 100%); accent-color: var(--accent); }
+.update-actions { display: flex; gap: 6px; }
+.settings-action.update-primary {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: transparent;
 }
-.settings-action.quit-action:hover:not(:disabled) { background: rgba(239, 68, 68, 0.18); }
-
-#stoppedState {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  color: #fff;
-  background: #111;
-}
-.stopped-card { text-align: center; }
-.stopped-card h1 { margin-bottom: 8px; font-size: 24px; }
-.stopped-card p { color: #aab2bd; }
-body.app-stopped { overflow: hidden; }
+.settings-action.update-primary:hover:not(:disabled) { background: var(--accent-strong); }
 
 /* Editable keyboard shortcuts (Controls tab) */
 #panel-controls {
@@ -963,8 +958,6 @@ body.app-stopped { overflow: hidden; }
   gap: 6px;
   min-height: 120px;
   overflow-y: auto;
-  margin: 0 -18px 0 0;
-  padding-right: 6px;
 }
 .map-folder-row {
   --tree-depth: 0;

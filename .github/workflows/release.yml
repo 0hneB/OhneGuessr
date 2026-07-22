@@ -15,47 +15,134 @@ permissions:
 
 env:
   RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  UPDATE_PUBLIC_KEY: UYk3zUW11+GOqy+ivvhiwDdLUt/nBeUjVBi/a4leAoc=
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.release.tag_name || inputs.tag }}
+      - name: Validate release tag and set version
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
+            throw "Release tag must use vMAJOR.MINOR.PATCH"
+          }
+          $version = $env:RELEASE_TAG.Substring(1)
+          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          $config = Get-Content wails.json -Raw | ConvertFrom-Json
+          $config.info.productVersion = $version
+          $config | ConvertTo-Json -Depth 10 | Set-Content wails.json -Encoding utf8
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npm run build
-      - name: Verify tracked frontend build
-        run: git diff --exit-code -- dist
+          cache-dependency-path: frontend/package-lock.json
       - uses: actions/setup-go@v6
         with:
           go-version: '1.26.x'
           cache: false
-      - run: go vet ./...
-      - run: go test -race ./...
-      - name: Build release files
-        shell: bash
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - name: Verify tracked frontend build
+        run: git diff --exit-code -- frontend/dist
+      - run: go vet ./internal/app
+      - run: go test ./...
+      - name: Install pinned Wails CLI
+        shell: pwsh
         run: |
-          mkdir -p release/linux-x64 release/linux-arm64
-          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w -H=windowsgui" -o release/OhneGuessr-windows-x64.exe .
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o release/linux-x64/OhneGuessr .
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o release/linux-arm64/OhneGuessr .
-          tar -C release/linux-x64 -czf release/OhneGuessr-linux-x64.tar.gz OhneGuessr
-          tar -C release/linux-arm64 -czf release/OhneGuessr-linux-arm64.tar.gz OhneGuessr
-          cd release
-          sha256sum OhneGuessr-windows-x64.exe OhneGuessr-linux-x64.tar.gz OhneGuessr-linux-arm64.tar.gz > SHA256SUMS.txt
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+          "$(go env GOPATH)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis --yes --no-progress
+          'C:\Program Files (x86)\NSIS' | Out-File -FilePath $env:GITHUB_PATH -Append
+      - name: Build Windows release files
+        shell: pwsh
+        run: |
+          wails build -clean -trimpath -skipbindings -webview2 embed -nsis `
+            -ldflags "-X main.version=$env:RELEASE_VERSION" -o OhneGuessr.exe
+          New-Item -ItemType Directory -Path release | Out-Null
+          Copy-Item build/bin/OhneGuessr.exe release/OhneGuessr-windows-x64.exe
+          $installer = Get-ChildItem build/bin/*-installer.exe | Select-Object -First 1
+          if (-not $installer) { throw "Wails did not create an installer" }
+          Copy-Item $installer.FullName release/OhneGuessr-windows-x64-setup.exe
+      - name: Sign update hashes and write metadata
+        shell: pwsh
+        env:
+          UPDATE_PRIVATE_KEY: ${{ secrets.OHNEGUESSR_UPDATE_PRIVATE_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:UPDATE_PRIVATE_KEY)) {
+            throw "OHNEGUESSR_UPDATE_PRIVATE_KEY is not configured"
+          }
+          $openssl = (Get-Command openssl -ErrorAction SilentlyContinue).Source
+          if (-not $openssl) { $openssl = 'C:\Program Files\Git\usr\bin\openssl.exe' }
+          if (-not (Test-Path $openssl)) { throw "OpenSSL is unavailable" }
+          $privateKey = Join-Path $env:RUNNER_TEMP update-private.pem
+          $publicDer = Join-Path $env:RUNNER_TEMP update-public.der
+          [IO.File]::WriteAllText($privateKey, $env:UPDATE_PRIVATE_KEY)
+          & $openssl pkey -in $privateKey -pubout -outform DER -out $publicDer
+          if ($LASTEXITCODE -ne 0) { throw "Invalid updater private key" }
+          $publicBytes = [IO.File]::ReadAllBytes($publicDer)
+          $publicRaw = $publicBytes[($publicBytes.Length - 32)..($publicBytes.Length - 1)]
+          if ([Convert]::ToBase64String($publicRaw) -ne $env:UPDATE_PUBLIC_KEY) {
+            throw "Updater private key does not match the embedded public key"
+          }
+
+          function Sign-Artifact([string]$path) {
+            $hash = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            $digestPath = Join-Path $env:RUNNER_TEMP "$([IO.Path]::GetFileName($path)).digest"
+            $signaturePath = "$digestPath.sig"
+            [IO.File]::WriteAllBytes($digestPath, [Convert]::FromHexString($hash))
+            & $openssl pkeyutl -sign -rawin -inkey $privateKey -in $digestPath -out $signaturePath
+            if ($LASTEXITCODE -ne 0) { throw "Could not sign $path" }
+            return @{
+              hash = $hash
+              signature = [Convert]::ToBase64String([IO.File]::ReadAllBytes($signaturePath))
+            }
+          }
+
+          $setupName = 'OhneGuessr-windows-x64-setup.exe'
+          $portableName = 'OhneGuessr-windows-x64.exe'
+          $setup = Sign-Artifact "release/$setupName"
+          $portable = Sign-Artifact "release/$portableName"
+          $base = "https://github.com/0hneB/OhneGuessr/releases/download/$env:RELEASE_TAG"
+          $notes = gh release view $env:RELEASE_TAG --json body --jq .body
+          $manifest = [ordered]@{
+            version = $env:RELEASE_VERSION
+            notes = ($notes -join "`n").Trim()
+            setup = [ordered]@{
+              url = "$base/$setupName"
+              sha256 = $setup.hash
+              signature = $setup.signature
+            }
+            portable = [ordered]@{
+              url = "$base/$portableName"
+              sha256 = $portable.hash
+              signature = $portable.signature
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content release/latest.json -Encoding utf8
+          @(
+            "$($setup.hash)  $setupName"
+            "$($portable.hash)  $portableName"
+          ) | Set-Content release/SHA256SUMS.txt -Encoding ascii
+          Remove-Item $privateKey, $publicDer -Force
       - name: Upload release assets
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$RELEASE_TAG"
-          gh release upload "$RELEASE_TAG" \
-            release/OhneGuessr-windows-x64.exe \
-            release/OhneGuessr-linux-x64.tar.gz \
-            release/OhneGuessr-linux-arm64.tar.gz \
-            release/SHA256SUMS.txt \
+          gh release view $env:RELEASE_TAG
+          gh release upload $env:RELEASE_TAG `
+            release/OhneGuessr-windows-x64-setup.exe `
+            release/OhneGuessr-windows-x64.exe `
+            release/SHA256SUMS.txt `
+            release/latest.json `
             --clobber

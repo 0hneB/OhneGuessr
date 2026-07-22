@@ -17,44 +17,64 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+        working-directory: frontend
       - run: npm run build
+        working-directory: frontend
       - name: Verify tracked frontend build
-        run: git diff --exit-code -- dist
+        run: git diff --exit-code -- frontend/dist
       - uses: actions/setup-go@v6
         with:
           go-version: '1.26.x'
           cache: false
       - name: Check Go formatting
         run: test -z "$(gofmt -l $(git ls-files '*.go'))"
-      - run: go vet ./...
-      - run: go test -race ./...
-      - run: go build -trimpath -o bin/OhneGuessr .
-      - name: Smoke-test production executable
-        shell: bash
-        run: |
-          test_data="$(mktemp -d)"
-          ./bin/OhneGuessr --no-browser --data-dir "$test_data" &
-          app_pid=$!
-          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
-          for attempt in {1..40}; do
-            if curl --fail --silent http://127.0.0.1:8000/api/health | grep --quiet '"app":"ohneguessr"'; then
-              break
-            fi
-            sleep 0.25
-          done
-          curl --fail --silent http://127.0.0.1:8000/ | grep --quiet '<div id="app"></div>'
-          curl --fail --silent --request POST http://127.0.0.1:8000/api/shutdown
-          wait "$app_pid"
-          test -f "$test_data/maps/maps.json"
+      - run: go vet ./internal/app
+      - run: go test -race ./internal/app
 
-  windows:
+  windows-package:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - uses: actions/setup-go@v6
         with:
           go-version: '1.26.x'
           cache: false
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - name: Verify tracked frontend build
+        run: git diff --exit-code -- frontend/dist
       - run: go test ./...
-      - run: go build -trimpath -ldflags="-H=windowsgui" -o bin/OhneGuessr.exe .
+      - name: Install pinned Wails CLI
+        shell: pwsh
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+          "$(go env GOPATH)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis --yes --no-progress
+          'C:\Program Files (x86)\NSIS' | Out-File -FilePath $env:GITHUB_PATH -Append
+      - name: Build portable app and installer
+        shell: pwsh
+        run: |
+          wails build -clean -trimpath -skipbindings -webview2 embed -nsis -o OhneGuessr.exe
+          if (-not (Get-ChildItem build/bin/*-installer.exe)) {
+            throw "Wails did not create an installer"
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OhneGuessr-windows-x64
+          path: |
+            build/bin/OhneGuessr.exe
+            build/bin/*-installer.exe
+          if-no-files-found: error
+          retention-days: 7

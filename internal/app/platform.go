@@ -29,17 +29,6 @@ func defaultDataDir() (string, error) {
 	return filepath.Join(home, ".local", "share", "ohneguessr"), nil
 }
 
-func openURL(value string) error {
-	switch runtime.GOOS {
-	case "windows":
-		return exec.Command("rundll32", "url.dll,FileProtocolHandler", value).Start()
-	case "darwin":
-		return exec.Command("open", value).Start()
-	default:
-		return exec.Command("xdg-open", value).Start()
-	}
-}
-
 func openFolder(value string) error {
 	switch runtime.GOOS {
 	case "windows":

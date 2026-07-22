@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { closeSettings } from '../dom.js';
+  import { isFullscreen, setFullscreen } from '../desktop.js';
   import { settings } from '../game/state.svelte.js';
   import type { CompassStyle, GuessMapSize, MovementMode, ScoringMode } from '../types.js';
   import { gameActions, selectSettingsTab, ui, type SettingsTab } from '../ui.svelte.js';
@@ -18,6 +19,7 @@
     saveSettings
   } from './settings.js';
   import KeybindingsPanel from './KeybindingsPanel.svelte';
+  import UpdatePanel from './UpdatePanel.svelte';
 
   const tabs: { key: SettingsTab; label: string }[] = [
     { key: 'display', label: 'Display' },
@@ -32,8 +34,6 @@
   const timerPreset = $derived(timerPresets.includes(settings.timer) ? settings.timer : 'custom');
   let fullscreen = $state(false);
   let fullscreenSupported = $state(false);
-  let quitting = $state(false);
-  let quitMessage = $state('');
   let searchInput: HTMLInputElement;
 
   const saveOnly = () => saveSettings(settings);
@@ -70,44 +70,20 @@
     }
   }
 
-  async function toggleFullscreen(checked: boolean) {
-    try {
-      if (checked && !document.fullscreenElement) {
-        await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-      } else if (!checked && document.fullscreenElement) {
-        await document.exitFullscreen();
-      }
-    } finally {
-      fullscreen = Boolean(document.fullscreenElement);
-      gameActions.syncGuessMapLayout();
-    }
-  }
-
-  async function quitApplication() {
-    if (!window.confirm('Quit OhneGuessr? Any active synchronization will be cancelled.')) return;
-    quitting = true;
-    quitMessage = '';
-    try {
-      const response = await fetch('/api/shutdown', { method: 'POST' });
-      if (!response.ok) throw new Error();
-      closeSettings();
-      ui.stopped = true;
-    } catch {
-      quitMessage = 'Could not stop OhneGuessr.';
-    } finally {
-      quitting = false;
-    }
+  function toggleFullscreen(checked: boolean) {
+    setFullscreen(checked);
+    fullscreen = checked;
   }
 
   onMount(() => {
-    fullscreenSupported = Boolean(document.fullscreenEnabled && document.documentElement.requestFullscreen);
-    const sync = () => {
-      fullscreen = Boolean(document.fullscreenElement);
+    fullscreenSupported = Boolean(window.runtime?.WindowFullscreen);
+    const sync = async () => {
+      fullscreen = await isFullscreen();
       gameActions.syncGuessMapLayout();
     };
-    document.addEventListener('fullscreenchange', sync);
-    sync();
-    return () => document.removeEventListener('fullscreenchange', sync);
+    window.addEventListener('resize', sync);
+    void sync();
+    return () => window.removeEventListener('resize', sync);
   });
 </script>
 
@@ -221,12 +197,7 @@
                  onchange={(event) => toggleFullscreen(event.currentTarget.checked)} />
           <span class="switch" aria-hidden="true"></span>
         </label>
-        <div class="setting app-quit">
-          <span>Application</span>
-          <button type="button" class="settings-action quit-action" disabled={quitting}
-                  onclick={quitApplication}>{quitting ? 'Stopping…' : 'Quit OhneGuessr'}</button>
-          <small class="settings-note error" class:hidden={!quitMessage}>{quitMessage}</small>
-        </div>
+        <UpdatePanel />
       </div>
 
       <div class="settings-panel" class:active={ui.settingsTab === 'game'}

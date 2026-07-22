@@ -1,4 +1,4 @@
 * text=auto
 *.bat text eol=crlf
-dist/** linguist-generated=true
-public/vendor/** linguist-vendored=true
+frontend/dist/** linguist-generated=true whitespace=-blank-at-eol
+frontend/public/vendor/** linguist-vendored=true
