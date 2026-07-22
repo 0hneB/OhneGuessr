@@ -680,7 +680,7 @@ async function init() {
     state.phase = GAME_PHASE.ERROR;
     const message = err instanceof Error ? err.message : String(err);
     setLoading(true, `Could not load maps: ${message}. ` +
-      `Serve over http:// (use run/serve.bat) so data/ can be fetched.`);
+      `Start OhneGuessr so its local map server is available.`);
   }
 }
 

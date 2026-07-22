@@ -40,7 +40,7 @@
     if (status?.error) return { text: status.error, error: true };
     if (!available) {
       return {
-        text: 'Start OhneGuessr with run/serve.bat to use Learnable Meta sync.',
+        text: 'Start the OhneGuessr app to use Learnable Meta sync.',
         error: true
       };
     }
@@ -101,7 +101,7 @@
     } catch {
       window.clearTimeout(pollTimer);
       actionMessage = {
-        text: 'Start OhneGuessr with run/serve.bat to use Learnable Meta sync.',
+        text: 'Start the OhneGuessr app to use Learnable Meta sync.',
         error: true
       };
       publishLearnableMetaStatus({

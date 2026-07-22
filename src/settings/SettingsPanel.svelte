@@ -32,6 +32,8 @@
   const timerPreset = $derived(timerPresets.includes(settings.timer) ? settings.timer : 'custom');
   let fullscreen = $state(false);
   let fullscreenSupported = $state(false);
+  let quitting = $state(false);
+  let quitMessage = $state('');
   let searchInput: HTMLInputElement;
 
   const saveOnly = () => saveSettings(settings);
@@ -78,6 +80,22 @@
     } finally {
       fullscreen = Boolean(document.fullscreenElement);
       gameActions.syncGuessMapLayout();
+    }
+  }
+
+  async function quitApplication() {
+    if (!window.confirm('Quit OhneGuessr? Any active synchronization will be cancelled.')) return;
+    quitting = true;
+    quitMessage = '';
+    try {
+      const response = await fetch('/api/shutdown', { method: 'POST' });
+      if (!response.ok) throw new Error();
+      closeSettings();
+      ui.stopped = true;
+    } catch {
+      quitMessage = 'Could not stop OhneGuessr.';
+    } finally {
+      quitting = false;
     }
   }
 
@@ -203,6 +221,12 @@
                  onchange={(event) => toggleFullscreen(event.currentTarget.checked)} />
           <span class="switch" aria-hidden="true"></span>
         </label>
+        <div class="setting app-quit">
+          <span>Application</span>
+          <button type="button" class="settings-action quit-action" disabled={quitting}
+                  onclick={quitApplication}>{quitting ? 'Stopping…' : 'Quit OhneGuessr'}</button>
+          <small class="settings-note error" class:hidden={!quitMessage}>{quitMessage}</small>
+        </div>
       </div>
 
       <div class="settings-panel" class:active={ui.settingsTab === 'game'}

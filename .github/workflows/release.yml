@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag to build and upload
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Verify tracked frontend build
+        run: git diff --exit-code -- dist
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.x'
+          cache: false
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: Build release files
+        shell: bash
+        run: |
+          mkdir -p release/linux-x64 release/linux-arm64
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w -H=windowsgui" -o release/OhneGuessr-windows-x64.exe .
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o release/linux-x64/OhneGuessr .
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o release/linux-arm64/OhneGuessr .
+          tar -C release/linux-x64 -czf release/OhneGuessr-linux-x64.tar.gz OhneGuessr
+          tar -C release/linux-arm64 -czf release/OhneGuessr-linux-arm64.tar.gz OhneGuessr
+          cd release
+          sha256sum OhneGuessr-windows-x64.exe OhneGuessr-linux-x64.tar.gz OhneGuessr-linux-arm64.tar.gz > SHA256SUMS.txt
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$RELEASE_TAG"
+          gh release upload "$RELEASE_TAG" \
+            release/OhneGuessr-windows-x64.exe \
+            release/OhneGuessr-linux-x64.tar.gz \
+            release/OhneGuessr-linux-arm64.tar.gz \
+            release/SHA256SUMS.txt \
+            --clobber
