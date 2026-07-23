@@ -16,7 +16,7 @@ Download the latest version from [GitHub Releases](https://github.com/0hneB/Ohne
 
 ### Windows
 
-Use `OhneGuessr-windows-x64-setup.exe` for a normal install, or `OhneGuessr-windows-x64.exe` for a portable copy. The installer does not need administrator permission.
+Use `OhneGuessr-<version>-windows-x64-setup.exe` for a normal install, or `OhneGuessr-<version>-windows-x64.exe` for a portable copy. The installer does not need administrator permission.
 
 Windows may warn that the app is unsigned. Choose **More info -> Run anyway**. SHA-256 checksums are included in `SHA256SUMS.txt`.
 

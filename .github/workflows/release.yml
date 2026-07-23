@@ -32,6 +32,8 @@ jobs:
           }
           $version = $env:RELEASE_TAG.Substring(1)
           "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "PORTABLE_NAME=OhneGuessr-$version-windows-x64.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "SETUP_NAME=OhneGuessr-$version-windows-x64-setup.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
           $config = Get-Content wails.json -Raw | ConvertFrom-Json
           $config.info.productVersion = $version
           $config | ConvertTo-Json -Depth 10 | Set-Content wails.json -Encoding utf8
@@ -66,10 +68,10 @@ jobs:
           wails build -clean -trimpath -skipbindings -webview2 embed -nsis `
             -ldflags "-X main.version=$env:RELEASE_VERSION" -o OhneGuessr.exe
           New-Item -ItemType Directory -Path release | Out-Null
-          Copy-Item build/bin/OhneGuessr.exe release/OhneGuessr-windows-x64.exe
+          Copy-Item build/bin/OhneGuessr.exe "release/$env:PORTABLE_NAME"
           $installer = Get-ChildItem build/bin/*-installer.exe | Select-Object -First 1
           if (-not $installer) { throw "Wails did not create an installer" }
-          Copy-Item $installer.FullName release/OhneGuessr-windows-x64-setup.exe
+          Copy-Item $installer.FullName "release/$env:SETUP_NAME"
       - name: Sign update hashes and write metadata
         shell: pwsh
         env:
@@ -106,8 +108,8 @@ jobs:
             }
           }
 
-          $setupName = 'OhneGuessr-windows-x64-setup.exe'
-          $portableName = 'OhneGuessr-windows-x64.exe'
+          $setupName = $env:SETUP_NAME
+          $portableName = $env:PORTABLE_NAME
           $setup = Sign-Artifact "release/$setupName"
           $portable = Sign-Artifact "release/$portableName"
           $base = "https://github.com/0hneB/OhneGuessr/releases/download/$env:RELEASE_TAG"
@@ -139,8 +141,8 @@ jobs:
         run: |
           gh release view $env:RELEASE_TAG
           gh release upload $env:RELEASE_TAG `
-            release/OhneGuessr-windows-x64-setup.exe `
-            release/OhneGuessr-windows-x64.exe `
+            "release/$env:SETUP_NAME" `
+            "release/$env:PORTABLE_NAME" `
             release/SHA256SUMS.txt `
             release/latest.json `
             --clobber

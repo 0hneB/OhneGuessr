@@ -47,7 +47,7 @@ func TestUpdaterChecksDownloadsAndVerifies(t *testing.T) {
 		switch request.URL.Path {
 		case "/latest.json":
 			_ = json.NewEncoder(response).Encode(manifest)
-		case "/releases/download/v1.1.0/OhneGuessr-windows-x64-setup.exe":
+		case "/releases/download/v1.1.0/OhneGuessr-1.1.0-windows-x64-setup.exe":
 			_, _ = response.Write(payload)
 		default:
 			http.NotFound(response, request)
@@ -55,7 +55,7 @@ func TestUpdaterChecksDownloadsAndVerifies(t *testing.T) {
 	}))
 	defer server.Close()
 	manifest.Setup = updateArtifact{
-		URL:       server.URL + "/releases/download/v1.1.0/OhneGuessr-windows-x64-setup.exe",
+		URL:       server.URL + "/releases/download/v1.1.0/OhneGuessr-1.1.0-windows-x64-setup.exe",
 		SHA256:    hex.EncodeToString(digest[:]),
 		Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(privateKey, digest[:])),
 	}
@@ -138,6 +138,17 @@ func TestUpdaterTreatsCurrentVersionAsUpToDate(t *testing.T) {
 	}))
 	defer server.Close()
 	u := newUpdater("1.0.0")
+	u.manifestURL = server.URL
+	u.client = server.Client()
+	if status := u.check(context.Background()); status.Phase != "up-to-date" {
+		t.Fatalf("status = %#v", status)
+	}
+}
+
+func TestUpdaterTreatsMissingStableReleaseAsUpToDate(t *testing.T) {
+	server := httptest.NewServer(http.NotFoundHandler())
+	defer server.Close()
+	u := newUpdater("0.0.1")
 	u.manifestURL = server.URL
 	u.client = server.Client()
 	if status := u.check(context.Background()); status.Phase != "up-to-date" {
