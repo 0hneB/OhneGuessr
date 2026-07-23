@@ -1,4 +1,4 @@
-.lm-map-form {
+.sync-key-form.lm-map-form {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto;
   align-items: center;
 }
