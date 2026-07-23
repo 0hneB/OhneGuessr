@@ -192,6 +192,10 @@ func (u *updater) fetchManifest(ctx context.Context) (updateManifest, error) {
 		return manifest, err
 	}
 	defer response.Body.Close()
+	if response.StatusCode == http.StatusNotFound {
+		manifest.Version = u.snapshot().CurrentVersion
+		return manifest, nil
+	}
 	if response.StatusCode != http.StatusOK {
 		return manifest, fmt.Errorf("update manifest returned %s", response.Status)
 	}
@@ -206,7 +210,7 @@ func (u *updater) fetchManifest(ctx context.Context) (updateManifest, error) {
 }
 
 func (u *updater) validateArtifact(version string, artifact updateArtifact) error {
-	expectedURL := u.downloadBase + "/v" + version + "/OhneGuessr-windows-x64-setup.exe"
+	expectedURL := u.downloadBase + "/v" + version + "/OhneGuessr-" + version + "-windows-x64-setup.exe"
 	parsed, err := url.Parse(artifact.URL)
 	if err != nil || artifact.URL != expectedURL || (u.downloadBase == updateDownloadBase && parsed.Scheme != "https") {
 		return errors.New("unexpected update URL")
