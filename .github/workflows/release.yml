@@ -15,7 +15,7 @@ permissions:
 
 env:
   RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
-  UPDATE_PUBLIC_KEY: UYk3zUW11+GOqy+ivvhiwDdLUt/nBeUjVBi/a4leAoc=
+  UPDATE_PUBLIC_KEY: zHw2caFsAlJGZ02o83rf9d9Rf7yRyiWuz/+vrAYIsdU=
 
 jobs:
   release:

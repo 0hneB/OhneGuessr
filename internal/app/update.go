@@ -25,7 +25,7 @@ const (
 	updateManifestURL  = "https://github.com/0hneB/OhneGuessr/releases/latest/download/latest.json"
 	updateDownloadBase = "https://github.com/0hneB/OhneGuessr/releases/download"
 	updateReleaseBase  = "https://github.com/0hneB/OhneGuessr/releases/tag"
-	updatePublicKey    = "UYk3zUW11+GOqy+ivvhiwDdLUt/nBeUjVBi/a4leAoc="
+	updatePublicKey    = "zHw2caFsAlJGZ02o83rf9d9Rf7yRyiWuz/+vrAYIsdU="
 	maxManifestSize    = 1 << 20
 	maxUpdateSize      = 256 << 20
 )
