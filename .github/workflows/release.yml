@@ -293,7 +293,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  publish:
+  upload:
     needs: [prepare, linux-smoke, windows, macos]
     runs-on: ubuntu-22.04
     env:
@@ -320,33 +320,27 @@ jobs:
             echo "Release files do not match the expected set" >&2
             exit 1
           fi
-      - name: Publish prerelease
+      - name: Upload to draft prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists" >&2
-            exit 1
-          fi
-          gh release create "$RELEASE_TAG" \
+          test "$(gh release view "$RELEASE_TAG" --json name --jq .name)" = "OhneGuessr $RELEASE_TAG"
+          test "$(gh release view "$RELEASE_TAG" --json body --jq .body)" = "$RELEASE_DESCRIPTION"
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "true"
+          test "$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)" = "true"
+          gh release upload "$RELEASE_TAG" \
             "release/OhneGuessr-$RELEASE_VERSION-linux-x64.AppImage" \
             "release/OhneGuessr-$RELEASE_VERSION-linux-x64.deb" \
             "release/OhneGuessr-$RELEASE_VERSION-macos.dmg" \
             "release/OhneGuessr-$RELEASE_VERSION-windows-x64-setup.exe" \
-            "release/OhneGuessr-$RELEASE_VERSION-windows-x64.exe" \
-            --verify-tag \
-            --title "OhneGuessr $RELEASE_TAG" \
-            --notes "$RELEASE_DESCRIPTION" \
-            --prerelease \
-            --draft
-          gh release edit "$RELEASE_TAG" --draft=false --prerelease
-      - name: Verify prerelease
+            "release/OhneGuessr-$RELEASE_VERSION-windows-x64.exe"
+      - name: Verify draft
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$(gh release view "$RELEASE_TAG" --json tagName --jq .tagName)" = "$RELEASE_TAG"
           test "$(gh release view "$RELEASE_TAG" --json name --jq .name)" = "OhneGuessr $RELEASE_TAG"
           test "$(gh release view "$RELEASE_TAG" --json body --jq .body)" = "$RELEASE_DESCRIPTION"
-          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "false"
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "true"
           test "$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)" = "true"
           test "$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length')" = "5"
