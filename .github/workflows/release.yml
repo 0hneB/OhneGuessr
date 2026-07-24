@@ -8,6 +8,10 @@ on:
         description: Existing vMAJOR.MINOR.PATCH tag to release
         required: true
         type: string
+      description:
+        description: Release description
+        required: true
+        type: string
 
 concurrency:
   group: release-${{ inputs.tag }}
@@ -294,6 +298,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       GH_REPO: ${{ github.repository }}
+      RELEASE_DESCRIPTION: ${{ inputs.description }}
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
     steps:
       - uses: actions/download-artifact@v4
@@ -331,7 +336,7 @@ jobs:
             "release/OhneGuessr-$RELEASE_VERSION-windows-x64.exe" \
             --verify-tag \
             --title "OhneGuessr $RELEASE_TAG" \
-            --notes "second prerelease" \
+            --notes "$RELEASE_DESCRIPTION" \
             --prerelease \
             --draft
           gh release edit "$RELEASE_TAG" --draft=false --prerelease
@@ -341,7 +346,7 @@ jobs:
         run: |
           test "$(gh release view "$RELEASE_TAG" --json tagName --jq .tagName)" = "$RELEASE_TAG"
           test "$(gh release view "$RELEASE_TAG" --json name --jq .name)" = "OhneGuessr $RELEASE_TAG"
-          test "$(gh release view "$RELEASE_TAG" --json body --jq .body)" = "second prerelease"
+          test "$(gh release view "$RELEASE_TAG" --json body --jq .body)" = "$RELEASE_DESCRIPTION"
           test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "false"
           test "$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)" = "true"
           test "$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length')" = "5"
