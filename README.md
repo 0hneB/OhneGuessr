@@ -18,11 +18,15 @@ Download the latest version from [GitHub Releases](https://github.com/0hneB/Ohne
 
 Use `OhneGuessr-<version>-windows-x64-setup.exe` for a normal install, or `OhneGuessr-<version>-windows-x64.exe` for a portable copy. The installer does not need administrator permission.
 
-Windows may warn that the app is unsigned. Choose **More info -> Run anyway**. SHA-256 checksums are included in `SHA256SUMS.txt`.
+Windows may warn that the app is unsigned. Choose **More info -> Run anyway**.
 
 ### Linux
 
-Use `OhneGuessr-<version>-linux-x64.tar.gz`, extract it, and run `OhneGuessr`. GTK 3 and WebKitGTK 4.1 are required.
+Use `OhneGuessr-<version>-linux-x64.AppImage`, or install `OhneGuessr-<version>-linux-x64.deb` on Debian and Ubuntu.
+
+### macOS
+
+Use `OhneGuessr-<version>-macos.dmg`.
 
 ## Features
 
@@ -150,7 +154,7 @@ Builds go to `build/bin/`. To build only the frontend, run:
 npm --prefix frontend run build
 ```
 
-This creates the ignored `frontend/dist/` directory. The **Check** workflow runs source checks on pushes and pull requests; its temporary Windows package is manual. The **Release** workflow only uploads files to an existing release.
+This creates the ignored `frontend/dist/` directory. The **Check** workflow runs source checks on pushes and pull requests; its temporary Windows package is manual. The **Release** workflow builds and publishes Windows, Linux, and macOS prereleases.
 
 ### Repository structure
 
