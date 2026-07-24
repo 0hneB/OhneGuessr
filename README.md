@@ -20,7 +20,9 @@ Use `OhneGuessr-<version>-windows-x64-setup.exe` for a normal install, or `OhneG
 
 Windows may warn that the app is unsigned. Choose **More info -> Run anyway**. SHA-256 checksums are included in `SHA256SUMS.txt`.
 
-Windows only for now.
+### Linux
+
+Use `OhneGuessr-<version>-linux-x64.tar.gz`, extract it, and run `OhneGuessr`. GTK 3 and WebKitGTK 4.1 are required.
 
 ## Features
 
@@ -37,6 +39,8 @@ OhneGuessr keeps maps and settings in:
 
 ```text
 Windows: %LOCALAPPDATA%\OhneGuessr\
+Linux:   $XDG_DATA_HOME/ohneguessr/
+         or ~/.local/share/ohneguessr/ when XDG_DATA_HOME is unset
 
 OhneGuessr/
 |-- maps/

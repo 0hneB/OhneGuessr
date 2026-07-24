@@ -13,6 +13,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -83,6 +84,9 @@ func run() error {
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId:               "5ac23bb7-9f87-48bc-a73f-e4fe65ce85c1",
 			OnSecondInstanceLaunch: desktop.secondInstance,
+		},
+		Linux: &linux.Options{
+			WebviewGpuPolicy: linux.WebviewGpuPolicyOnDemand,
 		},
 		Windows: &windows.Options{
 			Theme:               windows.Dark,
