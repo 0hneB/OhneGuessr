@@ -14,20 +14,6 @@
 
 Download the latest version from [GitHub Releases](https://github.com/0hneB/OhneGuessr/releases).
 
-### Windows
-
-Use `OhneGuessr-<version>-windows-x64-setup.exe` for a normal install, or `OhneGuessr-<version>-windows-x64.exe` for a portable copy. The installer does not need administrator permission.
-
-Windows may warn that the app is unsigned. Choose **More info -> Run anyway**.
-
-### Linux
-
-Use `OhneGuessr-<version>-linux-x64.AppImage`, or install `OhneGuessr-<version>-linux-x64.deb` on Debian and Ubuntu.
-
-### macOS
-
-Use `OhneGuessr-<version>-macos.dmg`.
-
 ## Features
 
 - Local map library with real folders, imports, renaming, and deletion.
