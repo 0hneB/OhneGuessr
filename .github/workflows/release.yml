@@ -1,39 +1,51 @@
 name: Release
+run-name: Release ${{ inputs.tag }}
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing GitHub release tag to build and upload
+        description: Existing vMAJOR.MINOR.PATCH tag to release
         required: true
         type: string
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 env:
-  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
-  UPDATE_PUBLIC_KEY: zHw2caFsAlJGZ02o83rf9d9Rf7yRyiWuz/+vrAYIsdU=
+  RELEASE_TAG: ${{ inputs.tag }}
 
 jobs:
-  linux:
+  prepare:
     runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
-      - name: Validate release tag and set version
+      - name: Validate tag
+        id: version
         shell: bash
         run: |
           if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "Release tag must use vMAJOR.MINOR.PATCH" >&2
             exit 1
           fi
-          version="${RELEASE_TAG#v}"
-          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
-          echo "LINUX_NAME=OhneGuessr-$version-linux-x64.tar.gz" >> "$GITHUB_ENV"
+          echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+
+  linux:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      APPIMAGE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-linux-x64.AppImage
+      DEB_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-linux-x64.deb
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -43,51 +55,137 @@ jobs:
         with:
           go-version: '1.26.x'
           cache: false
-      - name: Install Linux build dependencies
+      - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+          sudo apt-get install --yes build-essential desktop-file-utils libfuse2 libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
       - name: Install pinned Wails CLI
         run: |
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-      - name: Build Linux release file
+      - name: Build Linux app
         run: |
           wails build -clean -trimpath -skipbindings -tags webkit2_41 \
             -ldflags "-X main.version=$RELEASE_VERSION" -o OhneGuessr
-          mkdir release
-          tar -czf "$GITHUB_WORKSPACE/release/$LINUX_NAME" \
-            -C build/bin OhneGuessr \
-            -C ../.. LICENSE.md README.md
-          (cd release && sha256sum "$LINUX_NAME" > "$LINUX_NAME.sha256")
-      - name: Upload Linux release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Stage Linux packages
         run: |
-          gh release view "$RELEASE_TAG"
-          gh release upload "$RELEASE_TAG" \
-            "release/$LINUX_NAME" \
-            "release/$LINUX_NAME.sha256" \
-            --clobber
+          mkdir -p release package/DEBIAN AppDir
+          printf '%s\n' \
+            '[Desktop Entry]' \
+            'Type=Application' \
+            'Name=OhneGuessr' \
+            'Comment=A free, lean, local GeoGuessr alternative.' \
+            'Exec=ohneguessr' \
+            'Icon=ohneguessr' \
+            'Terminal=false' \
+            'Categories=Game;' \
+            'StartupWMClass=OhneGuessr' > ohneguessr.desktop
+          desktop-file-validate ohneguessr.desktop
 
-  release:
+          install -Dm755 build/bin/OhneGuessr package/usr/bin/ohneguessr
+          install -Dm644 ohneguessr.desktop package/usr/share/applications/ohneguessr.desktop
+          install -Dm644 build/appicon.png package/usr/share/icons/hicolor/512x512/apps/ohneguessr.png
+          printf '%s\n' \
+            'Package: ohneguessr' \
+            "Version: $RELEASE_VERSION" \
+            'Section: games' \
+            'Priority: optional' \
+            'Architecture: amd64' \
+            'Maintainer: OhneB' \
+            'Depends: libwebkit2gtk-4.1-0' \
+            'Description: A free, lean, local GeoGuessr alternative.' > package/DEBIAN/control
+          dpkg-deb --root-owner-group --build package "release/$DEB_NAME"
+
+          install -Dm755 build/bin/OhneGuessr AppDir/usr/bin/ohneguessr
+          install -Dm644 ohneguessr.desktop AppDir/usr/share/applications/ohneguessr.desktop
+          install -Dm644 build/appicon.png AppDir/usr/share/icons/hicolor/512x512/apps/ohneguessr.png
+      - name: Build AppImage
+        env:
+          LINUXDEPLOY_SHA256: c86d6540f1df31061f02f539a2d3445f8d7f85cc3994eee1e74cd1ac97b76df0
+          GTK_PLUGIN_SHA256: cb379f9b0733e9ad9f8bd78f8c2fa038aef2478523bb7d4c8e64ff6a1ea3501a
+        run: |
+          curl --fail --location --output linuxdeploy \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-x86_64.AppImage
+          curl --fail --location --output linuxdeploy-plugin-gtk.sh \
+            https://raw.githubusercontent.com/tauri-apps/linuxdeploy-plugin-gtk/b5eb8d05b4c0ed40107fe2158c5d8527f94568ef/linuxdeploy-plugin-gtk.sh
+          echo "$LINUXDEPLOY_SHA256  linuxdeploy" | sha256sum --check
+          echo "$GTK_PLUGIN_SHA256  linuxdeploy-plugin-gtk.sh" | sha256sum --check
+          chmod +x linuxdeploy linuxdeploy-plugin-gtk.sh
+          ARCH=x86_64 OUTPUT="$GITHUB_WORKSPACE/release/$APPIMAGE_NAME" ./linuxdeploy \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/ohneguessr \
+            --desktop-file AppDir/usr/share/applications/ohneguessr.desktop \
+            --icon-file AppDir/usr/share/icons/hicolor/512x512/apps/ohneguessr.png \
+            --exclude-library 'libjavascriptcoregtk-4.1.so*' \
+            --exclude-library 'libwebkit2gtk-4.1.so*' \
+            --plugin gtk \
+            --output appimage
+      - name: Verify Linux packages
+        run: |
+          test -s "release/$APPIMAGE_NAME"
+          test -s "release/$DEB_NAME"
+          dpkg-deb --info "release/$DEB_NAME"
+          dpkg-deb --contents "release/$DEB_NAME"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: release/*
+          if-no-files-found: error
+          retention-days: 1
+
+  linux-smoke:
+    needs: [prepare, linux]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      APPIMAGE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-linux-x64.AppImage
+      DEB_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-linux-x64.deb
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux
+          path: release
+      - name: Install and inspect DEB
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes dbus-x11 xvfb "./release/$DEB_NAME"
+          test "$(dpkg-query --show --showformat='${Status}' ohneguessr)" = "install ok installed"
+          test -x /usr/bin/ohneguessr
+          test -f /usr/share/applications/ohneguessr.desktop
+      - name: Launch AppImage
+        run: |
+          chmod +x "release/$APPIMAGE_NAME"
+          set +e
+          timeout 15s dbus-run-session -- xvfb-run -a \
+            env APPIMAGE_EXTRACT_AND_RUN=1 "release/$APPIMAGE_NAME" > appimage.log 2>&1
+          status=$?
+          set -e
+          cat appimage.log
+          if [ "$status" -ne 124 ]; then
+            echo "AppImage exited before the smoke-test timeout (status $status)" >&2
+            exit 1
+          fi
+
+  windows:
+    needs: prepare
     runs-on: windows-latest
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      PORTABLE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-windows-x64.exe
+      SETUP_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-windows-x64-setup.exe
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
-      - name: Validate release tag and set version
+          ref: ${{ inputs.tag }}
+      - name: Set Windows product version
         shell: pwsh
         run: |
-          if ($env:RELEASE_TAG -notmatch '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
-            throw "Release tag must use vMAJOR.MINOR.PATCH"
-          }
-          $version = $env:RELEASE_TAG.Substring(1)
-          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "PORTABLE_NAME=OhneGuessr-$version-windows-x64.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "SETUP_NAME=OhneGuessr-$version-windows-x64-setup.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
           $config = Get-Content wails.json -Raw | ConvertFrom-Json
-          $config.info.productVersion = $version
+          $config.info.productVersion = $env:RELEASE_VERSION
           $config | ConvertTo-Json -Depth 10 | Set-Content wails.json -Encoding utf8
       - uses: actions/setup-node@v6
         with:
@@ -114,7 +212,7 @@ jobs:
         run: |
           choco install nsis --yes --no-progress
           'C:\Program Files (x86)\NSIS' | Out-File -FilePath $env:GITHUB_PATH -Append
-      - name: Build Windows release files
+      - name: Build Windows packages
         shell: pwsh
         run: |
           wails build -clean -trimpath -skipbindings -webview2 embed -nsis `
@@ -124,77 +222,121 @@ jobs:
           $installer = Get-ChildItem build/bin/*-installer.exe | Select-Object -First 1
           if (-not $installer) { throw "Wails did not create an installer" }
           Copy-Item $installer.FullName "release/$env:SETUP_NAME"
-      - name: Sign update hashes and write metadata
-        shell: pwsh
+          Get-Item "release/$env:PORTABLE_NAME", "release/$env:SETUP_NAME"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: release/*
+          if-no-files-found: error
+          retention-days: 1
+
+  macos:
+    needs: prepare
+    runs-on: macos-15
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      DMG_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-macos.dmg
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.x'
+          cache: false
+      - name: Install pinned Wails CLI
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Build universal macOS app
+        run: |
+          wails build -clean -trimpath -skipbindings -platform darwin/universal \
+            -ldflags "-X main.version=$RELEASE_VERSION" -o OhneGuessr
+          app=build/bin/OhneGuessr.app
+          binary="$app/Contents/MacOS/OhneGuessr"
+          test -x "$binary"
+          lipo -verify_arch x86_64 arm64 "$binary"
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+      - name: Build and verify DMG
+        run: |
+          mkdir -p release dmg
+          cp -R build/bin/OhneGuessr.app dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname OhneGuessr -srcfolder dmg -format UDZO -ov "release/$DMG_NAME"
+
+          mount_point="$RUNNER_TEMP/ohneguessr-dmg"
+          mkdir -p "$mount_point"
+          hdiutil attach "release/$DMG_NAME" -mountpoint "$mount_point" -nobrowse -readonly
+          trap 'hdiutil detach "$mount_point" || true' EXIT
+          test -d "$mount_point/OhneGuessr.app"
+          lipo -verify_arch x86_64 arm64 "$mount_point/OhneGuessr.app/Contents/MacOS/OhneGuessr"
+          hdiutil detach "$mount_point"
+          trap - EXIT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: release/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: [prepare, linux-smoke, windows, macos]
+    runs-on: ubuntu-22.04
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*'
+          path: release
+          merge-multiple: true
+      - name: Validate release files
+        run: |
+          expected=(
+            "OhneGuessr-$RELEASE_VERSION-linux-x64.AppImage"
+            "OhneGuessr-$RELEASE_VERSION-linux-x64.deb"
+            "OhneGuessr-$RELEASE_VERSION-macos.dmg"
+            "OhneGuessr-$RELEASE_VERSION-windows-x64-setup.exe"
+            "OhneGuessr-$RELEASE_VERSION-windows-x64.exe"
+          )
+          mapfile -t actual < <(find release -maxdepth 1 -type f -printf '%f\n' | sort)
+          if ! diff -u <(printf '%s\n' "${expected[@]}" | sort) <(printf '%s\n' "${actual[@]}"); then
+            echo "Release files do not match the expected set" >&2
+            exit 1
+          fi
+      - name: Publish prerelease
         env:
-          UPDATE_PRIVATE_KEY: ${{ secrets.OHNEGUESSR_UPDATE_PRIVATE_KEY }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:UPDATE_PRIVATE_KEY)) {
-            throw "OHNEGUESSR_UPDATE_PRIVATE_KEY is not configured"
-          }
-          $openssl = (Get-Command openssl -ErrorAction SilentlyContinue).Source
-          if (-not $openssl) { $openssl = 'C:\Program Files\Git\usr\bin\openssl.exe' }
-          if (-not (Test-Path $openssl)) { throw "OpenSSL is unavailable" }
-          $privateKey = Join-Path $env:RUNNER_TEMP update-private.pem
-          $publicDer = Join-Path $env:RUNNER_TEMP update-public.der
-          [IO.File]::WriteAllText($privateKey, $env:UPDATE_PRIVATE_KEY)
-          & $openssl pkey -in $privateKey -pubout -outform DER -out $publicDer
-          if ($LASTEXITCODE -ne 0) { throw "Invalid updater private key" }
-          $publicBytes = [IO.File]::ReadAllBytes($publicDer)
-          $publicRaw = $publicBytes[($publicBytes.Length - 32)..($publicBytes.Length - 1)]
-          if ([Convert]::ToBase64String($publicRaw) -ne $env:UPDATE_PUBLIC_KEY) {
-            throw "Updater private key does not match the embedded public key"
-          }
-
-          function Sign-Artifact([string]$path) {
-            $hash = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
-            $digestPath = Join-Path $env:RUNNER_TEMP "$([IO.Path]::GetFileName($path)).digest"
-            $signaturePath = "$digestPath.sig"
-            [IO.File]::WriteAllBytes($digestPath, [Convert]::FromHexString($hash))
-            & $openssl pkeyutl -sign -rawin -inkey $privateKey -in $digestPath -out $signaturePath
-            if ($LASTEXITCODE -ne 0) { throw "Could not sign $path" }
-            return @{
-              hash = $hash
-              signature = [Convert]::ToBase64String([IO.File]::ReadAllBytes($signaturePath))
-            }
-          }
-
-          $setupName = $env:SETUP_NAME
-          $portableName = $env:PORTABLE_NAME
-          $setup = Sign-Artifact "release/$setupName"
-          $portable = Sign-Artifact "release/$portableName"
-          $base = "https://github.com/0hneB/OhneGuessr/releases/download/$env:RELEASE_TAG"
-          $notes = gh release view $env:RELEASE_TAG --json body --jq .body
-          $manifest = [ordered]@{
-            version = $env:RELEASE_VERSION
-            notes = ($notes -join "`n").Trim()
-            setup = [ordered]@{
-              url = "$base/$setupName"
-              sha256 = $setup.hash
-              signature = $setup.signature
-            }
-            portable = [ordered]@{
-              url = "$base/$portableName"
-              sha256 = $portable.hash
-              signature = $portable.signature
-            }
-          }
-          $manifest | ConvertTo-Json -Depth 5 | Set-Content release/latest.json -Encoding utf8
-          @(
-            "$($setup.hash)  $setupName"
-            "$($portable.hash)  $portableName"
-          ) | Set-Content release/SHA256SUMS.txt -Encoding ascii
-          Remove-Item $privateKey, $publicDer -Force
-      - name: Upload release assets
-        shell: pwsh
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists" >&2
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" \
+            "release/OhneGuessr-$RELEASE_VERSION-linux-x64.AppImage" \
+            "release/OhneGuessr-$RELEASE_VERSION-linux-x64.deb" \
+            "release/OhneGuessr-$RELEASE_VERSION-macos.dmg" \
+            "release/OhneGuessr-$RELEASE_VERSION-windows-x64-setup.exe" \
+            "release/OhneGuessr-$RELEASE_VERSION-windows-x64.exe" \
+            --verify-tag \
+            --title "OhneGuessr $RELEASE_TAG" \
+            --notes "second prerelease" \
+            --prerelease \
+            --draft
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease
+      - name: Verify prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view $env:RELEASE_TAG
-          gh release upload $env:RELEASE_TAG `
-            "release/$env:SETUP_NAME" `
-            "release/$env:PORTABLE_NAME" `
-            release/SHA256SUMS.txt `
-            release/latest.json `
-            --clobber
+          test "$(gh release view "$RELEASE_TAG" --json tagName --jq .tagName)" = "$RELEASE_TAG"
+          test "$(gh release view "$RELEASE_TAG" --json name --jq .name)" = "OhneGuessr $RELEASE_TAG"
+          test "$(gh release view "$RELEASE_TAG" --json body --jq .body)" = "second prerelease"
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "false"
+          test "$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)" = "true"
+          test "$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length')" = "5"
