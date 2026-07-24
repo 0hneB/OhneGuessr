@@ -103,29 +103,25 @@ jobs:
       - name: Build AppImage
         env:
           LINUXDEPLOY_SHA256: c86d6540f1df31061f02f539a2d3445f8d7f85cc3994eee1e74cd1ac97b76df0
-          GTK_PLUGIN_SHA256: cb379f9b0733e9ad9f8bd78f8c2fa038aef2478523bb7d4c8e64ff6a1ea3501a
         run: |
           curl --fail --location --output linuxdeploy \
             https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-x86_64.AppImage
-          curl --fail --location --output linuxdeploy-plugin-gtk.sh \
-            https://raw.githubusercontent.com/tauri-apps/linuxdeploy-plugin-gtk/b5eb8d05b4c0ed40107fe2158c5d8527f94568ef/linuxdeploy-plugin-gtk.sh
           echo "$LINUXDEPLOY_SHA256  linuxdeploy" | sha256sum --check
-          echo "$GTK_PLUGIN_SHA256  linuxdeploy-plugin-gtk.sh" | sha256sum --check
-          chmod +x linuxdeploy linuxdeploy-plugin-gtk.sh
-          ./linuxdeploy \
+          chmod +x linuxdeploy
+          ARCH=x86_64 OUTPUT="$GITHUB_WORKSPACE/release/$APPIMAGE_NAME" ./linuxdeploy \
             --appdir AppDir \
             --executable AppDir/usr/bin/ohneguessr \
             --desktop-file AppDir/usr/share/applications/ohneguessr.desktop \
             --icon-file AppDir/usr/share/icons/hicolor/512x512/apps/ohneguessr.png \
+            --exclude-library 'libgdk-3.so*' \
+            --exclude-library 'libgdk_pixbuf-2.0.so*' \
+            --exclude-library 'libgio-2.0.so*' \
+            --exclude-library 'libglib-2.0.so*' \
+            --exclude-library 'libgmodule-2.0.so*' \
+            --exclude-library 'libgobject-2.0.so*' \
+            --exclude-library 'libgtk-3.so*' \
             --exclude-library 'libjavascriptcoregtk-4.1.so*' \
-            --exclude-library 'libwebkit2gtk-4.1.so*' \
-            --plugin gtk
-          find AppDir/usr/lib -maxdepth 1 \
-            \( -name 'libjavascriptcoregtk-4.1.so*' -o -name 'libwebkit2gtk-4.1.so*' \) \
-            -delete
-          ARCH=x86_64 OUTPUT="$GITHUB_WORKSPACE/release/$APPIMAGE_NAME" ./linuxdeploy \
-            --appdir AppDir \
-            --exclude-library 'libjavascriptcoregtk-4.1.so*' \
+            --exclude-library 'libsoup-3.0.so*' \
             --exclude-library 'libwebkit2gtk-4.1.so*' \
             --output appimage
       - name: Verify Linux packages
