@@ -58,7 +58,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes build-essential desktop-file-utils libfuse2 libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+          sudo apt-get install --yes build-essential desktop-file-utils imagemagick libfuse2 libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
       - name: Install pinned Wails CLI
         run: |
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
@@ -81,10 +81,11 @@ jobs:
             'Categories=Game;' \
             'StartupWMClass=OhneGuessr' > ohneguessr.desktop
           desktop-file-validate ohneguessr.desktop
+          convert build/appicon.png -resize 512x512 ohneguessr.png
 
           install -Dm755 build/bin/OhneGuessr package/usr/bin/ohneguessr
           install -Dm644 ohneguessr.desktop package/usr/share/applications/ohneguessr.desktop
-          install -Dm644 build/appicon.png package/usr/share/icons/hicolor/512x512/apps/ohneguessr.png
+          install -Dm644 ohneguessr.png package/usr/share/icons/hicolor/512x512/apps/ohneguessr.png
           printf '%s\n' \
             'Package: ohneguessr' \
             "Version: $RELEASE_VERSION" \
@@ -98,7 +99,7 @@ jobs:
 
           install -Dm755 build/bin/OhneGuessr AppDir/usr/bin/ohneguessr
           install -Dm644 ohneguessr.desktop AppDir/usr/share/applications/ohneguessr.desktop
-          install -Dm644 build/appicon.png AppDir/usr/share/icons/hicolor/512x512/apps/ohneguessr.png
+          install -Dm644 ohneguessr.png AppDir/usr/share/icons/hicolor/512x512/apps/ohneguessr.png
       - name: Build AppImage
         env:
           LINUXDEPLOY_SHA256: c86d6540f1df31061f02f539a2d3445f8d7f85cc3994eee1e74cd1ac97b76df0
@@ -111,14 +112,21 @@ jobs:
           echo "$LINUXDEPLOY_SHA256  linuxdeploy" | sha256sum --check
           echo "$GTK_PLUGIN_SHA256  linuxdeploy-plugin-gtk.sh" | sha256sum --check
           chmod +x linuxdeploy linuxdeploy-plugin-gtk.sh
-          ARCH=x86_64 OUTPUT="$GITHUB_WORKSPACE/release/$APPIMAGE_NAME" ./linuxdeploy \
+          ./linuxdeploy \
             --appdir AppDir \
             --executable AppDir/usr/bin/ohneguessr \
             --desktop-file AppDir/usr/share/applications/ohneguessr.desktop \
             --icon-file AppDir/usr/share/icons/hicolor/512x512/apps/ohneguessr.png \
             --exclude-library 'libjavascriptcoregtk-4.1.so*' \
             --exclude-library 'libwebkit2gtk-4.1.so*' \
-            --plugin gtk \
+            --plugin gtk
+          find AppDir/usr/lib -maxdepth 1 \
+            \( -name 'libjavascriptcoregtk-4.1.so*' -o -name 'libwebkit2gtk-4.1.so*' \) \
+            -delete
+          ARCH=x86_64 OUTPUT="$GITHUB_WORKSPACE/release/$APPIMAGE_NAME" ./linuxdeploy \
+            --appdir AppDir \
+            --exclude-library 'libjavascriptcoregtk-4.1.so*' \
+            --exclude-library 'libwebkit2gtk-4.1.so*' \
             --output appimage
       - name: Verify Linux packages
         run: |
@@ -260,7 +268,7 @@ jobs:
           app=build/bin/OhneGuessr.app
           binary="$app/Contents/MacOS/OhneGuessr"
           test -x "$binary"
-          lipo -verify_arch x86_64 arm64 "$binary"
+          lipo "$binary" -verify_arch x86_64 arm64
           codesign --force --deep --sign - "$app"
           codesign --verify --deep --strict --verbose=2 "$app"
       - name: Build and verify DMG
@@ -275,7 +283,7 @@ jobs:
           hdiutil attach "release/$DMG_NAME" -mountpoint "$mount_point" -nobrowse -readonly
           trap 'hdiutil detach "$mount_point" || true' EXIT
           test -d "$mount_point/OhneGuessr.app"
-          lipo -verify_arch x86_64 arm64 "$mount_point/OhneGuessr.app/Contents/MacOS/OhneGuessr"
+          lipo "$mount_point/OhneGuessr.app/Contents/MacOS/OhneGuessr" -verify_arch x86_64 arm64
           hdiutil detach "$mount_point"
           trap - EXIT
       - uses: actions/upload-artifact@v4
