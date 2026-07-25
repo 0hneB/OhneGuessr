@@ -1,0 +1,26 @@
+version: '3'
+
+includes:
+  common: ../Taskfile.yml
+
+tasks:
+  build:
+    deps:
+      - task: common:build:frontend
+        vars:
+          DEV: '{{.DEV}}'
+    cmds:
+      - mkdir -p "{{.BIN_DIR}}"
+      - go build {{.BUILD_FLAGS}} -o "{{.BIN_DIR}}/{{.APP_NAME}}"
+    vars:
+      ARCH: '{{.ARCH | default ARCH}}'
+      VERSION: '{{.VERSION | default "dev"}}'
+      BUILD_FLAGS: '{{if eq .DEV "true"}}-buildvcs=false -gcflags=all="-l" -ldflags="-X main.version={{.VERSION}}"{{else}}-tags production -trimpath -buildvcs=false -ldflags="-w -s -X main.version={{.VERSION}}"{{end}}'
+    env:
+      GOOS: linux
+      GOARCH: '{{.ARCH}}'
+      CGO_ENABLED: 1
+
+  run:
+    cmds:
+      - '"{{.BIN_DIR}}/{{.APP_NAME}}"'

@@ -106,35 +106,35 @@ Gameplay bindings are rebindable under **Settings -> Controls**.
 
 ## Development
 
-Backend: Go 1.26 and Wails v2.13.0. Frontend: Svelte 5, Vite, and TypeScript.
+Backend: Go 1.26 and Wails v3.0.0-alpha2.117. Frontend: Svelte 5, Vite, and TypeScript.
 
 Install Go 1.26, Node.js 20.19+, 22.12+, or 24+, then install Wails:
 
 ```powershell
-go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.117
 ```
 
 Start the development app with:
 
 ```powershell
-wails dev -appargs "--data-dir ./data"
+wails3 dev
 ```
 
-The `--data-dir ./data` flag keeps development data inside the repository. Leave it out to use `%LOCALAPPDATA%\OhneGuessr`.
+Development uses `%LOCALAPPDATA%\OhneGuessr` on Windows.
 
 Build the portable EXE with:
 
 ```powershell
-wails build -clean -trimpath -skipbindings -webview2 embed -o OhneGuessr.exe
+wails3 build
 ```
 
 For the Setup EXE, install [NSIS](https://nsis.sourceforge.io/) and run:
 
 ```powershell
-wails build -clean -trimpath -skipbindings -webview2 embed -nsis -o OhneGuessr.exe
+wails3 task windows:package VERSION=0.0.2
 ```
 
-Builds go to `build/bin/`. To build only the frontend, run:
+Builds go to `bin/`. To build only the frontend, run:
 
 ```powershell
 npm --prefix frontend run build
@@ -147,7 +147,7 @@ This creates the ignored `frontend/dist/` directory. The **Check** workflow runs
 ```text
 OhneGuessr/
 |-- .github/workflows/     GitHub Actions
-|-- build/                 Wails icons and Windows installer files
+|-- build/                 Wails build and packaging files
 |-- frontend/
 |   |-- src/               Svelte and TypeScript source
 |   |-- public/            static files and vendored OpenSV
@@ -156,7 +156,7 @@ OhneGuessr/
 |-- internal/app/          Go backend and tests
 |-- main.go                Wails entry point
 |-- go.mod / go.sum        Go dependencies
-`-- wails.json             Wails configuration
+`-- Taskfile.yml           Wails build tasks
 ```
 
 ## Troubleshooting
@@ -167,7 +167,7 @@ The release is unsigned. Verify that it came from this repository, optionally co
 
 ### The app window is blank
 
-Download the release executable rather than an individual source file. `wails dev` and `wails build` generate `frontend/dist/` automatically; build it first with `npm --prefix frontend run build` only when running Go directly. Windows 10 also needs the Microsoft WebView2 Runtime; release builds embed its official bootstrapper and offer to install it when missing.
+Download the release executable rather than an individual source file. `wails3 dev` and `wails3 build` generate `frontend/dist/` automatically; build it first with `npm --prefix frontend run build` only when running Go directly. Windows 10 also needs the Microsoft WebView2 Runtime; the installer includes its official bootstrapper and offers to install it when missing.
 
 ### An update fails
 

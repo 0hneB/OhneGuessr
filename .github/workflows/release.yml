@@ -41,7 +41,7 @@ jobs:
 
   linux:
     needs: prepare
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
       APPIMAGE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-linux-x64.AppImage
@@ -62,15 +62,15 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes build-essential desktop-file-utils imagemagick libfuse2 libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+          sudo apt-get install --yes build-essential desktop-file-utils imagemagick libfuse2 libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+      - run: npm ci
+        working-directory: frontend
       - name: Install pinned Wails CLI
         run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.117
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Build Linux app
-        run: |
-          wails build -clean -trimpath -skipbindings -tags webkit2_41 \
-            -ldflags "-X main.version=$RELEASE_VERSION" -o OhneGuessr
+        run: wails3 build VERSION="$RELEASE_VERSION"
       - name: Stage Linux packages
         run: |
           mkdir -p release package/DEBIAN AppDir
@@ -87,7 +87,7 @@ jobs:
           desktop-file-validate ohneguessr.desktop
           convert build/appicon.png -resize 512x512 ohneguessr.png
 
-          install -Dm755 build/bin/OhneGuessr package/usr/bin/ohneguessr
+          install -Dm755 bin/OhneGuessr package/usr/bin/ohneguessr
           install -Dm644 ohneguessr.desktop package/usr/share/applications/ohneguessr.desktop
           install -Dm644 ohneguessr.png package/usr/share/icons/hicolor/512x512/apps/ohneguessr.png
           printf '%s\n' \
@@ -97,11 +97,11 @@ jobs:
             'Priority: optional' \
             'Architecture: amd64' \
             'Maintainer: OhneB' \
-            'Depends: libwebkit2gtk-4.1-0' \
+            'Depends: libwebkitgtk-6.0-4' \
             'Description: A free, lean, local GeoGuessr alternative.' > package/DEBIAN/control
           dpkg-deb --root-owner-group --build package "release/$DEB_NAME"
 
-          install -Dm755 build/bin/OhneGuessr AppDir/usr/bin/ohneguessr
+          install -Dm755 bin/OhneGuessr AppDir/usr/bin/ohneguessr
           install -Dm644 ohneguessr.desktop AppDir/usr/share/applications/ohneguessr.desktop
           install -Dm644 ohneguessr.png AppDir/usr/share/icons/hicolor/512x512/apps/ohneguessr.png
       - name: Build AppImage
@@ -117,16 +117,15 @@ jobs:
             --executable AppDir/usr/bin/ohneguessr \
             --desktop-file AppDir/usr/share/applications/ohneguessr.desktop \
             --icon-file AppDir/usr/share/icons/hicolor/512x512/apps/ohneguessr.png \
-            --exclude-library 'libgdk-3.so*' \
             --exclude-library 'libgdk_pixbuf-2.0.so*' \
             --exclude-library 'libgio-2.0.so*' \
             --exclude-library 'libglib-2.0.so*' \
             --exclude-library 'libgmodule-2.0.so*' \
             --exclude-library 'libgobject-2.0.so*' \
-            --exclude-library 'libgtk-3.so*' \
-            --exclude-library 'libjavascriptcoregtk-4.1.so*' \
+            --exclude-library 'libgtk-4.so*' \
+            --exclude-library 'libjavascriptcoregtk-6.0.so*' \
             --exclude-library 'libsoup-3.0.so*' \
-            --exclude-library 'libwebkit2gtk-4.1.so*' \
+            --exclude-library 'libwebkitgtk-6.0.so*' \
             --output appimage
       - name: Verify Linux packages
         run: |
@@ -146,7 +145,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04]
+        os: [ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     env:
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
@@ -192,9 +191,13 @@ jobs:
       - name: Set Windows product version
         shell: pwsh
         run: |
-          $config = Get-Content wails.json -Raw | ConvertFrom-Json
-          $config.info.productVersion = $env:RELEASE_VERSION
-          $config | ConvertTo-Json -Depth 10 | Set-Content wails.json -Encoding utf8
+          $info = Get-Content build/windows/info.json -Raw | ConvertFrom-Json
+          $info.fixed.file_version = $env:RELEASE_VERSION
+          $info.info.'0000'.ProductVersion = $env:RELEASE_VERSION
+          $info | ConvertTo-Json -Depth 10 | Set-Content build/windows/info.json -Encoding utf8
+          [xml]$manifest = Get-Content build/windows/wails.exe.manifest -Raw
+          $manifest.assembly.assemblyIdentity.SetAttribute('version', "$env:RELEASE_VERSION.0")
+          $manifest.Save((Resolve-Path build/windows/wails.exe.manifest).Path)
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -206,14 +209,11 @@ jobs:
           cache: false
       - run: npm ci
         working-directory: frontend
-      - run: npm run build
-        working-directory: frontend
       - run: go vet ./internal/app
-      - run: go test ./...
       - name: Install pinned Wails CLI
         shell: pwsh
         run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.117
           "$(go env GOPATH)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
       - name: Install NSIS
         shell: pwsh
@@ -223,13 +223,11 @@ jobs:
       - name: Build Windows packages
         shell: pwsh
         run: |
-          wails build -clean -trimpath -skipbindings -webview2 embed -nsis `
-            -ldflags "-X main.version=$env:RELEASE_VERSION" -o OhneGuessr.exe
+          wails3 task windows:package VERSION=$env:RELEASE_VERSION
+          go test ./...
           New-Item -ItemType Directory -Path release | Out-Null
-          Copy-Item build/bin/OhneGuessr.exe "release/$env:PORTABLE_NAME"
-          $installer = Get-ChildItem build/bin/*-installer.exe | Select-Object -First 1
-          if (-not $installer) { throw "Wails did not create an installer" }
-          Copy-Item $installer.FullName "release/$env:SETUP_NAME"
+          Copy-Item bin/OhneGuessr.exe "release/$env:PORTABLE_NAME"
+          Copy-Item bin/OhneGuessr-amd64-installer.exe "release/$env:SETUP_NAME"
           Get-Item "release/$env:PORTABLE_NAME", "release/$env:SETUP_NAME"
       - uses: actions/upload-artifact@v4
         with:
@@ -259,13 +257,12 @@ jobs:
           cache: false
       - name: Install pinned Wails CLI
         run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.117
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Build universal macOS app
         run: |
-          wails build -clean -trimpath -skipbindings -platform darwin/universal \
-            -ldflags "-X main.version=$RELEASE_VERSION" -o OhneGuessr
-          app=build/bin/OhneGuessr.app
+          wails3 task darwin:package:universal VERSION="$RELEASE_VERSION"
+          app=bin/OhneGuessr.app
           binary="$app/Contents/MacOS/OhneGuessr"
           test -x "$binary"
           lipo "$binary" -verify_arch x86_64 arm64
@@ -274,7 +271,7 @@ jobs:
       - name: Build and verify DMG
         run: |
           mkdir -p release dmg
-          cp -R build/bin/OhneGuessr.app dmg/
+          cp -R bin/OhneGuessr.app dmg/
           ln -s /Applications dmg/Applications
           hdiutil create -volname OhneGuessr -srcfolder dmg -format UDZO -ov "release/$DMG_NAME"
 

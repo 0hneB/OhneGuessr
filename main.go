@@ -4,18 +4,14 @@ import (
 	"context"
 	"embed"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/0hneB/OhneGuessr/internal/app"
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/linux"
-	"github.com/wailsapp/wails/v2/pkg/options/windows"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 //go:embed all:frontend/dist
@@ -24,30 +20,30 @@ var builtFrontend embed.FS
 var version = "dev"
 
 type desktopApp struct {
-	backend *app.App
-	mu      sync.RWMutex
-	ctx     context.Context
+	backend    *app.App
+	mu         sync.RWMutex
+	mainWindow *application.WebviewWindow
 }
 
-func (d *desktopApp) startup(ctx context.Context) {
+func (d *desktopApp) setMainWindow(window *application.WebviewWindow) {
 	d.mu.Lock()
-	d.ctx = ctx
+	d.mainWindow = window
 	d.mu.Unlock()
 }
 
-func (d *desktopApp) shutdown(context.Context) {
+func (d *desktopApp) shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = d.backend.Shutdown(ctx)
 }
 
-func (d *desktopApp) secondInstance(options.SecondInstanceData) {
+func (d *desktopApp) secondInstance(application.SecondInstanceData) {
 	d.mu.RLock()
-	ctx := d.ctx
+	window := d.mainWindow
 	d.mu.RUnlock()
-	if ctx != nil {
-		runtime.WindowUnminimise(ctx)
-		runtime.Show(ctx)
+	if window != nil {
+		window.UnMinimise()
+		window.Focus()
 	}
 }
 
@@ -66,33 +62,54 @@ func run() error {
 	}
 	desktop := &desktopApp{backend: backend}
 
-	return wails.Run(&options.App{
-		Title:                    "OhneGuessr",
-		Width:                    1400,
-		Height:                   900,
-		MinWidth:                 800,
-		MinHeight:                600,
-		WindowStartState:         options.Maximised,
-		BackgroundColour:         &options.RGBA{R: 11, G: 11, B: 11, A: 255},
-		EnableDefaultContextMenu: false,
-		AssetServer: &assetserver.Options{
-			Assets:  frontend,
-			Handler: backend.Handler(),
+	backendHandler := backend.Handler()
+	handler := http.NewServeMux()
+	handler.Handle("/api", backendHandler)
+	handler.Handle("/api/", backendHandler)
+	handler.Handle("/data/", backendHandler)
+	handler.Handle("/", application.AssetFileServerFS(frontend))
+
+	wailsApp := application.New(application.Options{
+		Name:        "OhneGuessr",
+		Description: "A free, lean, local GeoGuessr alternative.",
+		Assets: application.AssetOptions{
+			Handler: handler,
 		},
-		OnStartup:  desktop.startup,
 		OnShutdown: desktop.shutdown,
-		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId:               "5ac23bb7-9f87-48bc-a73f-e4fe65ce85c1",
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID:               "5ac23bb7-9f87-48bc-a73f-e4fe65ce85c1",
 			OnSecondInstanceLaunch: desktop.secondInstance,
 		},
-		Linux: &linux.Options{
-			WebviewGpuPolicy: linux.WebviewGpuPolicyOnDemand,
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
-		Windows: &windows.Options{
-			Theme:               windows.Dark,
+		Windows: application.WindowsOptions{
 			WebviewUserDataPath: filepath.Join(dataDir, "webview"),
 		},
+		Linux: application.LinuxOptions{
+			ProgramName: "ohneguessr",
+		},
 	})
+	mainWindow := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:                       "main",
+		Title:                      "OhneGuessr",
+		Width:                      1400,
+		Height:                     900,
+		MinWidth:                   800,
+		MinHeight:                  600,
+		StartState:                 application.WindowStateMaximised,
+		BackgroundColour:           application.NewRGB(11, 11, 11),
+		DefaultContextMenuDisabled: true,
+		URL:                        "/",
+		Windows: application.WindowsWindow{
+			Theme: application.Dark,
+		},
+		Linux: application.LinuxWindow{
+			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
+		},
+	})
+	desktop.setMainWindow(mainWindow)
+	return wailsApp.Run()
 }
 
 func main() {

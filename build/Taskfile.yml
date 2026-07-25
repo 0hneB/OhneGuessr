@@ -1,0 +1,28 @@
+version: '3'
+
+tasks:
+  install:frontend:
+    run: once
+    dir: frontend
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
+    cmds:
+      - npm install
+
+  build:frontend:
+    run: once
+    dir: frontend
+    deps:
+      - install:frontend
+    cmds:
+      - npm run {{if eq .DEV "true"}}build:dev{{else}}build{{end}}
+
+  dev:frontend:
+    dir: frontend
+    deps:
+      - install:frontend
+    cmds:
+      - npm run dev -- --host 127.0.0.1 --port {{.VITE_PORT}} --strictPort

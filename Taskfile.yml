@@ -1,0 +1,30 @@
+version: '3'
+
+vars:
+  APP_NAME: OhneGuessr
+  BIN_DIR: bin
+  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+  GOOS: '{{.GOOS | default OS}}'
+
+includes:
+  common: ./build/Taskfile.yml
+  windows: ./build/windows/Taskfile.yml
+  darwin: ./build/darwin/Taskfile.yml
+  linux: ./build/linux/Taskfile.yml
+
+tasks:
+  build:
+    cmds:
+      - task: '{{.GOOS}}:build'
+        vars:
+          ARCH: '{{.ARCH}}'
+          DEV: '{{.DEV}}'
+          VERSION: '{{.VERSION | default "dev"}}'
+
+  run:
+    cmds:
+      - task: '{{.GOOS}}:run'
+
+  dev:
+    cmds:
+      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { closeSettings } from '../dom.js';
-  import { isFullscreen, setFullscreen } from '../desktop.js';
+  import { desktopRuntimeAvailable, isFullscreen, setFullscreen } from '../desktop.js';
   import { settings } from '../game/state.svelte.js';
   import type { CompassStyle, GuessMapSize, MovementMode, ScoringMode } from '../types.js';
   import { gameActions, selectSettingsTab, ui, type SettingsTab } from '../ui.svelte.js';
@@ -76,14 +76,18 @@
   }
 
   onMount(() => {
-    fullscreenSupported = Boolean(window.runtime?.WindowFullscreen);
     const sync = async () => {
+      fullscreenSupported = desktopRuntimeAvailable();
       fullscreen = await isFullscreen();
       gameActions.syncGuessMapLayout();
     };
+    window.addEventListener('wails:runtime-config-ready', sync);
     window.addEventListener('resize', sync);
     void sync();
-    return () => window.removeEventListener('resize', sync);
+    return () => {
+      window.removeEventListener('wails:runtime-config-ready', sync);
+      window.removeEventListener('resize', sync);
+    };
   });
 </script>
 

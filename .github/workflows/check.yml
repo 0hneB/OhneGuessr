@@ -47,13 +47,10 @@ jobs:
           cache: false
       - run: npm ci
         working-directory: frontend
-      - run: npm run build
-        working-directory: frontend
-      - run: go test ./...
       - name: Install pinned Wails CLI
         shell: pwsh
         run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.13.0
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.117
           "$(go env GOPATH)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
       - name: Install NSIS
         shell: pwsh
@@ -63,15 +60,14 @@ jobs:
       - name: Build portable app and installer
         shell: pwsh
         run: |
-          wails build -clean -trimpath -skipbindings -webview2 embed -nsis -o OhneGuessr.exe
-          if (-not (Get-ChildItem build/bin/*-installer.exe)) {
-            throw "Wails did not create an installer"
-          }
+          wails3 task windows:package VERSION=0.0.0
+          Get-Item bin/OhneGuessr.exe, bin/OhneGuessr-amd64-installer.exe
+      - run: go test ./...
       - uses: actions/upload-artifact@v7
         with:
           name: OhneGuessr-windows-x64
           path: |
-            build/bin/OhneGuessr.exe
-            build/bin/*-installer.exe
+            bin/OhneGuessr.exe
+            bin/OhneGuessr-amd64-installer.exe
           if-no-files-found: error
           retention-days: 7

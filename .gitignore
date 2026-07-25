@@ -3,10 +3,7 @@ node_modules/
 /bin/
 /data/
 /.cache/
-/frontend/.wailsjs/
+/.task/
 /frontend/dist/
-/build/bin/
-/build/windows/*.syso
-/build/windows/installer/wails_tools.nsh
-/build/windows/installer/tmp/
-/frontend/package.json.md5
+/build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+/wails_windows_*.syso
