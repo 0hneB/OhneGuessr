@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { requestJSON } from '../api.js';
   import { openExternal, quitApplication } from '../desktop.js';
 
   type UpdatePhase =
@@ -37,10 +38,7 @@
   );
 
   async function request(path: string, method = 'GET') {
-    const response = await fetch(path, { method, cache: 'no-store' });
-    const body = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(body?.error || 'Update request failed.');
-    status = body as UpdateStatus;
+    status = await requestJSON<UpdateStatus>(path, { method, cache: 'no-store' });
     return status;
   }
 

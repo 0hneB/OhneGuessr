@@ -1,3 +1,7 @@
+import { ApiError, requestJSON } from '../../api.js';
+
+export { ApiError };
+
 const BASE = '/api/learnable-meta';
 
 export interface LearnableMetaStatus {
@@ -27,37 +31,8 @@ export interface LearnableMetaClue {
   images?: string[];
 }
 
-export class ApiError extends Error {
-  status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-  }
-}
-
-const errorFrom = (value: unknown) =>
-  value && typeof value === 'object' && 'error' in value
-    ? String((value as { error: unknown }).error)
-    : '';
-
-async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(BASE + path, {
-    ...options,
-    headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(options.headers || {})
-    }
-  });
-  let data: unknown = null;
-  try { data = await response.json(); } catch { /* use status below */ }
-  if (!response.ok) {
-    throw new ApiError(errorFrom(data) || `Learnable Meta request failed (${response.status})`, response.status);
-  }
-  if (data === null) throw new ApiError('Learnable Meta returned invalid JSON', response.status);
-  return data as T;
-}
+const api = <T = unknown>(path: string, options: RequestInit = {}) =>
+  requestJSON<T>(BASE + path, options);
 
 export const getStatus = () => api<LearnableMetaStatus>('/status');
 export const setEnabled = (enabled: boolean) => api<LearnableMetaStatus>('/settings', {

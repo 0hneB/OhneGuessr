@@ -1,5 +1,6 @@
 // Folder-aware map storage. The versioned manifest remains plain JSON so the
 // cached library can still run from any static HTTP server.
+import { requestJSON as api } from '../api.js';
 import type { Location, MapItem, MapSource } from '../types.js';
 
 const MANIFEST_URL = '/data/maps.json';
@@ -28,26 +29,6 @@ interface StoredMap {
 
 interface RescanResult {
   ignored?: unknown[];
-}
-
-const errorFrom = (value: unknown) =>
-  value && typeof value === 'object' && 'error' in value
-    ? String((value as { error: unknown }).error)
-    : '';
-
-async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(path, {
-    ...options,
-    headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(options.headers || {})
-    }
-  });
-  let data: unknown = null;
-  try { data = await res.json(); } catch { /* use the status below */ }
-  if (!res.ok) throw new Error(errorFrom(data) || `${path} ${res.status}`);
-  if (data === null) throw new Error(`${path} returned invalid JSON`);
-  return data as T;
 }
 
 const cleanPath = (value: unknown) => String(value || '')
