@@ -133,7 +133,7 @@ jobs:
           test -s "release/$DEB_NAME"
           dpkg-deb --info "release/$DEB_NAME"
           dpkg-deb --contents "release/$DEB_NAME"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux
           path: release/*
@@ -152,7 +152,7 @@ jobs:
       APPIMAGE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-linux-x64.AppImage
       DEB_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-linux-x64.deb
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: linux
           path: release
@@ -230,7 +230,7 @@ jobs:
           Copy-Item bin/OhneGuessr.exe "release/$env:PORTABLE_NAME"
           Copy-Item bin/OhneGuessr-amd64-installer.exe "release/$env:SETUP_NAME"
           Get-Item "release/$env:PORTABLE_NAME", "release/$env:SETUP_NAME"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: release/*
@@ -284,7 +284,7 @@ jobs:
           lipo "$mount_point/OhneGuessr.app/Contents/MacOS/OhneGuessr" -verify_arch x86_64 arm64
           hdiutil detach "$mount_point"
           trap - EXIT
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos
           path: release/*
@@ -299,7 +299,7 @@ jobs:
       RELEASE_DESCRIPTION: ${{ inputs.description }}
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: '*'
           path: release
