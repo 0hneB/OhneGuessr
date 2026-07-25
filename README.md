@@ -16,9 +16,6 @@ Download the latest version from [GitHub Releases](https://github.com/0hneB/Ohne
 
 ## Features
 
-- Separate responsive launcher with maps, settings, and synchronization.
-- Local map library with nested folders, imports, moves, renaming, and deletion.
-- Multiple free MapLibre styles and vendored OpenSV panorama support.
 - Moving, No Moving, and NMPZ games with configurable rounds and timers.
 - World- or map-scaled scoring, result maps, and a final summary.
 - Rebindable controls, configurable compass, map size, zoom speed, and accent color.
