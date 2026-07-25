@@ -1,6 +1,6 @@
 import { KEYBINDINGS } from '../config.js';
-import { settings } from '../game/state.svelte.js';
-import { saveSettings } from './settings.js';
+import { settings, updateSettings } from './store.svelte.js';
+import type { Settings } from '../types.js';
 
 export interface ControlItem {
   action: string;
@@ -66,8 +66,8 @@ export function compactCodeLabel(code: string | null) {
   return label.length <= 4 ? label : `${label.slice(0, 3)}…`;
 }
 
-export function currentBindings() {
-  const overrides = settings.keybindings || {};
+export function currentBindings(source: Settings = settings) {
+  const overrides = source.keybindings || {};
   const bindings = { ...KEYBINDINGS, ...overrides };
   const claimed = new Set(Object.values(overrides).flat());
   for (const action of Object.keys(KEYBINDINGS)) {
@@ -77,8 +77,6 @@ export function currentBindings() {
   return bindings;
 }
 
-let activeRouter: Keybindings | null = null;
-
 export function setBinding(action: string, code: string | null) {
   const bindings = currentBindings();
   const next: Record<string, string[]> = {};
@@ -86,15 +84,11 @@ export function setBinding(action: string, code: string | null) {
     next[name] = (bindings[name] || []).filter((value) => value !== code);
   }
   next[action] = code ? [code] : [];
-  settings.keybindings = next;
-  saveSettings(settings);
-  activeRouter?.rebuild();
+  updateSettings({ keybindings: next });
 }
 
 export function resetBindings() {
-  settings.keybindings = {};
-  saveSettings(settings);
-  activeRouter?.rebuild();
+  updateSettings({ keybindings: {} });
 }
 
 export class Keybindings {
@@ -115,7 +109,6 @@ export class Keybindings {
     this.actions = actions;
     this.releases = releases;
     this.isPanelOpen = isPanelOpen;
-    activeRouter = this;
     this.rebuild();
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);

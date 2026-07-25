@@ -1,6 +1,15 @@
 import { mount } from 'svelte';
-import App from './App.svelte';
-import './app.css';
+import { parseRoute } from './route.js';
 
-mount(App, { target: document.getElementById('app')! });
-void import('./game/game.js').then(({ init }) => init());
+const route = parseRoute(location.search);
+const target = document.getElementById('app')!;
+
+if (route.view === 'game') {
+  await import('./app.css');
+  const { default: GameApp } = await import('./GameApp.svelte');
+  mount(GameApp, { target });
+} else {
+  await Promise.all([import('./app.css'), import('./launcher.css')]);
+  const { default: LauncherApp } = await import('./LauncherApp.svelte');
+  mount(LauncherApp, { target });
+}

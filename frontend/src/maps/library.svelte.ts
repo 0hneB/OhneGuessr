@@ -1,41 +1,35 @@
-import {
-  closeSettings,
-  openSettings,
-  setEmptyState,
-  setLoading,
-  setUploadMessage
-} from '../dom.js';
+import { closeGame, launchMap } from '../desktop.js';
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
-import { GAME_PHASE, settings, state } from '../game/state.svelte.js';
-import { emitPluginEvent, PLUGIN_EVENTS } from '../plugins/events.js';
-import { saveSettings } from '../settings/settings.js';
+import {
+  removeMap as removeLearnableMap,
+  renameMap as renameLearnableMap
+} from '../plugins/learnable-meta/api.js';
+import { publishLearnableMetaStatus } from '../plugins/learnable-meta/status.js';
 import type { MapItem } from '../types.js';
-import { selectSettingsTab } from '../ui.svelte.js';
 import {
   addUserMap,
+  createFolder as createFolderAPI,
+  deleteFolder as deleteFolderAPI,
   deleteUserMap,
-  getLocations,
   loadLibrary,
+  moveMap as moveMapAPI,
   openDataFolder,
+  renameFolder as renameFolderAPI,
   renameUserMap,
   rescanMaps
 } from './api.js';
+import {
+  buildLibraryRows,
+  canCreateFolder,
+  canMoveMap,
+  mapMoveTargets,
+  parentFolder,
+  sourceType
+} from './library-tree.js';
+
+export { canCreateFolder, canStoreLocalMap } from './library-tree.js';
 
 const FOLDER_STATE_KEY = 'ohneguessr.mapFolders';
-const MMA_ROOT = 'map-making-app';
-const LEARNABLE_META_ROOT = 'Learnable Meta';
-const errorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error && error.message ? error.message : fallback;
-
-type ManagedAction = (map: MapItem, value?: string) => Promise<unknown>;
-interface ManagedActions {
-  rename: ManagedAction | null;
-  remove: ManagedAction | null;
-}
-
-export type LibraryRow =
-  | { kind: 'folder'; path: string; name: string; count: number; depth: number; open: boolean }
-  | { kind: 'map'; map: MapItem; depth: number; canRename: boolean; canRemove: boolean };
 
 function loadExpandedFolders() {
   try {
@@ -46,277 +40,218 @@ function loadExpandedFolders() {
   }
 }
 
-export const libraryUi = $state({
+export const library = $state({
+  maps: [] as MapItem[],
+  folders: [] as string[],
   expandedFolders: loadExpandedFolders(),
+  selectedFolder: '',
   search: '',
-  searchOpen: false,
-  renamingKey: null as string | null,
-  renameValue: '',
+  loading: true,
   refreshing: false,
+  launchingMapID: '',
+  activeMapID: '',
+  notice: '',
+  noticeError: false,
   revision: 0
 });
 
-const managedMapActions = new Map<string, ManagedActions>();
-let startGame: () => Promise<void> = async () => {};
-let tryResume: () => Promise<boolean> = async () => false;
-
-const parentFolder = (path: string) => path.split('/').slice(0, -1).join('/');
-const folderName = (path: string) => {
-  if (path === MMA_ROOT) return 'Map Making App';
-  if (path === LEARNABLE_META_ROOT) return 'Learnable Meta';
-  return path.split('/').pop() || '';
+const setNotice = (message: string, error = false) => {
+  library.notice = message;
+  library.noticeError = error;
 };
-const rootRank = (path: string) => path === MMA_ROOT ? 0 : path === LEARNABLE_META_ROOT ? 1 : 2;
-const actionsFor = (map: MapItem) => map.managed
-  ? managedMapActions.get(String(map.source?.type || ''))
-  : null;
-const refreshView = () => { libraryUi.revision += 1; };
+const errorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+const refreshView = () => { library.revision += 1; };
 
 function saveExpandedFolders() {
   try {
-    localStorage.setItem(FOLDER_STATE_KEY, JSON.stringify([...libraryUi.expandedFolders]));
+    localStorage.setItem(FOLDER_STATE_KEY, JSON.stringify([...library.expandedFolders]));
   } catch { /* private mode */ }
 }
 
-function revealSelectedFolder() {
-  const selected = state.maps.find((map) => map.key === state.currentKey);
-  let folder = selected?.folder || '';
-  while (folder) {
-    libraryUi.expandedFolders.add(folder);
-    folder = parentFolder(folder);
-  }
-  saveExpandedFolders();
+export function moveTargets(map: MapItem) {
+  return mapMoveTargets(map, library.folders);
 }
 
-export function libraryRows(): LibraryRow[] {
-  void libraryUi.revision;
-  const folders = new Set(state.folders);
-  for (const map of state.maps) {
-    let folder = map.folder;
-    while (folder) {
-      folders.add(folder);
-      folder = parentFolder(folder);
-    }
-  }
-
-  const query = libraryUi.search.trim().toLocaleLowerCase();
-  const searching = Boolean(query);
-  const matches = (value: string) => value.toLocaleLowerCase().includes(query);
-  const folderMatches = (value: string) => {
-    let folder = value;
-    while (folder) {
-      if (matches(folderName(folder))) return true;
-      folder = parentFolder(folder);
-    }
-    return false;
-  };
-  const maps = searching
-    ? state.maps.filter((map) => matches(map.name) || folderMatches(map.folder))
-    : state.maps;
-  const visibleFolders = searching
-    ? new Set([...folders].filter((folder) =>
-        folderMatches(folder) || maps.some((map) =>
-          map.folder === folder || map.folder.startsWith(`${folder}/`))))
-    : folders;
-  const directFolders = (parent: string) => [...visibleFolders]
-    .filter((folder) => parentFolder(folder) === parent)
-    .sort((a, b) => {
-      if (!parent && rootRank(a) !== rootRank(b)) return rootRank(a) - rootRank(b);
-      return folderName(a).localeCompare(folderName(b), undefined, { sensitivity: 'base' });
-    });
-  const directMaps = (parent: string) => maps
-    .filter((map) => map.folder === parent)
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-  const rows: LibraryRow[] = [];
-
-  function addChildren(parent: string, depth: number) {
-    for (const folder of directFolders(parent)) {
-      const open = searching || libraryUi.expandedFolders.has(folder);
-      rows.push({
-        kind: 'folder',
-        path: folder,
-        name: folderName(folder),
-        count: maps.filter((map) => map.folder === folder || map.folder.startsWith(`${folder}/`)).length,
-        depth,
-        open
-      });
-      if (open) addChildren(folder, depth + 1);
-    }
-    for (const map of directMaps(parent)) {
-      const actions = actionsFor(map);
-      rows.push({
-        kind: 'map',
-        map,
-        depth,
-        canRename: !map.managed || Boolean(actions?.rename),
-        canRemove: !map.managed || Boolean(actions?.remove)
-      });
-    }
-  }
-
-  addChildren('', 0);
-  return rows;
+export function libraryRows() {
+  void library.revision;
+  return buildLibraryRows(
+    library.maps,
+    library.folders,
+    library.search,
+    library.expandedFolders,
+    library.selectedFolder
+  );
 }
 
-export function toggleFolder(path: string) {
-  if (libraryUi.expandedFolders.has(path)) libraryUi.expandedFolders.delete(path);
-  else libraryUi.expandedFolders.add(path);
+export function selectFolder(folder: string) {
+  library.selectedFolder = folder;
+  let parent = folder;
+  while (parent) {
+    library.expandedFolders.add(parent);
+    parent = parentFolder(parent);
+  }
   saveExpandedFolders();
   refreshView();
 }
 
-export function registerManagedMapActions(sourceType: string, actions: Partial<ManagedActions>) {
-  const type = String(sourceType || '').trim();
-  const entry: ManagedActions = {
-    rename: typeof actions.rename === 'function' ? actions.rename : null,
-    remove: typeof actions.remove === 'function' ? actions.remove : null
-  };
-  if (!type || (!entry.rename && !entry.remove)) {
-    throw new TypeError('Managed map actions require a source type and at least one handler');
-  }
-  managedMapActions.set(type, entry);
+export function toggleFolder(folder: string) {
+  if (library.expandedFolders.has(folder)) library.expandedFolders.delete(folder);
+  else library.expandedFolders.add(folder);
+  saveExpandedFolders();
   refreshView();
-  return () => {
-    if (managedMapActions.get(type) !== entry) return;
-    managedMapActions.delete(type);
-    refreshView();
-  };
+}
+
+export function setActiveMap(mapID = '') {
+  library.activeMapID = mapID;
 }
 
 export async function reloadLibrary() {
-  const library = await loadLibrary();
-  state.maps = library.maps;
-  state.folders = library.folders;
-  revealSelectedFolder();
-  refreshView();
-  return library;
-}
-
-export async function selectMap(key: string, { resume = false } = {}) {
-  const item = state.maps.find((map) => map.key === key) || state.maps[0];
-  if (!item) { showNoMaps(); return; }
-  state.phase = GAME_PHASE.LOADING;
-  setEmptyState(false);
-  state.currentKey = item.key;
-  emitPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, {
-    map: { ...item, source: item.source ? { ...item.source } : null }
-  });
-  settings.currentMap = item.key;
-  saveSettings(settings);
-  revealSelectedFolder();
-  refreshView();
-  setLoading(true, `Loading ${item.name}…`);
-
-  let locations;
-  try {
-    locations = normalizeLocations(await getLocations(item));
-  } catch {
-    await recoverToSettings(`Couldn't load "${item.name}". Refresh the map library or choose another map.`);
-    return;
+  const result = await loadLibrary();
+  library.maps = result.maps;
+  library.folders = result.folders;
+  if (library.selectedFolder && !result.folders.includes(library.selectedFolder)) {
+    library.selectedFolder = '';
   }
-  if (!locations.length) {
-    await recoverToSettings(`"${item.name}" has no playable locations.`);
-    return;
-  }
-  state.all = locations;
-  if (resume && await tryResume()) return;
-  await startGame();
+  library.loading = false;
+  refreshView();
+  return result;
 }
 
-async function recoverToSettings(message: string) {
-  state.phase = GAME_PHASE.ERROR;
-  setLoading(false);
-  setEmptyState(false);
-  state.currentKey = null;
-  await reloadLibrary();
-  selectSettingsTab('maps');
-  setUploadMessage(message);
-  openSettings();
-}
-
-export async function renameMap(map: MapItem, name: string) {
-  const rename = map.managed ? actionsFor(map)?.rename : renameUserMap;
-  if (!rename || !name || name === map.name) return;
+export async function initLibrary() {
+  library.loading = true;
   try {
-    await rename(map, name);
     await reloadLibrary();
   } catch (error) {
-    setUploadMessage(errorMessage(error, 'Could not rename that map.'));
+    library.loading = false;
+    setNotice(errorMessage(error, 'Could not load maps.'), true);
   }
 }
 
-export async function removeMap(map: MapItem) {
-  const remove = map.managed ? actionsFor(map)?.remove : deleteUserMap;
-  if (!remove) return;
+export async function playMap(map: MapItem) {
+  library.launchingMapID = map.id;
+  setNotice('');
   try {
-    await remove(map);
-    await reloadLibrary();
+    await launchMap(map.id);
   } catch (error) {
-    setUploadMessage(errorMessage(error, 'Could not delete that map.'));
-    return;
+    setNotice(errorMessage(error, 'Could not launch that map.'), true);
+  } finally {
+    library.launchingMapID = '';
   }
-  if (state.currentKey !== map.key) return;
-  state.currentKey = null;
-  if (state.maps[0]) await selectMap(state.maps[0].key);
-  else showNoMaps();
 }
 
-export function showNoMaps() {
-  state.phase = GAME_PHASE.EMPTY;
-  state.currentKey = null;
-  setLoading(false);
-  emitPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, { map: null });
-  refreshView();
-  closeSettings();
-  setEmptyState(true);
-  setUploadMessage('');
-}
-
-export async function readUpload(file: File) {
-  let json;
+export async function importMap(file: File) {
+  let json: unknown;
   try {
     json = JSON.parse(await file.text());
   } catch {
-    setUploadMessage('Could not parse that JSON file.');
+    setNotice('Could not parse that JSON file.', true);
     return;
   }
   const locations = normalizeLocations(json);
   if (!locations.length) {
-    setUploadMessage('No usable coordinates found.');
+    setNotice('No usable coordinates found.', true);
     return;
   }
   try {
-    const item = await addUserMap(mapNameFrom(json, file.name), locations);
+    await addUserMap(mapNameFrom(json, file.name), locations, library.selectedFolder);
     await reloadLibrary();
-    setUploadMessage('');
-    closeSettings();
-    setEmptyState(false);
-    await selectMap(item.key);
-  } catch {
-    setUploadMessage('Could not save the map. Is the OhneGuessr app running?');
+    setNotice('');
+  } catch (error) {
+    setNotice(errorMessage(error, 'Could not import that map.'), true);
+  }
+}
+
+export async function createFolder(name: string) {
+  try {
+    const result = await createFolderAPI(library.selectedFolder, name);
+    await reloadLibrary();
+    selectFolder(result.path);
+    setNotice('');
+  } catch (error) {
+    setNotice(errorMessage(error, 'Could not create that folder.'), true);
+  }
+}
+
+export async function renameFolder(folder: string, name: string) {
+  try {
+    const result = await renameFolderAPI(folder, name);
+    if (library.selectedFolder === folder ||
+        library.selectedFolder.startsWith(folder + '/')) {
+      library.selectedFolder = result.path + library.selectedFolder.slice(folder.length);
+    }
+    await reloadLibrary();
+    setNotice('');
+  } catch (error) {
+    setNotice(errorMessage(error, 'Could not rename that folder.'), true);
+  }
+}
+
+export async function removeFolder(folder: string) {
+  try {
+    await deleteFolderAPI(folder);
+    if (library.selectedFolder === folder) library.selectedFolder = parentFolder(folder);
+    await reloadLibrary();
+    setNotice('');
+  } catch (error) {
+    setNotice(errorMessage(error, 'Only empty folders can be deleted.'), true);
+  }
+}
+
+export async function renameMap(map: MapItem, name: string) {
+  try {
+    if (sourceType(map) === 'learnable-meta') {
+      publishLearnableMetaStatus(
+        await renameLearnableMap(String(map.source?.mapId || ''), name)
+      );
+    } else {
+      await renameUserMap(map, name);
+    }
+    await reloadLibrary();
+    setNotice('');
+  } catch (error) {
+    setNotice(errorMessage(error, 'Could not rename that map.'), true);
+  }
+}
+
+export async function moveMap(map: MapItem, folder: string) {
+  if (!canMoveMap(map) || folder === map.folder) return;
+  try {
+    await moveMapAPI(map, folder);
+    await reloadLibrary();
+    setNotice('');
+  } catch (error) {
+    setNotice(errorMessage(error, 'Could not move that map.'), true);
+  }
+}
+
+export async function removeMap(map: MapItem) {
+  try {
+    if (sourceType(map) === 'learnable-meta') {
+      publishLearnableMetaStatus(
+        await removeLearnableMap(String(map.source?.mapId || ''))
+      );
+    } else {
+      await deleteUserMap(map);
+    }
+    await reloadLibrary();
+    if (library.activeMapID === map.id) closeGame();
+    setNotice('');
+  } catch (error) {
+    setNotice(errorMessage(error, 'Could not delete that map.'), true);
   }
 }
 
 export async function refreshFromDisk() {
-  libraryUi.refreshing = true;
-  setUploadMessage('Refreshing maps…');
+  library.refreshing = true;
+  setNotice('');
   try {
-    const result = await rescanMaps();
-    const previousKey = state.currentKey;
+    await rescanMaps();
     await reloadLibrary();
-    if (previousKey && !state.maps.some((map) => map.key === previousKey)) {
-      state.currentKey = null;
-      if (state.maps[0]) await selectMap(state.maps[0].key);
-      else showNoMaps();
-    }
-    const ignored = result.ignored?.length || 0;
-    setUploadMessage(ignored
-      ? `Maps refreshed. ${ignored} invalid file${ignored === 1 ? '' : 's'} ignored.`
-      : 'Maps refreshed.');
   } catch (error) {
-    setUploadMessage(errorMessage(error, 'Could not refresh maps.'));
+    setNotice(errorMessage(error, 'Could not refresh maps.'), true);
   } finally {
-    libraryUi.refreshing = false;
+    library.refreshing = false;
   }
 }
 
@@ -324,15 +259,6 @@ export async function openMapsFolder() {
   try {
     await openDataFolder();
   } catch (error) {
-    setUploadMessage(errorMessage(error, 'Could not open the data folder.'));
+    setNotice(errorMessage(error, 'Could not open the maps folder.'), true);
   }
-}
-
-export function createMapLibrary(callbacks: {
-  startGame: () => Promise<void>;
-  tryResume: () => Promise<boolean>;
-}) {
-  startGame = callbacks.startGame;
-  tryResume = callbacks.tryResume;
-  return { reloadLibrary, registerManagedMapActions, selectMap, showNoMaps };
 }

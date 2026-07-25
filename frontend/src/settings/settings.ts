@@ -176,9 +176,9 @@ export function applyAccentColor(value: unknown) {
   return color;
 }
 
-const KEY = 'ohneguessr.settings';
+export const SETTINGS_KEY = 'ohneguessr.settings';
 // rounds: 'unlimited' or a count. timer: 'unlimited' or seconds per location.
-const DEFAULTS: Settings = {
+export const DEFAULT_SETTINGS: Settings = {
   mapStyle: DEFAULT_MAP_STYLE_KEY, rounds: '5', timer: 'unlimited',
   accentColor: DEFAULT_ACCENT_COLOR,
   guessMapSize: 'default',
@@ -189,24 +189,53 @@ const DEFAULTS: Settings = {
   scoring: 'world' // 'world' fixed scale, 'country' per-map
 };
 
+function positiveInteger(value: unknown, fallback: string) {
+  if (value === 'unlimited') return value;
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? String(number) : fallback;
+}
+
+function cleanKeybindings(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const result: Record<string, string[]> = {};
+  for (const [action, codes] of Object.entries(value)) {
+    if (!Array.isArray(codes)) continue;
+    result[action] = codes.filter((code): code is string => typeof code === 'string');
+  }
+  return result;
+}
+
+export function normalizeSettings(value: unknown): Settings {
+  const input = value && typeof value === 'object' ? value as Partial<Settings> : {};
+  return {
+    mapStyle: typeof input.mapStyle === 'string' && MAP_STYLES[input.mapStyle]
+      ? input.mapStyle
+      : DEFAULT_SETTINGS.mapStyle,
+    rounds: positiveInteger(input.rounds, DEFAULT_SETTINGS.rounds),
+    timer: positiveInteger(input.timer, DEFAULT_SETTINGS.timer),
+    accentColor: normalizeAccentColor(input.accentColor),
+    guessMapSize: normalizeGuessMapSize(input.guessMapSize),
+    compassStyle: normalizeCompassStyle(input.compassStyle),
+    mapZoomSpeed: normalizeMapZoomSpeed(input.mapZoomSpeed),
+    streetViewZoomedOut: input.streetViewZoomedOut === true,
+    movement: input.movement === 'nm' || input.movement === 'nmpz'
+      ? input.movement
+      : 'moving',
+    scoring: input.scoring === 'country' ? 'country' : 'world',
+    keybindings: cleanKeybindings(input.keybindings)
+  };
+}
+
 export function loadSettings(): Settings {
   try {
-    const saved = JSON.parse(localStorage.getItem(KEY) || 'null') as Partial<Settings> | null;
-    const loaded: Settings = { ...DEFAULTS, ...(saved || {}) };
-    if (!MAP_STYLES[loaded.mapStyle]) loaded.mapStyle = DEFAULTS.mapStyle;
-    loaded.accentColor = normalizeAccentColor(loaded.accentColor);
-    loaded.guessMapSize = normalizeGuessMapSize(loaded.guessMapSize);
-    loaded.compassStyle = normalizeCompassStyle(loaded.compassStyle);
-    loaded.mapZoomSpeed = normalizeMapZoomSpeed(loaded.mapZoomSpeed);
-    loaded.streetViewZoomedOut = loaded.streetViewZoomedOut === true;
-    return loaded;
+    return normalizeSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null'));
   } catch {
-    return { ...DEFAULTS };
+    return normalizeSettings(null);
   }
 }
 
 export function saveSettings(s: Settings) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(s));
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(normalizeSettings(s)));
   } catch { /* private mode, etc. */ }
 }

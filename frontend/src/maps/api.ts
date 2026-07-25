@@ -23,6 +23,7 @@ interface StoredMap {
   name: string;
   count: number;
   file: string;
+  source?: MapSource | null;
 }
 
 interface RescanResult {
@@ -60,6 +61,17 @@ const folderOf = (file: string) => {
   parts.pop();
   return parts.join('/');
 };
+
+const mapItemFrom = (entry: StoredMap): MapItem => ({
+  key: entry.id,
+  id: entry.id,
+  name: entry.name,
+  count: entry.count,
+  file: cleanPath(entry.file),
+  folder: folderOf(entry.file),
+  source: entry.source && typeof entry.source === 'object' ? entry.source : null,
+  managed: entry.source?.managed === true || entry.source?.type === 'map-making-app'
+});
 
 export const dataFileUrl = (file: string) =>
   '/data/' + cleanPath(file).split('/').map(encodeURIComponent).join('/');
@@ -126,33 +138,49 @@ export async function getLocations(item: MapItem): Promise<unknown> {
   return data;
 }
 
-export async function addUserMap(name: string, locations: Location[]): Promise<MapItem> {
+export async function addUserMap(
+  name: string,
+  locations: Location[],
+  folder = ''
+): Promise<MapItem> {
   const entry = await api<StoredMap>('/api/maps', {
     method: 'POST',
-    body: JSON.stringify({ name, locations })
+    body: JSON.stringify({ name, locations, folder })
   });
-  return {
-    key: entry.id,
-    id: entry.id,
-    name: entry.name,
-    count: entry.count,
-    file: entry.file,
-    folder: folderOf(entry.file),
-    source: null,
-    managed: false
-  };
+  return mapItemFrom(entry);
 }
 
 export async function deleteUserMap(item: MapItem) {
   await api(`/api/maps/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
 }
 
-export async function renameUserMap(item: MapItem, name?: string) {
-  return api<StoredMap>(`/api/maps/${encodeURIComponent(item.id)}`, {
+export async function updateMap(
+  item: MapItem,
+  patch: { name?: string; folder?: string }
+): Promise<MapItem> {
+  const entry = await api<StoredMap>(`/api/maps/${encodeURIComponent(item.id)}`, {
     method: 'PATCH',
-    body: JSON.stringify({ name })
+    body: JSON.stringify(patch)
   });
+  return mapItemFrom(entry);
 }
 
+export const renameUserMap = (item: MapItem, name: string) => updateMap(item, { name });
+export const moveMap = (item: MapItem, folder: string) => updateMap(item, { folder });
+export const createFolder = (parent: string, name: string) =>
+  api<{ path: string }>('/api/folders', {
+    method: 'POST',
+    body: JSON.stringify({ parent, name })
+  });
+export const renameFolder = (folder: string, name: string) =>
+  api<{ path: string }>('/api/folders', {
+    method: 'PATCH',
+    body: JSON.stringify({ path: folder, name })
+  });
+export const deleteFolder = (folder: string) =>
+  api('/api/folders', {
+    method: 'DELETE',
+    body: JSON.stringify({ path: folder })
+  });
 export const rescanMaps = () => api<RescanResult>('/api/maps/rescan', { method: 'POST' });
 export const openDataFolder = () => api('/api/open-data-folder', { method: 'POST' });

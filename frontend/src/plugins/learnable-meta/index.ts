@@ -1,35 +1,20 @@
 import { onPluginEvent, PLUGIN_EVENTS } from '../events.js';
-import { removeMap, renameMap } from './api.js';
+import { getStatus } from './api.js';
 import { LearnableMetaClues } from './clues.js';
-import { onLearnableMetaStatus, publishLearnableMetaStatus } from './status.js';
-import type { MapItem } from '../../types.js';
-
-interface Context {
-  registerManagedMapActions: (
-    sourceType: string,
-    actions: {
-      rename: (map: MapItem, name?: string) => Promise<unknown>;
-      remove: (map: MapItem) => Promise<unknown>;
-    }
-  ) => unknown;
-}
+import { onLearnableMetaStatus } from './status.js';
+import './learnable-meta.css';
 
 let instance: { clues: LearnableMetaClues } | null = null;
 
-export function setupLearnableMeta(context: Context) {
+export function setupLearnableMeta() {
   if (instance) return instance;
   const clues = new LearnableMetaClues();
   onLearnableMetaStatus((status) => {
     clues.setEnabled(Boolean(status.enabled && status.available !== false));
   });
-  context.registerManagedMapActions('learnable-meta', {
-    rename: async (map, name) => {
-      publishLearnableMetaStatus(await renameMap(String(map.source?.mapId || ''), name || map.name));
-    },
-    remove: async (map) => {
-      publishLearnableMetaStatus(await removeMap(String(map.source?.mapId || '')));
-    }
-  });
+  void getStatus()
+    .then((status) => clues.setEnabled(Boolean(status.enabled && status.available !== false)))
+    .catch(() => clues.setEnabled(false));
   onPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, ({ map }) => {
     if (map?.source?.type !== 'learnable-meta') clues.hide({ resetClose: true });
   });

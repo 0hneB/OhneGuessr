@@ -95,3 +95,88 @@ func TestHTTPRejectsBadBodiesAndPrivateData(t *testing.T) {
 		t.Fatalf("unknown API = %d %s", unknownAPI.Code, unknownAPI.Body.String())
 	}
 }
+
+func TestHTTPFolderAndMapMutations(t *testing.T) {
+	a := newTestApp(t)
+	handler := a.Handler()
+
+	createFolder := perform(handler, localRequest(
+		http.MethodPost,
+		"/api/folders",
+		`{"parent":"","name":"Trips"}`,
+	))
+	if createFolder.Code != http.StatusOK {
+		t.Fatalf("create folder = %d %s", createFolder.Code, createFolder.Body.String())
+	}
+	duplicate := perform(handler, localRequest(
+		http.MethodPost,
+		"/api/folders",
+		`{"parent":"","name":"trips"}`,
+	))
+	if duplicate.Code != http.StatusConflict {
+		t.Fatalf("duplicate folder = %d %s", duplicate.Code, duplicate.Body.String())
+	}
+	traversal := perform(handler, localRequest(
+		http.MethodPost,
+		"/api/folders",
+		`{"parent":"../outside","name":"Nope"}`,
+	))
+	if traversal.Code != http.StatusBadRequest {
+		t.Fatalf("folder traversal = %d %s", traversal.Code, traversal.Body.String())
+	}
+
+	createMap := perform(handler, localRequest(
+		http.MethodPost,
+		"/api/maps",
+		`{"name":"Test","folder":"Trips","locations":[{"lat":1,"lng":2}]}`,
+	))
+	if createMap.Code != http.StatusOK {
+		t.Fatalf("selected-folder map = %d %s", createMap.Code, createMap.Body.String())
+	}
+	var entry mapEntry
+	if err := json.Unmarshal(createMap.Body.Bytes(), &entry); err != nil {
+		t.Fatal(err)
+	}
+	if entry.File != "Trips/test.json" {
+		t.Fatalf("selected-folder file = %q", entry.File)
+	}
+	nonEmpty := perform(handler, localRequest(
+		http.MethodDelete,
+		"/api/folders",
+		`{"path":"Trips"}`,
+	))
+	if nonEmpty.Code != http.StatusConflict {
+		t.Fatalf("non-empty folder delete = %d %s", nonEmpty.Code, nonEmpty.Body.String())
+	}
+	move := perform(handler, localRequest(
+		http.MethodPatch,
+		"/api/maps/"+entry.ID,
+		`{"folder":""}`,
+	))
+	if move.Code != http.StatusOK {
+		t.Fatalf("map move = %d %s", move.Code, move.Body.String())
+	}
+	var moved mapEntry
+	if err := json.Unmarshal(move.Body.Bytes(), &moved); err != nil {
+		t.Fatal(err)
+	}
+	if moved.ID != entry.ID || moved.File != "test.json" {
+		t.Fatalf("moved map = %#v", moved)
+	}
+	deleteFolder := perform(handler, localRequest(
+		http.MethodDelete,
+		"/api/folders",
+		`{"path":"Trips"}`,
+	))
+	if deleteFolder.Code != http.StatusOK {
+		t.Fatalf("empty folder delete = %d %s", deleteFolder.Code, deleteFolder.Body.String())
+	}
+	missing := perform(handler, localRequest(
+		http.MethodDelete,
+		"/api/maps/missing",
+		"",
+	))
+	if missing.Code != http.StatusNotFound {
+		t.Fatalf("missing map delete = %d %s", missing.Code, missing.Body.String())
+	}
+}

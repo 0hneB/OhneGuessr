@@ -52,7 +52,6 @@ export interface Settings {
   streetViewZoomedOut: boolean;
   movement: MovementMode;
   scoring: ScoringMode;
-  currentMap?: string;
   keybindings?: Record<string, string[]>;
 }
 
@@ -60,9 +59,7 @@ export interface GameState {
   phase: GamePhase;
   all: Location[];
   mapDiagonalKm: number;
-  maps: MapItem[];
-  folders: string[];
-  currentKey: string | null;
+  map: MapItem | null;
   deck: Location[];
   round: number;
   rounds: number;

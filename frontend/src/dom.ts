@@ -15,25 +15,7 @@ export const setHidden = (id: string, on: boolean) => {
   else $(id).classList.toggle('hidden', on);
 };
 
-// The settings overlay, toggled via the 'hidden' class.
-export const SETTINGS_CLOSED_EVENT = 'ohneguessr:settings-closed';
-export const isSettingsOpen = () => ui.settingsOpen;
-export const openSettings = () => { ui.settingsOpen = true; };
-export function closeSettings() {
-  const wasOpen = isSettingsOpen();
-  ui.settingsOpen = false;
-  if (wasOpen) document.dispatchEvent(new Event(SETTINGS_CLOSED_EVENT));
-}
-
 export function setLoading(on: boolean, msg?: string) {
   ui.loading = on;
   if (msg) ui.loadingText = msg;
-}
-
-export function setEmptyState(on: boolean) {
-  ui.empty = on;
-}
-
-export function setUploadMessage(message: string) {
-  ui.uploadMessage = message;
 }

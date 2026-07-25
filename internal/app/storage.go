@@ -28,12 +28,19 @@ const (
 )
 
 var (
-	errMapNotFound  = errors.New("map not found")
-	errManagedMap   = errors.New("synced maps are managed by their synchronization settings")
-	errNoLocations  = errors.New("no locations")
-	errNameRequired = errors.New("name required")
-	errNameTooLong  = errors.New("name is too long")
-	windowsNames    = map[string]bool{
+	errMapNotFound    = errors.New("map not found")
+	errFolderNotFound = errors.New("folder not found")
+	errFolderExists   = errors.New("folder already exists")
+	errFolderNotEmpty = errors.New("folder is not empty")
+	errManagedMap     = errors.New("synced maps are managed by their synchronization settings")
+	errManagedFolder  = errors.New("that managed folder cannot be changed")
+	errMoveRestricted = errors.New("that map cannot be moved there")
+	errNoMutation     = errors.New("name or folder required")
+	errNoLocations    = errors.New("no locations")
+	errNameRequired   = errors.New("name required")
+	errNameTooLong    = errors.New("name is too long")
+	errInvalidFolder  = errors.New("invalid folder")
+	windowsNames      = map[string]bool{
 		"con": true, "prn": true, "aux": true, "nul": true,
 		"com1": true, "com2": true, "com3": true, "com4": true, "com5": true,
 		"com6": true, "com7": true, "com8": true, "com9": true,
@@ -367,7 +374,7 @@ func readMapPayload(filename string) (int, string, error) {
 	return len(locations), name, nil
 }
 
-func (s *mapStore) createLocal(name string, locations json.RawMessage) (mapEntry, error) {
+func (s *mapStore) createLocal(name string, locations json.RawMessage, folder string) (mapEntry, error) {
 	var values []json.RawMessage
 	if json.Unmarshal(locations, &values) != nil || len(values) == 0 {
 		return mapEntry{}, errNoLocations
@@ -387,15 +394,33 @@ func (s *mapStore) createLocal(name string, locations json.RawMessage) (mapEntry
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	manifest := s.loadManifestLocked()
+	folder, err = normalizeRelative(folder)
+	if err != nil {
+		return mapEntry{}, errInvalidFolder
+	}
+	if folder != "" {
+		if underRoot(folder, mmaRoot) || underRoot(folder, learnableRoot) {
+			return mapEntry{}, errMoveRestricted
+		}
+		canonical, found := findFolder(manifest, folder)
+		if !found {
+			return mapEntry{}, errFolderNotFound
+		}
+		folder = canonical
+	}
 	reserved := make(map[string]bool, len(manifest.Maps))
 	for _, entry := range manifest.Maps {
 		reserved[strings.ToLower(entry.File)] = true
 	}
-	rel, err := s.uniqueFileLocked("", name, reserved)
+	rel, err := s.uniqueFileLocked(folder, name, reserved)
 	if err != nil {
 		return mapEntry{}, err
 	}
 	filename, err := s.resolve(rel)
+	if err != nil {
+		return mapEntry{}, err
+	}
+	id, err := randomID()
 	if err != nil {
 		return mapEntry{}, err
 	}
@@ -404,10 +429,7 @@ func (s *mapStore) createLocal(name string, locations json.RawMessage) (mapEntry
 	}
 	info, err := os.Stat(filename)
 	if err != nil {
-		return mapEntry{}, err
-	}
-	id, err := randomID()
-	if err != nil {
+		_ = os.Remove(filename)
 		return mapEntry{}, err
 	}
 	entry := mapEntry{
@@ -427,12 +449,22 @@ func (s *mapStore) createLocal(name string, locations json.RawMessage) (mapEntry
 }
 
 func (s *mapStore) renameLocal(id, name string) (mapEntry, error) {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return mapEntry{}, errNameRequired
+	return s.updateMap(id, &name, nil)
+}
+
+func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) (mapEntry, error) {
+	if requestedName == nil && requestedFolder == nil {
+		return mapEntry{}, errNoMutation
 	}
-	if len([]rune(name)) > localNameMaxRunes {
-		return mapEntry{}, errNameTooLong
+	name := ""
+	if requestedName != nil {
+		name = strings.TrimSpace(*requestedName)
+		if name == "" {
+			return mapEntry{}, errNameRequired
+		}
+		if len([]rune(name)) > localNameMaxRunes {
+			return mapEntry{}, errNameTooLong
+		}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -448,10 +480,36 @@ func (s *mapStore) renameLocal(id, name string) (mapEntry, error) {
 		return mapEntry{}, errMapNotFound
 	}
 	entry := &manifest.Maps[index]
-	if isManagedSource(entry.Source) {
+	source := sourceType(entry.Source)
+	if source == "learnable-meta" || (isManagedSource(entry.Source) && source != "map-making-app") {
 		return mapEntry{}, errManagedMap
 	}
-	if entry.Name == name {
+	folder := folderOf(entry.File)
+	if requestedFolder != nil {
+		var err error
+		folder, err = normalizeRelative(*requestedFolder)
+		if err != nil {
+			return mapEntry{}, errInvalidFolder
+		}
+		if folder != "" {
+			canonical, found := findFolder(manifest, folder)
+			if !found {
+				return mapEntry{}, errFolderNotFound
+			}
+			folder = canonical
+		}
+		if source == "map-making-app" {
+			if !underRoot(folder, mmaRoot) {
+				return mapEntry{}, errMoveRestricted
+			}
+		} else if underRoot(folder, mmaRoot) || underRoot(folder, learnableRoot) {
+			return mapEntry{}, errMoveRestricted
+		}
+	}
+	if requestedName == nil {
+		name = entry.Name
+	}
+	if entry.Name == name && strings.EqualFold(folderOf(entry.File), folder) {
 		return *entry, nil
 	}
 	reserved := map[string]bool{}
@@ -460,9 +518,23 @@ func (s *mapStore) renameLocal(id, name string) (mapEntry, error) {
 			reserved[strings.ToLower(other.File)] = true
 		}
 	}
-	newRel, err := s.uniqueFileLocked(folderOf(entry.File), name, reserved)
-	if err != nil {
-		return mapEntry{}, err
+	filename := path.Base(entry.File)
+	if requestedName != nil && entry.Name != name {
+		if source == "map-making-app" {
+			filename = safeComponent(name, "Untitled map") + ".json"
+		} else {
+			filename = slugify(name) + ".json"
+		}
+	}
+	newRel := path.Join(folder, filename)
+	if !strings.EqualFold(newRel, entry.File) {
+		var err error
+		newRel, err = s.uniquePathLocked(folder, filename, reserved)
+		if err != nil {
+			return mapEntry{}, err
+		}
+	} else {
+		newRel = entry.File
 	}
 	oldPath, err := s.resolve(entry.File)
 	if err != nil {
@@ -486,6 +558,15 @@ func (s *mapStore) renameLocal(id, name string) (mapEntry, error) {
 	}
 	entry.Name = name
 	entry.File = newRel
+	if source == "map-making-app" {
+		entry.Source = cloneMap(entry.Source)
+		if requestedName != nil {
+			entry.Source["nameOverride"] = true
+		}
+		if requestedFolder != nil {
+			entry.Source["folderOverride"] = true
+		}
+	}
 	if info, err := os.Stat(newPath); err == nil {
 		entry.Size = info.Size()
 		entry.MtimeNS = info.ModTime().UnixNano()
@@ -512,7 +593,7 @@ func (s *mapStore) deleteLocal(id string) error {
 		}
 	}
 	if index < 0 {
-		return nil
+		return errMapNotFound
 	}
 	entry := manifest.Maps[index]
 	if isManagedSource(entry.Source) {
@@ -522,7 +603,8 @@ func (s *mapStore) deleteLocal(id string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.Remove(filename); err != nil && !errors.Is(err, os.ErrNotExist) {
+	staged, existed, err := stageRemoval(filename)
+	if err != nil {
 		return err
 	}
 	manifest.Maps = append(manifest.Maps[:index], manifest.Maps[index+1:]...)
@@ -530,21 +612,239 @@ func (s *mapStore) deleteLocal(id string) error {
 	if err == nil {
 		err = s.saveManifestLocked(manifest)
 	}
+	if err != nil && existed {
+		_ = os.Rename(staged, filename)
+	} else if existed {
+		_ = os.Remove(staged)
+	}
 	return err
 }
 
+func (s *mapStore) createFolder(parent, name string) (string, error) {
+	parent, err := normalizeRelative(parent)
+	if err != nil {
+		return "", errInvalidFolder
+	}
+	name, err = validateFolderName(name)
+	if err != nil {
+		return "", err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	manifest := s.loadManifestLocked()
+	if parent != "" {
+		canonical, found := findFolder(manifest, parent)
+		if !found {
+			return "", errFolderNotFound
+		}
+		parent = canonical
+	}
+	if underRoot(parent, learnableRoot) {
+		return "", errManagedFolder
+	}
+	folder := path.Join(parent, name)
+	if strings.EqualFold(folder, mmaRoot) || strings.EqualFold(folder, learnableRoot) {
+		return "", errManagedFolder
+	}
+	if hasFolder(manifest, folder) {
+		return "", errFolderExists
+	}
+	filename, err := s.resolve(folder)
+	if err != nil {
+		return "", errInvalidFolder
+	}
+	if _, statErr := os.Stat(filename); statErr == nil {
+		return "", errFolderExists
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return "", statErr
+	}
+	if err := os.Mkdir(filename, 0o755); err != nil {
+		return "", err
+	}
+	manifest.Folders, _, err = scanDisk(s.dir)
+	if err == nil {
+		err = s.saveManifestLocked(manifest)
+	}
+	if err != nil {
+		_ = os.Remove(filename)
+		return "", err
+	}
+	return folder, nil
+}
+
+func (s *mapStore) renameFolder(folder, name string) (string, error) {
+	folder, err := normalizeRelative(folder)
+	if err != nil || folder == "" {
+		return "", errInvalidFolder
+	}
+	name, err = validateFolderName(name)
+	if err != nil {
+		return "", err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	manifest := s.loadManifestLocked()
+	canonical, found := findFolder(manifest, folder)
+	if !found {
+		return "", errFolderNotFound
+	}
+	folder = canonical
+	if strings.EqualFold(folder, mmaRoot) || underRoot(folder, learnableRoot) {
+		return "", errManagedFolder
+	}
+	parent := folderOf(folder)
+	target := path.Join(parent, name)
+	if strings.EqualFold(target, mmaRoot) || strings.EqualFold(target, learnableRoot) {
+		return "", errManagedFolder
+	}
+	if strings.EqualFold(folder, target) && folder == target {
+		return folder, nil
+	}
+	if !strings.EqualFold(folder, target) && hasFolder(manifest, target) {
+		return "", errFolderExists
+	}
+	oldPath, err := s.resolve(folder)
+	if err != nil {
+		return "", errInvalidFolder
+	}
+	newPath, err := s.resolve(target)
+	if err != nil {
+		return "", errInvalidFolder
+	}
+	if !strings.EqualFold(folder, target) {
+		if _, statErr := os.Stat(newPath); statErr == nil {
+			return "", errFolderExists
+		} else if !errors.Is(statErr, os.ErrNotExist) {
+			return "", statErr
+		}
+	}
+	if err := os.Rename(oldPath, newPath); err != nil {
+		return "", err
+	}
+	for index := range manifest.Maps {
+		entry := &manifest.Maps[index]
+		if !underRoot(entry.File, folder) {
+			continue
+		}
+		entry.File = path.Join(target, strings.TrimPrefix(entry.File, folder+"/"))
+		if sourceType(entry.Source) == "map-making-app" {
+			entry.Source = cloneMap(entry.Source)
+			entry.Source["folderOverride"] = true
+		}
+	}
+	manifest.Folders, _, err = scanDisk(s.dir)
+	if err == nil {
+		err = s.saveManifestLocked(manifest)
+	}
+	if err != nil {
+		_ = os.Rename(newPath, oldPath)
+		return "", err
+	}
+	return target, nil
+}
+
+func (s *mapStore) deleteFolder(folder string) error {
+	folder, err := normalizeRelative(folder)
+	if err != nil || folder == "" {
+		return errInvalidFolder
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	manifest := s.loadManifestLocked()
+	canonical, found := findFolder(manifest, folder)
+	if !found {
+		return errFolderNotFound
+	}
+	folder = canonical
+	if strings.EqualFold(folder, mmaRoot) || underRoot(folder, learnableRoot) {
+		return errManagedFolder
+	}
+	for _, entry := range manifest.Maps {
+		if underRoot(entry.File, folder) {
+			return errFolderNotEmpty
+		}
+	}
+	for _, child := range manifest.Folders {
+		if !strings.EqualFold(child, folder) && underRoot(child, folder) {
+			return errFolderNotEmpty
+		}
+	}
+	filename, err := s.resolve(folder)
+	if err != nil {
+		return errInvalidFolder
+	}
+	if err := os.Remove(filename); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return errFolderNotFound
+		}
+		return errFolderNotEmpty
+	}
+	manifest.Folders, _, err = scanDisk(s.dir)
+	if err == nil {
+		err = s.saveManifestLocked(manifest)
+	}
+	if err != nil {
+		_ = os.Mkdir(filename, 0o755)
+	}
+	return err
+}
+
+func stageRemoval(filename string) (string, bool, error) {
+	if _, err := os.Stat(filename); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(filename), ".ohneguessr-delete-*")
+	if err != nil {
+		return "", false, err
+	}
+	staged := temporary.Name()
+	if err := temporary.Close(); err != nil {
+		_ = os.Remove(staged)
+		return "", false, err
+	}
+	if err := os.Remove(staged); err != nil {
+		return "", false, err
+	}
+	if err := os.Rename(filename, staged); err != nil {
+		return "", false, err
+	}
+	return staged, true, nil
+}
+
+func hasFolder(manifest mapManifest, folder string) bool {
+	_, found := findFolder(manifest, folder)
+	return found
+}
+
+func findFolder(manifest mapManifest, folder string) (string, bool) {
+	for _, candidate := range manifest.Folders {
+		if strings.EqualFold(candidate, folder) {
+			return candidate, true
+		}
+	}
+	return "", false
+}
+
 func (s *mapStore) uniqueFileLocked(folder, name string, reserved map[string]bool) (string, error) {
+	return s.uniquePathLocked(folder, slugify(name)+".json", reserved)
+}
+
+func (s *mapStore) uniquePathLocked(folder, filename string, reserved map[string]bool) (string, error) {
 	folder, err := normalizeRelative(folder)
 	if err != nil {
 		return "", err
 	}
-	stem := slugify(name)
+	extension := path.Ext(filename)
+	stem := strings.TrimSuffix(filename, extension)
 	for index := 1; ; index++ {
 		suffix := ""
 		if index > 1 {
 			suffix = fmt.Sprintf("-%d", index)
 		}
-		rel := path.Join(folder, stem+suffix+".json")
+		rel := path.Join(folder, stem+suffix+extension)
 		filename, err := s.resolve(rel)
 		if err != nil {
 			return "", err
@@ -598,7 +898,12 @@ func (s *mapStore) openPublic(rel string) (*os.File, os.FileInfo, error) {
 }
 
 func normalizeRelative(value string) (string, error) {
-	value = strings.Trim(strings.ReplaceAll(value, "\\", "/"), "/")
+	osValue := filepath.FromSlash(value)
+	value = strings.ReplaceAll(value, "\\", "/")
+	if strings.HasPrefix(value, "/") || filepath.IsAbs(osValue) || filepath.VolumeName(osValue) != "" {
+		return "", errors.New("invalid relative path")
+	}
+	value = strings.Trim(value, "/")
 	if value == "" {
 		return "", nil
 	}
@@ -619,6 +924,27 @@ func normalizeRelative(value string) (string, error) {
 		return "", errors.New("invalid relative path")
 	}
 	return result, nil
+}
+
+func validateFolderName(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" || value == "." || value == ".." || strings.HasPrefix(value, ".") ||
+		strings.ContainsAny(value, `<>:"/\|?*`) || strings.TrimRight(value, ". ") != value {
+		return "", errInvalidFolder
+	}
+	for _, char := range value {
+		if char < 32 {
+			return "", errInvalidFolder
+		}
+	}
+	if len([]rune(value)) > localNameMaxRunes {
+		return "", errNameTooLong
+	}
+	base := strings.ToLower(strings.SplitN(value, ".", 2)[0])
+	if windowsNames[base] {
+		return "", errInvalidFolder
+	}
+	return value, nil
 }
 
 func safeComponent(value, fallback string) string {

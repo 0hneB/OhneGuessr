@@ -120,6 +120,17 @@ func (a *App) Handler() http.Handler {
 	return mux
 }
 
+func (a *App) HasMap(id string) bool {
+	a.maps.mu.Lock()
+	defer a.maps.mu.Unlock()
+	for _, entry := range a.maps.loadManifestLocked().Maps {
+		if entry.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 func api(fn func(*http.Request) (any, int, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		payload, status, err := fn(r)

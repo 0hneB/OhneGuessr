@@ -5,6 +5,7 @@
 .lm-map-add { width: 24px; height: 24px; }
 
 .lm-clue-window {
+  --settings-bg: #181818;
   position: fixed;
   z-index: 840;
   display: flex;

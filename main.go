@@ -1,51 +1,21 @@
 package main
 
 import (
-	"context"
 	"embed"
 	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
-	"sync"
-	"time"
 
 	"github.com/0hneB/OhneGuessr/internal/app"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed all:frontend/dist
 var builtFrontend embed.FS
 
 var version = "dev"
-
-type desktopApp struct {
-	backend    *app.App
-	mu         sync.RWMutex
-	mainWindow *application.WebviewWindow
-}
-
-func (d *desktopApp) setMainWindow(window *application.WebviewWindow) {
-	d.mu.Lock()
-	d.mainWindow = window
-	d.mu.Unlock()
-}
-
-func (d *desktopApp) shutdown() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	_ = d.backend.Shutdown(ctx)
-}
-
-func (d *desktopApp) secondInstance(application.SecondInstanceData) {
-	d.mu.RLock()
-	window := d.mainWindow
-	d.mu.RUnlock()
-	if window != nil {
-		window.UnMinimise()
-		window.Focus()
-	}
-}
 
 func run() error {
 	frontend, err := fs.Sub(builtFrontend, "frontend/dist")
@@ -60,7 +30,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	desktop := &desktopApp{backend: backend}
+	desktop := &DesktopService{backend: backend}
 
 	backendHandler := backend.Handler()
 	handler := http.NewServeMux()
@@ -90,17 +60,20 @@ func run() error {
 			ProgramName: "ohneguessr",
 		},
 	})
-	mainWindow := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-		Name:                       "main",
+	desktop.setApplication(wailsApp)
+	wailsApp.RegisterService(application.NewService(desktop))
+	launcher := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
+		Name:                       "launcher",
 		Title:                      "OhneGuessr",
 		Width:                      1400,
 		Height:                     900,
-		MinWidth:                   800,
-		MinHeight:                  600,
-		StartState:                 application.WindowStateMaximised,
+		MinWidth:                   760,
+		MinHeight:                  520,
+		StartState:                 application.WindowStateNormal,
+		InitialPosition:            application.WindowCentered,
 		BackgroundColour:           application.NewRGB(11, 11, 11),
 		DefaultContextMenuDisabled: true,
-		URL:                        "/",
+		URL:                        "/?view=launcher",
 		Windows: application.WindowsWindow{
 			Theme: application.Dark,
 		},
@@ -108,7 +81,10 @@ func run() error {
 			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
 		},
 	})
-	desktop.setMainWindow(mainWindow)
+	desktop.setLauncher(launcher)
+	launcher.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
+		go wailsApp.Quit()
+	})
 	return wailsApp.Run()
 }
 

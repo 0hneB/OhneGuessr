@@ -1,81 +1,44 @@
 <script lang="ts">
   import { CONFIG } from './config.js';
-  import { closeSettings, openSettings, setUploadMessage } from './dom.js';
+  import { onMount } from 'svelte';
+  import { focusLauncher, gameReady } from './desktop.js';
   import { formatDistance } from './game/scoring.js';
   import { state as gameState } from './game/state.svelte.js';
-  import { readUpload } from './maps/library.svelte.js';
-  import SettingsPanel from './settings/SettingsPanel.svelte';
-  import { gameActions, selectSettingsTab, ui } from './ui.svelte.js';
+  import {
+    endUnlimitedGame,
+    init,
+    nextRound,
+    selectFinalRound,
+    startGame,
+    submitGuess
+  } from './game/game.js';
+  import { ui } from './ui.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);
   const timerText = $derived(
     `${Math.floor(ui.timerRemaining / 60)}:${String(ui.timerRemaining % 60).padStart(2, '0')}`
   );
-  let emptyFileInput: HTMLInputElement;
-  let emptyDragover = $state(false);
-
-  function toggleSettings() {
-    if (ui.settingsOpen) closeSettings();
-    else {
-      setUploadMessage('');
-      openSettings();
-    }
-  }
-
   function handleEscape(event: KeyboardEvent) {
     if (event.key !== 'Escape' || event.repeat || event.defaultPrevented) return;
     event.preventDefault();
-    toggleSettings();
+    focusLauncher();
   }
 
-  function openMapSettings() {
-    setUploadMessage('');
-    selectSettingsTab('maps');
-    openSettings();
-  }
-
-  async function acceptEmptyFile(file?: File) {
-    if (file) await readUpload(file);
-    if (emptyFileInput) emptyFileInput.value = '';
-  }
+  onMount(async () => {
+    await init();
+    gameReady(new URLSearchParams(location.search).get('map') || '');
+  });
 </script>
 
 <svelte:window onkeydown={handleEscape} />
-<svelte:body class:empty-mode={ui.empty} class:ui-hidden={ui.hudHidden} />
+<svelte:body class:ui-hidden={ui.hudHidden} />
 
 <div id="pano"></div>
 
-<button id="settingsBtn" aria-label="Settings" title="Settings" onclick={toggleSettings}>
+<button id="settingsBtn" aria-label="Open launcher settings" title="Open launcher settings"
+        onclick={focusLauncher}>
   <span class="svg-icon settings-icon" aria-hidden="true"></span>
 </button>
-
-<SettingsPanel />
-
-<div id="emptyState" class:hidden={!ui.empty}>
-  <div class="empty-card">
-    <h1>Add a map</h1>
-    <button id="emptyDropZone" type="button" class="drop-zone drop-zone-large"
-            class:dragover={emptyDragover} onclick={() => emptyFileInput.click()}
-            ondragenter={(event) => { event.preventDefault(); emptyDragover = true; }}
-            ondragover={(event) => { event.preventDefault(); emptyDragover = true; }}
-            ondragleave={(event) => { event.preventDefault(); emptyDragover = false; }}
-            ondrop={(event) => {
-              event.preventDefault();
-              emptyDragover = false;
-              void acceptEmptyFile(event.dataTransfer?.files[0]);
-            }}>
-      <b>Choose a .json map</b>
-      <small>Map Making App .json</small>
-    </button>
-    <input bind:this={emptyFileInput} type="file" accept=".json,application/json" hidden
-           onchange={(event) => acceptEmptyFile(event.currentTarget.files?.[0])} />
-    <div id="emptyUploadInfo" class="settings-note">{ui.uploadMessage}</div>
-    <button id="emptySettingsBtn" type="button" onclick={openMapSettings}>
-      <span class="svg-icon settings-icon" aria-hidden="true"></span>
-      <span>Settings</span>
-    </button>
-  </div>
-</div>
 
 <div id="topLeft" class="hud-pill">
   <span>
@@ -113,7 +76,7 @@
      data-map-size={ui.guessMapSize}>
   <div id="map"></div>
   <button id="guessBtn" disabled={!ui.hasGuess}
-          onclick={(event) => { gameActions.submitGuess(); event.currentTarget.blur(); }}>Guess</button>
+          onclick={(event) => { submitGuess(); event.currentTarget.blur(); }}>Guess</button>
 </div>
 
 <div id="resultScreen" class:hidden={!ui.resultVisible}>
@@ -125,12 +88,12 @@
     <div class="result-points"><b id="resultPoints">{currentResult?.points ?? 0}</b> points</div>
     <div class="result-actions">
       <button id="nextBtn" type="button"
-              onclick={(event) => { gameActions.nextRound(); event.currentTarget.blur(); }}>{ui.nextLabel}</button>
+              onclick={(event) => { nextRound(); event.currentTarget.blur(); }}>{ui.nextLabel}</button>
       <button id="endGameBtn" class:hidden={!ui.endGameVisible} type="button"
               onkeydown={(event) => {
                 if (event.code === 'Space' || event.code === 'Enter') event.stopPropagation();
               }}
-              onclick={(event) => { gameActions.endGame(); event.currentTarget.blur(); }}>End game</button>
+              onclick={(event) => { endUnlimitedGame(); event.currentTarget.blur(); }}>End game</button>
     </div>
   </div>
 </div>
@@ -149,7 +112,7 @@
                 onkeydown={(event) => event.stopPropagation()}
                 onclick={(event) => {
                   if (event.detail) event.currentTarget.blur();
-                  gameActions.selectFinalRound(index);
+                  selectFinalRound(index);
                 }}>
           <span class="fr-no">{index + 1}</span>
           <span class="fr-dist">{result.distKm == null ? '—' : formatDistance(result.distKm)}</span>
@@ -157,7 +120,7 @@
         </button>
       {/each}
     </div>
-    <button id="playAgain" onclick={gameActions.playAgain}>Play again</button>
+    <button id="playAgain" onclick={startGame}>Play again</button>
   </div>
 </div>
 

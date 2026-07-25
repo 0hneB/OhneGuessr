@@ -16,7 +16,8 @@ Download the latest version from [GitHub Releases](https://github.com/0hneB/Ohne
 
 ## Features
 
-- Local map library with real folders, imports, renaming, and deletion.
+- Separate responsive launcher with maps, settings, and synchronization.
+- Local map library with nested folders, imports, moves, renaming, and deletion.
 - Multiple free MapLibre styles and vendored OpenSV panorama support.
 - Moving, No Moving, and NMPZ games with configurable rounds and timers.
 - World- or map-scaled scoring, result maps, and a final summary.
@@ -51,7 +52,7 @@ Your data stays in this folder when you update, move, or uninstall the app.
 
 ## Maps
 
-Open **Settings -> Maps** to import a Map Making App or compatible JSON file. Use the folder button to open the real `maps/` directory, organize files into any folder structure, then press refresh. The generated `maps.json` keeps map IDs stable when uniquely identifiable files are moved.
+The app opens on **Maps** in the launcher. Select a folder before importing to place the map there, or use **New folder**, drag-and-drop, and **Move to** to organize maps without leaving the app. The folder button still opens the real `maps/` directory, and **Refresh** indexes changes made there. The generated `maps.json` keeps map IDs stable when uniquely identifiable files are moved.
 
 Supported formats are a JSON array or an object containing `customCoordinates`:
 
@@ -66,7 +67,7 @@ Every location needs finite `lat` and `lng` values. Panorama ID, heading, pitch,
 ### Map Making App sync
 
 1. Create an API key at [map-making.app/keys](https://map-making.app/keys).
-2. Open **Settings -> Sync**, enable **Map Making App Sync**, and save the key.
+2. Open the **Sync** panel beside Maps, enable **Map Making App Sync**, and save the key.
 3. The first sync starts immediately; use **Sync now** for later updates.
 
 Active, non-empty location maps are downloaded with up to ten concurrent requests. Archived maps are skipped. Failed downloads retain the last good local file. Renaming or moving a synchronized file inside `maps/map-making-app/` and refreshing the library creates a local name or folder override.
@@ -75,7 +76,7 @@ Active, non-empty location maps are downloaded with up to ten concurrent request
 
 1. Give a personal map a unique **GeoGuessr ID** in [Learnable Meta](https://learnablemeta.com/personal).
 2. Create a key at [Learnable Meta profile -> API token](https://learnablemeta.com/profile/token).
-3. Open **Settings -> Sync**, enable **Learnable Meta Sync**, and save the key.
+3. Open the **Sync** panel beside Maps, enable **Learnable Meta Sync**, and save the key.
 4. Add a local name and the same map ID.
 
 Each configured map is validated and downloaded immediately. **Sync now** fetches later changes. Learnable Meta clues appear after each round, and their layout is saved in the native WebView.
@@ -97,12 +98,12 @@ API keys stay only in `plugin-data/`; they are never included in `maps.json` or 
 | <kbd>F</kbd> | Toggle the fullscreen map |
 | <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>4</kbd> | Select expanded map size |
 | <kbd>H</kbd> | Hide / show the interface |
-| <kbd>Esc</kbd> | Open / close settings |
+| <kbd>Esc</kbd> | Focus the launcher |
 | Click map | Place or move a guess |
 | <kbd>Shift</kbd> + click map | Place and submit a guess |
 | Double-click map | Toggle the fullscreen map |
 
-Gameplay bindings are rebindable under **Settings -> Controls**.
+Gameplay bindings are rebindable under **Controls** in the launcher.
 
 ## Development
 
@@ -142,6 +143,8 @@ npm --prefix frontend run build
 
 This creates the ignored `frontend/dist/` directory. The **Check** workflow runs source checks on pushes and pull requests; its temporary Windows package is manual. The **Release** workflow builds Windows, Linux, and macOS files and uploads them to a draft prerelease.
 
+Run frontend logic tests with `npm --prefix frontend test`.
+
 ### Repository structure
 
 ```text
@@ -171,7 +174,7 @@ Download the release executable rather than an individual source file. `wails3 d
 
 ### An update fails
 
-Check the internet connection and try again from **Settings -> Display**. OhneGuessr refuses any update whose SHA-256 digest or Ed25519 signature does not match the release metadata. Portable copies intentionally open the release page instead of replacing themselves.
+Check the internet connection and try again from **Display** in the launcher. OhneGuessr refuses any update whose SHA-256 digest or Ed25519 signature does not match the release metadata. Portable copies intentionally open the release page instead of replacing themselves.
 
 ### Panoramas are missing, blurry, or black
 

@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build:dev": "vite build --mode development",
+    "test": "vitest run",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "build": "npm run check && vite build"
   },
@@ -22,6 +23,7 @@
     "@types/google.maps": "3.65.2",
     "svelte-check": "4.7.3",
     "typescript": "6.0.3",
-    "vite": "8.1.5"
+    "vite": "8.1.5",
+    "vitest": "^4.1.10"
   }
 }

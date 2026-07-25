@@ -10,17 +10,15 @@ func (a *App) registerMapRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/maps", api(func(r *http.Request) (any, int, error) {
 		body, err := decodeJSON[struct {
 			Name      string          `json:"name"`
+			Folder    string          `json:"folder"`
 			Locations json.RawMessage `json:"locations"`
 		}](r)
 		if err != nil {
 			return nil, 0, err
 		}
-		entry, err := a.maps.createLocal(body.Name, body.Locations)
+		entry, err := a.maps.createLocal(body.Name, body.Locations, body.Folder)
 		if err != nil {
-			if errors.Is(err, errNoLocations) || errors.Is(err, errNameTooLong) {
-				return nil, 0, responseError(http.StatusBadRequest, err.Error())
-			}
-			return nil, 0, responseError(http.StatusInternalServerError, "create failed")
+			return nil, 0, mapMutationResponse(err, "create failed")
 		}
 		return entry, http.StatusOK, nil
 	}))
@@ -35,36 +33,82 @@ func (a *App) registerMapRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("PATCH /api/maps/{id}", api(func(r *http.Request) (any, int, error) {
 		body, err := decodeJSON[struct {
-			Name string `json:"name"`
+			Name   *string `json:"name"`
+			Folder *string `json:"folder"`
 		}](r)
 		if err != nil {
 			return nil, 0, err
 		}
-		entry, err := a.maps.renameLocal(r.PathValue("id"), body.Name)
-		if errors.Is(err, errMapNotFound) {
-			return nil, 0, responseError(http.StatusNotFound, "not found")
-		}
-		if errors.Is(err, errManagedMap) {
-			return nil, 0, responseError(http.StatusConflict, err.Error())
-		}
+		entry, err := a.maps.updateMap(r.PathValue("id"), body.Name, body.Folder)
 		if err != nil {
-			if errors.Is(err, errNameRequired) || errors.Is(err, errNameTooLong) {
-				return nil, 0, responseError(http.StatusBadRequest, err.Error())
-			}
-			return nil, 0, responseError(http.StatusInternalServerError, "rename failed")
+			return nil, 0, mapMutationResponse(err, "update failed")
 		}
 		return entry, http.StatusOK, nil
 	}))
 	mux.HandleFunc("DELETE /api/maps/{id}", api(func(r *http.Request) (any, int, error) {
 		err := a.maps.deleteLocal(r.PathValue("id"))
-		if errors.Is(err, errManagedMap) {
-			return nil, 0, responseError(http.StatusConflict, err.Error())
-		}
 		if err != nil {
-			return nil, 0, responseError(http.StatusInternalServerError, "delete failed")
+			return nil, 0, mapMutationResponse(err, "delete failed")
 		}
 		return map[string]any{"ok": true}, http.StatusOK, nil
 	}))
+	mux.HandleFunc("POST /api/folders", api(func(r *http.Request) (any, int, error) {
+		body, err := decodeJSON[struct {
+			Parent string `json:"parent"`
+			Name   string `json:"name"`
+		}](r)
+		if err != nil {
+			return nil, 0, err
+		}
+		folder, err := a.maps.createFolder(body.Parent, body.Name)
+		if err != nil {
+			return nil, 0, mapMutationResponse(err, "create folder failed")
+		}
+		return map[string]string{"path": folder}, http.StatusOK, nil
+	}))
+	mux.HandleFunc("PATCH /api/folders", api(func(r *http.Request) (any, int, error) {
+		body, err := decodeJSON[struct {
+			Path string `json:"path"`
+			Name string `json:"name"`
+		}](r)
+		if err != nil {
+			return nil, 0, err
+		}
+		folder, err := a.maps.renameFolder(body.Path, body.Name)
+		if err != nil {
+			return nil, 0, mapMutationResponse(err, "rename folder failed")
+		}
+		return map[string]string{"path": folder}, http.StatusOK, nil
+	}))
+	mux.HandleFunc("DELETE /api/folders", api(func(r *http.Request) (any, int, error) {
+		body, err := decodeJSON[struct {
+			Path string `json:"path"`
+		}](r)
+		if err != nil {
+			return nil, 0, err
+		}
+		if err := a.maps.deleteFolder(body.Path); err != nil {
+			return nil, 0, mapMutationResponse(err, "delete folder failed")
+		}
+		return map[string]any{"ok": true}, http.StatusOK, nil
+	}))
+}
+
+func mapMutationResponse(err error, fallback string) error {
+	switch {
+	case errors.Is(err, errMapNotFound), errors.Is(err, errFolderNotFound):
+		return responseError(http.StatusNotFound, err.Error())
+	case errors.Is(err, errNoLocations), errors.Is(err, errNameRequired),
+		errors.Is(err, errNameTooLong), errors.Is(err, errInvalidFolder),
+		errors.Is(err, errNoMutation):
+		return responseError(http.StatusBadRequest, err.Error())
+	case errors.Is(err, errManagedMap), errors.Is(err, errManagedFolder),
+		errors.Is(err, errMoveRestricted), errors.Is(err, errFolderExists),
+		errors.Is(err, errFolderNotEmpty):
+		return responseError(http.StatusConflict, err.Error())
+	default:
+		return responseError(http.StatusInternalServerError, fallback)
+	}
 }
 
 func (a *App) serveMapData(w http.ResponseWriter, r *http.Request) {

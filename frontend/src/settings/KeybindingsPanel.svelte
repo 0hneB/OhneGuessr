@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ui } from '../ui.svelte.js';
   import {
     compactCodeLabel,
     CONTROL_ROWS,
@@ -12,10 +11,6 @@
 
   let capturing = $state<string | null>(null);
   const bindings = $derived.by(currentBindings);
-
-  $effect(() => {
-    if (!ui.settingsOpen) capturing = null;
-  });
 
   const codeFor = (action: string) => bindings[action]?.[0] ?? null;
 
