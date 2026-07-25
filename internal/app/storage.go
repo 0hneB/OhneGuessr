@@ -898,9 +898,10 @@ func (s *mapStore) openPublic(rel string) (*os.File, os.FileInfo, error) {
 }
 
 func normalizeRelative(value string) (string, error) {
-	osValue := filepath.FromSlash(value)
 	value = strings.ReplaceAll(value, "\\", "/")
-	if strings.HasPrefix(value, "/") || filepath.IsAbs(osValue) || filepath.VolumeName(osValue) != "" {
+	osValue := filepath.FromSlash(value)
+	if strings.HasPrefix(value, "/") || (len(value) > 1 && value[1] == ':') ||
+		filepath.IsAbs(osValue) || filepath.VolumeName(osValue) != "" {
 		return "", errors.New("invalid relative path")
 	}
 	value = strings.Trim(value, "/")
