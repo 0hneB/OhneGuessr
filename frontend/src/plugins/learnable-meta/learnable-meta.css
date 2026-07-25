@@ -1,5 +1,5 @@
 .sync-key-form.lm-map-form {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
   align-items: center;
 }
 .lm-map-add { width: 30px; height: 30px; }
