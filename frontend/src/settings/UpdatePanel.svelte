@@ -93,13 +93,11 @@
 
 {#if status.phase !== 'disabled' && !dismissed}
   <div class="setting app-update">
-    <span>Updates</span>
     <div class="update-content" aria-live="polite">
       {#if status.phase === 'idle' || status.phase === 'checking'}
         <small class="settings-note">Checking…</small>
       {:else if status.phase === 'up-to-date'}
         <small class="settings-note">v{status.currentVersion} is up to date.</small>
-        <button type="button" class="settings-action" onclick={check}>Check again</button>
       {:else if status.phase === 'available'}
         <div class="update-copy">
           <b>v{status.version} is available</b>
