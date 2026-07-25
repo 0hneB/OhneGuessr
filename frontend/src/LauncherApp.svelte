@@ -118,7 +118,7 @@
         </aside>
       </div>
     {:else if page === 'game'}
-      <section class="launcher-settings-page" aria-label="Game settings">
+      <section class="launcher-settings-page split-settings" aria-label="Game settings">
         <div class="settings-group">
           <div class="setting">
             <span>Rounds per game</span>
@@ -192,7 +192,7 @@
         </div>
       </section>
     {:else if page === 'display'}
-      <section class="launcher-settings-page" aria-label="Display settings">
+      <section class="launcher-settings-page split-settings" aria-label="Display settings">
         <div class="settings-group">
           <label class="setting">
             <span>Map style</span>

@@ -103,17 +103,10 @@
 
 .maps-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: clamp(28px, 4vw, 56px);
   height: 100%;
   min-height: 0;
-}
-
-.settings-group {
-  background: color-mix(in srgb, var(--launcher-panel) 96%, var(--accent) 4%);
-  border: 1px solid var(--launcher-border);
-  border-radius: 14px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.16);
 }
 
 .library-card,
@@ -230,6 +223,10 @@
   width: 28px;
   height: 28px;
   color: #8e8c83;
+}
+
+.library-toolbar .search-clear:hover {
+  background: transparent;
 }
 
 .search-clear .svg-icon {
@@ -636,6 +633,60 @@
   padding-bottom: 28px;
 }
 
+.launcher-settings-page.split-settings {
+  width: min(980px, 100%);
+}
+
+.split-settings .setting {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(300px, 1.3fr);
+  align-items: center;
+  column-gap: 32px;
+  row-gap: 8px;
+}
+
+.split-settings .setting > :first-child {
+  grid-column: 1;
+}
+
+.split-settings .setting > :not(:first-child) {
+  grid-column: 2;
+}
+
+.split-settings .app-update > .update-content {
+  grid-column: 1 / -1;
+}
+
+.split-settings .seg-custom {
+  width: 100%;
+}
+
+.split-settings .accent-color-actions,
+.split-settings .setting-toggle .switch {
+  justify-self: end;
+}
+
+.split-settings .setting-range-head {
+  display: contents;
+}
+
+.split-settings .setting-range-head label {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.split-settings .setting-range-head output {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.split-settings .setting-range > input {
+  grid-column: 2;
+  grid-row: 2;
+}
+
 .settings-group {
   padding: 20px;
 }
@@ -647,6 +698,10 @@
 
 .settings-group .setting {
   margin-bottom: 19px;
+}
+
+.launcher-settings-page .settings-note {
+  font-size: 13px;
 }
 
 .controls-group {

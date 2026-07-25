@@ -430,14 +430,15 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   flex-direction: column;
   gap: 6px;
   margin-bottom: 16px;
-  font-size: 13px;
+  font-size: 15px;
 }
-.setting span { opacity: 0.8; }
+.setting > span:first-child { font-weight: 700; }
 .setting select {
   width: 100%;
   padding: 8px 38px 8px 10px;
   appearance: none;
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 600;
   color: #fff;
   background: #222;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -459,7 +460,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 .map-style-select select:open + .chevron-icon {
   transform: translateY(-50%) rotate(90deg);
 }
-.setting-sub { font-size: 11px; font-weight: 400; opacity: 0.6; }
+.setting-sub { font-size: 13px; font-weight: 400; opacity: 0.6; }
 
 .setting-color {
   display: grid;
@@ -539,8 +540,8 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   justify-content: center;
   min-height: 27px;
   padding: 4px 6px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: #cbd2dd;
   background: none;
   border: none;
@@ -557,7 +558,8 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 .seg-custom {
   padding: 10px;
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 600;
   color: #fff;
   background: #222;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -575,10 +577,12 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   align-items: center;
   justify-content: space-between;
 }
-.setting-range-head label { opacity: 0.8; }
+.setting-range-head label { font-weight: 700; }
 .setting-range output {
   min-width: 32px;
   color: #cbd2dd;
+  font-size: 14px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -644,7 +648,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   text-align: right;
 }
 .update-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.update-copy b { font-size: 12px; }
+.update-copy b { font-size: 14px; }
 .update-copy progress { width: min(220px, 100%); accent-color: var(--accent); }
 .update-actions { display: flex; gap: 6px; }
 .settings-action.update-primary {
@@ -662,11 +666,11 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   align-items: center;
   gap: 10px;
 }
-.key-row-name { font-size: 13px; opacity: 0.85; }
+.key-row-name { font-size: 15px; font-weight: 700; }
 .key-cap {
   min-width: 70px;
   padding: 7px 12px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: #fff;
   background: #222;
@@ -723,7 +727,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   align-self: flex-start;
   margin-top: 6px;
   padding: 8px 14px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: #cbd2dd;
   background: rgba(255, 255, 255, 0.06);
@@ -765,7 +769,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   padding-top: 15px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
-.sync-toggle { margin: 0; font-size: 13px; }
+.sync-toggle { margin: 0; font-size: 15px; font-weight: 700; }
 .sync-details {
   display: flex;
   flex-direction: column;

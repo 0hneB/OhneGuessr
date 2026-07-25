@@ -300,7 +300,7 @@
                 <button class="row-action danger" type="button" title="Delete empty folder"
                         aria-label={`Delete empty folder ${row.name}`}
                         onclick={() => removeFolder(row.path)}>
-                  <span class="svg-icon rm-bookmark-icon" aria-hidden="true"></span>
+                  <span class="svg-icon close-icon" aria-hidden="true"></span>
                 </button>
               </div>
             {/if}
