@@ -138,11 +138,7 @@ jobs:
 
   linux-smoke:
     needs: [prepare, linux]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
     env:
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
       APPIMAGE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-linux-x64.AppImage
