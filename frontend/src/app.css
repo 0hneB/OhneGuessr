@@ -631,12 +631,6 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 .setting-range input[type="range"]:focus-visible { outline: none; }
-.setting-range input[type="range"]:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.28);
-}
-.setting-range input[type="range"]:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.28);
-}
 
 .app-update { align-items: flex-start; }
 .update-content {
