@@ -37,7 +37,12 @@ describe('library tree', () => {
     );
     expect(rows.map((row) => row.kind === 'folder' ? row.path : row.map.id))
       .toEqual(['Trips', 'Trips/Europe', 'one']);
-    expect(rows[1]).toMatchObject({ selected: true, open: true });
+    expect(rows[1]).toMatchObject({
+      selected: true,
+      open: true,
+      count: 1,
+      locations: 1
+    });
   });
 
   it('filters move targets for managed sources', () => {

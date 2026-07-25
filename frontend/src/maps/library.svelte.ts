@@ -168,8 +168,10 @@ export async function createFolder(name: string) {
     await reloadLibrary();
     selectFolder(result.path);
     setNotice('');
+    return true;
   } catch (error) {
     setNotice(errorMessage(error, 'Could not create that folder.'), true);
+    return false;
   }
 }
 

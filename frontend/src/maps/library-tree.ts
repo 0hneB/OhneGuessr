@@ -9,6 +9,7 @@ export type LibraryRow =
       path: string;
       name: string;
       count: number;
+      locations: number;
       depth: number;
       open: boolean;
       selected: boolean;
@@ -105,12 +106,14 @@ export function buildLibraryRows(
       });
     for (const folder of children) {
       const open = Boolean(query) || expandedFolders.has(folder);
+      const folderMaps = visibleMaps.filter((map) =>
+        map.folder === folder || map.folder.startsWith(folder + '/'));
       rows.push({
         kind: 'folder',
         path: folder,
         name: folderName(folder),
-        count: visibleMaps.filter((map) =>
-          map.folder === folder || map.folder.startsWith(folder + '/')).length,
+        count: folderMaps.length,
+        locations: folderMaps.reduce((total, map) => total + (map.count || 0), 0),
         depth,
         open,
         selected: folder === selectedFolder,
