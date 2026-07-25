@@ -18,6 +18,7 @@ permissions:
 
 env:
   RELEASE_TAG: ${{ inputs.tag }}
+  UPDATE_PUBLIC_KEY: zHw2caFsAlJGZ02o83rf9d9Rf7yRyiWuz/+vrAYIsdU=
 
 jobs:
   prepare:
@@ -222,6 +223,68 @@ jobs:
           Copy-Item bin/OhneGuessr.exe "release/$env:PORTABLE_NAME"
           Copy-Item bin/OhneGuessr-amd64-installer.exe "release/$env:SETUP_NAME"
           Get-Item "release/$env:PORTABLE_NAME", "release/$env:SETUP_NAME"
+      - name: Sign update hashes and write metadata
+        shell: pwsh
+        env:
+          UPDATE_PRIVATE_KEY: ${{ secrets.OHNEGUESSR_UPDATE_PRIVATE_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:UPDATE_PRIVATE_KEY)) {
+            throw "OHNEGUESSR_UPDATE_PRIVATE_KEY is not configured"
+          }
+          $openssl = (Get-Command openssl -ErrorAction SilentlyContinue).Source
+          if (-not $openssl) { $openssl = 'C:\Program Files\Git\usr\bin\openssl.exe' }
+          if (-not (Test-Path $openssl)) { throw "OpenSSL is unavailable" }
+          $privateKey = Join-Path $env:RUNNER_TEMP update-private.pem
+          $publicDer = Join-Path $env:RUNNER_TEMP update-public.der
+          [IO.File]::WriteAllText($privateKey, $env:UPDATE_PRIVATE_KEY)
+          & $openssl pkey -in $privateKey -pubout -outform DER -out $publicDer
+          if ($LASTEXITCODE -ne 0) { throw "Invalid updater private key" }
+          $publicBytes = [IO.File]::ReadAllBytes($publicDer)
+          $publicRaw = $publicBytes[($publicBytes.Length - 32)..($publicBytes.Length - 1)]
+          if ([Convert]::ToBase64String($publicRaw) -ne $env:UPDATE_PUBLIC_KEY) {
+            throw "Updater private key does not match the embedded public key"
+          }
+
+          function Sign-Artifact([string]$path) {
+            $hash = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            $digestPath = Join-Path $env:RUNNER_TEMP "$([IO.Path]::GetFileName($path)).digest"
+            $signaturePath = "$digestPath.sig"
+            [IO.File]::WriteAllBytes($digestPath, [Convert]::FromHexString($hash))
+            & $openssl pkeyutl -sign -rawin -inkey $privateKey -in $digestPath -out $signaturePath
+            if ($LASTEXITCODE -ne 0) { throw "Could not sign $path" }
+            return @{
+              hash = $hash
+              signature = [Convert]::ToBase64String([IO.File]::ReadAllBytes($signaturePath))
+            }
+          }
+
+          $setupName = $env:SETUP_NAME
+          $portableName = $env:PORTABLE_NAME
+          $setup = Sign-Artifact "release/$setupName"
+          $portable = Sign-Artifact "release/$portableName"
+          $base = "https://github.com/0hneB/OhneGuessr/releases/download/$env:RELEASE_TAG"
+          $notes = gh release view $env:RELEASE_TAG --json body --jq .body
+          $manifest = [ordered]@{
+            version = $env:RELEASE_VERSION
+            notes = ($notes -join "`n").Trim()
+            setup = [ordered]@{
+              url = "$base/$setupName"
+              sha256 = $setup.hash
+              signature = $setup.signature
+            }
+            portable = [ordered]@{
+              url = "$base/$portableName"
+              sha256 = $portable.hash
+              signature = $portable.signature
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content release/latest.json -Encoding utf8
+          @(
+            "$($setup.hash)  $setupName"
+            "$($portable.hash)  $portableName"
+          ) | Set-Content release/SHA256SUMS.txt -Encoding ascii
+          Remove-Item $privateKey, $publicDer -Force
       - uses: actions/upload-artifact@v7
         with:
           name: windows
@@ -303,6 +366,8 @@ jobs:
             "OhneGuessr-$RELEASE_VERSION-macos.dmg"
             "OhneGuessr-$RELEASE_VERSION-windows-x64-setup.exe"
             "OhneGuessr-$RELEASE_VERSION-windows-x64.exe"
+            "SHA256SUMS.txt"
+            "latest.json"
           )
           mapfile -t actual < <(find release -maxdepth 1 -type f -printf '%f\n' | sort)
           if ! diff -u <(printf '%s\n' "${expected[@]}" | sort) <(printf '%s\n' "${actual[@]}"); then
@@ -319,9 +384,11 @@ jobs:
             "release/OhneGuessr-$RELEASE_VERSION-linux-x64.deb" \
             "release/OhneGuessr-$RELEASE_VERSION-macos.dmg" \
             "release/OhneGuessr-$RELEASE_VERSION-windows-x64-setup.exe" \
-            "release/OhneGuessr-$RELEASE_VERSION-windows-x64.exe"
+            "release/OhneGuessr-$RELEASE_VERSION-windows-x64.exe" \
+            release/SHA256SUMS.txt \
+            release/latest.json
       - name: Verify assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          test "$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length')" = "5"
+          test "$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length')" = "7"
