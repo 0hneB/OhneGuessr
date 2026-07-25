@@ -123,6 +123,7 @@ html, body {
 .info-icon { --icon-url: url("/icons/info.svg"); }
 .link-icon { --icon-url: url("/icons/link.svg"); }
 .close-icon { --icon-url: url("/icons/close.svg"); }
+.save-icon { --icon-url: url("/icons/save.svg"); }
 .chevron-icon { --icon-url: url("/icons/chevron.svg"); }
 .reset-icon { --icon-url: url("/icons/reset.svg"); }
 /* Render past the clipped frame so MapLibre fetches the next tile ring before
@@ -736,18 +737,23 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 .icon-action {
   display: grid;
   place-items: center;
+  width: 30px;
+  height: 30px;
   padding: 0;
-  color: #8a8a8a;
-  background: none;
+  color: rgba(244, 243, 239, 0.55);
+  background: transparent;
   border: none;
+  border-radius: 50%;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition:
+    color 64ms ease-in-out,
+    background 64ms ease-in-out;
 }
-.icon-action:hover { color: var(--accent); }
+.icon-action:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
 .icon-action:disabled { opacity: 0.45; cursor: default; }
-.icon-action:disabled:hover { color: #8a8a8a; }
+.icon-action:disabled:hover { color: rgba(244, 243, 239, 0.55); background: transparent; }
 .icon-action .svg-icon { width: 17px; height: 17px; }
-.sync-actions .icon-action { flex: none; width: 24px; height: 24px; }
+.sync-actions .icon-action { flex: none; }
 
 .settings-note { font-size: 12px; opacity: 0.55; line-height: 1.45; }
 
@@ -769,7 +775,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 .sync-account-row { display: flex; align-items: center; gap: 10px; }
 .sync-account { flex: 1; min-width: 0; font-size: 12px; color: #cbd2dd; }
 .sync-account:empty { display: none; }
-.sync-key-form { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+.sync-key-form { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; }
 .sync-key-form input {
   height: 36px;
   min-width: 0;
@@ -782,7 +788,6 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   font-size: 15px;
 }
 .sync-key-form input:focus { outline: none; border-color: rgba(255, 255, 255, 0.22); }
-.sync-key-form .settings-action { margin: 0; }
 .sync-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .sync-footer {
   display: flex;

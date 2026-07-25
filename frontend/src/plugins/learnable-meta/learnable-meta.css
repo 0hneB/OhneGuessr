@@ -2,7 +2,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto;
   align-items: center;
 }
-.lm-map-add { width: 24px; height: 24px; }
+.lm-map-add { width: 30px; height: 30px; }
 
 .lm-clue-window {
   --settings-bg: #181818;

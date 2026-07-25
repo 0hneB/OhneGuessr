@@ -222,7 +222,7 @@
         </button>
         <button type="button" class="icon-action" aria-label="Forget key" title="Forget key"
                 disabled={busy} onclick={forgetApiKey}>
-          <span class="svg-icon rm-bookmark-icon" aria-hidden="true"></span>
+          <span class="svg-icon close-icon" aria-hidden="true"></span>
         </button>
       </div>
     </div>
@@ -230,7 +230,10 @@
           onsubmit={(event) => { event.preventDefault(); void submitKey(); }}>
       <input bind:this={keyInput} bind:value={apiKey} type="password" autocomplete="off"
              placeholder="API key" aria-label="Learnable Meta API key" />
-      <button type="submit" class="settings-action" disabled={busy || running}>Save key</button>
+      <button type="submit" class="icon-action" disabled={busy || running}
+              aria-label="Save key" title="Save key">
+        <span class="svg-icon save-icon" aria-hidden="true"></span>
+      </button>
     </form>
     <form class="sync-key-form lm-map-form" class:hidden={!hasKey}
           onsubmit={(event) => { event.preventDefault(); void addLearnableMap(); }}>
