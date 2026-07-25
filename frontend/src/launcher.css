@@ -79,6 +79,18 @@
   background: transparent;
 }
 
+.launcher-repo-link {
+  display: flex;
+  align-self: flex-start;
+  width: 24px;
+  height: 24px;
+  margin-top: auto;
+}
+
+.launcher-repo-link:focus-visible {
+  outline: none;
+}
+
 .nav-icon {
   display: block;
   flex: none;
@@ -90,7 +102,8 @@
 }
 
 .launcher-sidebar nav button:hover .nav-icon,
-.launcher-sidebar nav button.active .nav-icon {
+.launcher-sidebar nav button.active .nav-icon,
+.launcher-repo-link:is(:hover, :focus-visible) .nav-icon {
   opacity: 1;
 }
 
