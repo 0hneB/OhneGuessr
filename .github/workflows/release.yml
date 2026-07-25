@@ -168,7 +168,8 @@ jobs:
           chmod +x "release/$APPIMAGE_NAME"
           set +e
           timeout 15s dbus-run-session -- xvfb-run -a \
-            env APPIMAGE_EXTRACT_AND_RUN=1 "release/$APPIMAGE_NAME" > appimage.log 2>&1
+            env APPIMAGE_EXTRACT_AND_RUN=1 WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1 \
+            "release/$APPIMAGE_NAME" > appimage.log 2>&1
           status=$?
           set -e
           cat appimage.log
