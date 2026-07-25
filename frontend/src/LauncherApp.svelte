@@ -106,11 +106,14 @@
         </button>
       {/each}
     </nav>
-    <a class="launcher-repo-link" href="https://github.com/0hneB/OhneGuessr"
-       target="_blank" rel="noopener noreferrer" aria-label="Open OhneGuessr on GitHub"
-       title="GitHub">
-      <img class="nav-icon" src="/icons/github.svg" alt="" />
-    </a>
+    <div class="launcher-sidebar-footer">
+      <a class="launcher-repo-link" href="https://github.com/0hneB/OhneGuessr"
+         target="_blank" rel="noopener noreferrer" aria-label="Open OhneGuessr on GitHub"
+         title="GitHub">
+        <img class="nav-icon" src="/icons/github.svg" alt="" />
+      </a>
+      <UpdatePanel />
+    </div>
   </aside>
 
   <main class="launcher-main">
@@ -271,8 +274,6 @@
                    }} />
             <span class="switch" aria-hidden="true"></span>
           </label>
-
-          <UpdatePanel />
         </div>
       </section>
     {:else}

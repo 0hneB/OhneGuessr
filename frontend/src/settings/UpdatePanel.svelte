@@ -25,7 +25,6 @@
     error?: string;
   };
 
-  const dismissedKey = 'ohneguessr-update-dismissed-version';
   let status = $state<UpdateStatus>({
     phase: 'idle',
     currentVersion: 'dev',
@@ -33,8 +32,12 @@
     percent: 0
   });
   let pollTimer: ReturnType<typeof setTimeout> | undefined;
-  const dismissed = $derived(
-    status.phase === 'available' && localStorage.getItem(dismissedKey) === status.version
+  const visible = $derived(
+    status.phase === 'available' ||
+    status.phase === 'downloading' ||
+    status.phase === 'ready' ||
+    status.phase === 'installing' ||
+    (status.phase === 'error' && Boolean(status.version))
   );
 
   async function request(path: string, method = 'GET') {
@@ -78,9 +81,9 @@
     }
   }
 
-  function dismiss() {
-    if (status.version) localStorage.setItem(dismissedKey, status.version);
-    status = { ...status };
+  function update() {
+    if (status.installed) void download();
+    else if (status.releaseUrl) openExternal(status.releaseUrl);
   }
 
   onMount(() => {
@@ -89,42 +92,22 @@
   });
 </script>
 
-{#if status.phase !== 'disabled' && !dismissed}
-  <div class="setting app-update">
-    <div class="update-content" aria-live="polite">
-      {#if status.phase === 'idle' || status.phase === 'checking'}
-        <small class="settings-note">Checking…</small>
-      {:else if status.phase === 'up-to-date'}
-        <small class="settings-note">v{status.currentVersion} is up to date.</small>
-      {:else if status.phase === 'available'}
-        <div class="update-copy">
-          <b>v{status.version} is available</b>
-          {#if status.notes}<small class="settings-note">{status.notes}</small>{/if}
-        </div>
-        <div class="update-actions">
-          <button type="button" class="settings-action" onclick={dismiss}>Later</button>
-          {#if status.installed}
-            <button type="button" class="settings-action update-primary" onclick={download}>Download</button>
-          {:else}
-            <button type="button" class="settings-action update-primary"
-                    onclick={() => status.releaseUrl && openExternal(status.releaseUrl)}>Open download page</button>
-          {/if}
-        </div>
-      {:else if status.phase === 'downloading'}
-        <div class="update-copy">
-          <b>Downloading v{status.version}</b>
-          <progress max="100" value={status.percent}>{status.percent}%</progress>
-        </div>
-        <small class="settings-note">{status.percent}%</small>
-      {:else if status.phase === 'ready'}
-        <small class="settings-note">v{status.version} is ready.</small>
-        <button type="button" class="settings-action update-primary" onclick={install}>Restart to update</button>
-      {:else if status.phase === 'installing'}
-        <small class="settings-note">Restarting…</small>
-      {:else if status.phase === 'error'}
-        <small class="settings-note error">{status.error || 'Update failed.'}</small>
-        <button type="button" class="settings-action" onclick={check}>Retry</button>
-      {/if}
-    </div>
+{#if visible}
+  <div class="app-update" aria-live="polite">
+    {#if status.phase === 'available'}
+      <button type="button" class="update-action" onclick={update}
+              title={status.notes || `Update to v${status.version}`}>
+        Update v{status.version}
+      </button>
+    {:else if status.phase === 'downloading'}
+      <small class="settings-note update-status">v{status.version} · {status.percent}%</small>
+    {:else if status.phase === 'ready'}
+      <button type="button" class="update-action" onclick={install}>Restart to update</button>
+    {:else if status.phase === 'installing'}
+      <small class="settings-note update-status">Restarting…</small>
+    {:else if status.phase === 'error'}
+      <button type="button" class="update-action" onclick={check}
+              title={status.error || 'Update failed.'}>Retry update</button>
+    {/if}
   </div>
 {/if}

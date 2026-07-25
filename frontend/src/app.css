@@ -637,27 +637,6 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 .setting-range input[type="range"]:focus-visible { outline: none; }
 
-.app-update { align-items: flex-start; }
-.update-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  min-width: 0;
-  text-align: right;
-}
-.update-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.update-copy b { font-size: 14px; }
-.update-copy progress { width: min(220px, 100%); accent-color: var(--accent); }
-.update-actions { display: flex; gap: 6px; }
-.settings-action.update-primary {
-  color: var(--accent-ink);
-  background: var(--accent);
-  border-color: transparent;
-}
-.settings-action.update-primary:hover:not(:disabled) { background: var(--accent-strong); }
-
 /* Editable keyboard shortcuts. */
 .key-list { display: flex; flex-direction: column; gap: 6px; }
 .key-row {
