@@ -42,11 +42,6 @@
   --launcher-switch: var(--launcher-element-active);
   --launcher-range-track: var(--launcher-border);
   --launcher-thumb-border: var(--launcher-main);
-  --launcher-dialog: var(--launcher-elevated);
-  --launcher-dialog-border: var(--launcher-border-variant);
-  --launcher-dialog-border-hover: var(--launcher-border-focused);
-  --launcher-dialog-button-text: var(--launcher-control-text);
-  --launcher-dialog-muted: var(--launcher-text-muted);
   --launcher-nav-icon-filter: invert(1);
   color: var(--launcher-text);
   background: var(--launcher-background);
@@ -72,11 +67,6 @@
   --launcher-switch: #2a2a2a;
   --launcher-range-track: rgba(255, 255, 255, 0.16);
   --launcher-thumb-border: #181818;
-  --launcher-dialog: #202020;
-  --launcher-dialog-border: rgba(255, 255, 255, 0.13);
-  --launcher-dialog-border-hover: rgba(255, 255, 255, 0.2);
-  --launcher-dialog-button-text: #d6d9df;
-  --launcher-dialog-muted: #a5abb3;
 }
 
 .launcher-shell[data-theme="ohneb"] {
@@ -679,7 +669,37 @@
   color: var(--launcher-danger);
 }
 
-.delete-dialog .danger {
+.row-actions.delete-confirm {
+  gap: 6px;
+  opacity: 1;
+  font-size: 13px;
+}
+
+.delete-confirm > span {
+  color: var(--launcher-text-muted);
+  white-space: nowrap;
+}
+
+.delete-confirm button {
+  flex: none;
+  min-height: 28px;
+  padding: 3px 9px;
+  color: var(--launcher-control-text);
+  background: var(--launcher-field);
+  border: 1px solid var(--launcher-section-border);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.delete-confirm button:hover {
+  color: var(--launcher-text);
+  border-color: var(--launcher-border-focused);
+}
+
+.delete-confirm .danger {
   color: var(--launcher-danger);
 }
 
@@ -848,59 +868,6 @@
 .controls-group .controls-info-link {
   right: 20px;
   bottom: 18px;
-}
-
-.delete-dialog {
-  width: min(400px, calc(100vw - 32px));
-  padding: 0;
-  color: var(--launcher-text);
-  background: var(--launcher-dialog);
-  border: 1px solid var(--launcher-dialog-border);
-  border-radius: 13px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65);
-}
-
-.delete-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.68);
-}
-
-.delete-dialog form {
-  padding: 21px;
-}
-
-.delete-dialog h2 {
-  font-size: 17px;
-}
-
-.delete-dialog p {
-  margin: 10px 0 20px;
-  color: var(--launcher-dialog-muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.delete-dialog form > div {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.delete-dialog button {
-  min-height: 34px;
-  padding: 6px 12px;
-  color: var(--launcher-dialog-button-text);
-  background: var(--launcher-field);
-  border: 1px solid var(--launcher-section-border);
-  border-radius: 6px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.delete-dialog button:hover {
-  color: var(--launcher-text);
-  border-color: var(--launcher-dialog-border-hover);
 }
 
 button:focus-visible,

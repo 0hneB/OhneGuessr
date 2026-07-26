@@ -29,7 +29,7 @@
   let fileInput: HTMLInputElement;
   let searchInput: HTMLInputElement;
   let editInput = $state<HTMLInputElement>();
-  let deleteDialog: HTMLDialogElement;
+  let deleteCancel = $state<HTMLButtonElement>();
   let libraryTree: HTMLDivElement;
   let dragPreview = $state<HTMLDivElement>();
   let editing = $state<{ kind: 'map' | 'folder'; id: string; value: string } | null>(null);
@@ -90,14 +90,17 @@
 
   function requestDelete(map: MapItem) {
     pendingDelete = map;
-    deleteDialog.showModal();
+    void tick().then(() => deleteCancel?.focus());
   }
 
   async function confirmDelete() {
     const map = pendingDelete;
     pendingDelete = null;
-    deleteDialog.close();
     if (map) await removeMap(map);
+  }
+
+  function cancelDeleteOnEscape(event: KeyboardEvent) {
+    if (event.key === 'Escape') pendingDelete = null;
   }
 
   function positionPreview(x: number, y: number) {
@@ -348,20 +351,33 @@
                 </small>
               </button>
             {/if}
-            <div class="row-actions">
-              {#if row.canRename}
-                <button class="row-action" type="button" title="Rename map"
-                        aria-label={`Rename ${row.map.name}`}
-                        onclick={() => beginMapRename(row.map)}>
-                  <span class="svg-icon pencil-icon" aria-hidden="true"></span>
-                </button>
-              {/if}
-              {#if row.canRemove}
-                <button class="row-action danger" type="button" title="Delete map"
-                        aria-label={`Delete ${row.map.name}`}
-                        onclick={() => requestDelete(row.map)}>
-                  <span class="svg-icon close-icon" aria-hidden="true"></span>
-                </button>
+            <div class="row-actions"
+                 class:delete-confirm={pendingDelete?.id === row.map.id}>
+              {#if pendingDelete?.id === row.map.id}
+                <span>Delete permanently?</span>
+                <button bind:this={deleteCancel} type="button"
+                        aria-label={`Cancel deleting ${row.map.name}`}
+                        onkeydown={cancelDeleteOnEscape}
+                        onclick={() => { pendingDelete = null; }}>Cancel</button>
+                <button class="danger" type="button"
+                        aria-label={`Permanently delete ${row.map.name}`}
+                        onkeydown={cancelDeleteOnEscape}
+                        onclick={confirmDelete}>Delete</button>
+              {:else}
+                {#if row.canRename}
+                  <button class="row-action" type="button" title="Rename map"
+                          aria-label={`Rename ${row.map.name}`}
+                          onclick={() => beginMapRename(row.map)}>
+                    <span class="svg-icon pencil-icon" aria-hidden="true"></span>
+                  </button>
+                {/if}
+                {#if row.canRemove}
+                  <button class="row-action danger" type="button" title="Delete map"
+                          aria-label={`Delete ${row.map.name}`}
+                          onclick={() => requestDelete(row.map)}>
+                    <span class="svg-icon close-icon" aria-hidden="true"></span>
+                  </button>
+                {/if}
               {/if}
             </div>
           </div>
@@ -378,14 +394,3 @@
 {#if draggedMapID}
   <div class="map-drag-preview" bind:this={dragPreview}>{draggedMapName}</div>
 {/if}
-
-<dialog class="delete-dialog" bind:this={deleteDialog} onclose={() => { pendingDelete = null; }}>
-  <form method="dialog">
-    <h2>Delete map?</h2>
-    <p>This permanently deletes <b>{pendingDelete?.name}</b> from disk.</p>
-    <div>
-      <button type="submit" value="cancel">Cancel</button>
-      <button type="button" class="danger" onclick={confirmDelete}>Delete map</button>
-    </div>
-  </form>
-</dialog>
