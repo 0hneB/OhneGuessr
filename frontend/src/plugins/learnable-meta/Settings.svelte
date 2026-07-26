@@ -73,7 +73,7 @@
     if (status?.lastSyncAt) {
       const date = new Date(status.lastSyncAt);
       if (!Number.isNaN(date.getTime())) {
-        return { text: `Last sync ${date.toLocaleString()}`, error: false };
+        return { text: `Last sync ${date.toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short', hourCycle: 'h23' })}`, error: false };
       }
     }
     return {
