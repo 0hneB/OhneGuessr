@@ -660,13 +660,17 @@
 
 .sync-panel .sync-section {
   margin-top: 0;
-  padding-block: 15px;
+  padding-top: 15px;
   border-top: 1px solid var(--launcher-border);
 }
 
 .sync-panel .sync-plugin-mount:first-of-type .sync-section {
   padding-top: 0;
   border-top: none;
+}
+
+.sync-panel .sync-plugin-mount + .sync-plugin-mount {
+  margin-top: 40px;
 }
 
 .launcher-settings-page {
