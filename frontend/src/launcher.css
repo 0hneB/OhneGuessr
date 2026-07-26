@@ -7,13 +7,13 @@
 }
 
 .launcher-body {
-  background: #252521;
+  background: #232723;
 }
 
 .launcher-shell {
   color-scheme: dark;
   --launcher-font-family: "Open Sans", "Segoe UI Variable Text", "Segoe UI", Arial, sans-serif;
-  --launcher-background: #252521;
+  --launcher-background: #232723;
   --launcher-main: var(--launcher-background);
   --launcher-surface: rgba(18, 18, 18, 0.96);
   --launcher-elevated: var(--launcher-surface);
@@ -58,8 +58,10 @@
 }
 
 .launcher-shell[data-theme="ohneguessr"] {
-  --launcher-elevated: #36352f;
-  --launcher-field: #2d2d28;
+  --launcher-surface: #1e221f;
+  --launcher-elevated: #343934;
+  --launcher-element: #292e2a;
+  --launcher-field: #2d322e;
   --launcher-ghost-hover: rgba(255, 255, 255, 0.045);
   --launcher-row-hover: rgba(255, 255, 255, 0.035);
   --launcher-segment-hover: rgba(255, 255, 255, 0.06);
@@ -71,7 +73,7 @@
   --launcher-control-text: #cbd2dd;
   --launcher-disabled: #6b7280;
   --launcher-error: #f87171;
-  --launcher-switch: #2a2a2a;
+  --launcher-switch: #303631;
   --launcher-range-track: rgba(255, 255, 255, 0.16);
 }
 
