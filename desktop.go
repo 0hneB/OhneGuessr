@@ -65,11 +65,13 @@ func (d *DesktopService) LaunchMap(mapID string) error {
 		}
 		d.mu.Unlock()
 		if !sameMap {
+			game.Hide()
 			game.SetURL(gameURL(mapID))
+		} else {
+			game.Show()
+			game.UnMinimise()
+			game.Focus()
 		}
-		game.Show()
-		game.UnMinimise()
-		game.Focus()
 		d.emitGameState()
 		return nil
 	}

@@ -946,9 +946,9 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   inset: 0;
   z-index: 900;
   display: grid;
-  place-items: center;
+  place-content: center;
+  justify-items: center;
   gap: 14px;
-  grid-auto-flow: row;
   background: rgba(0, 0, 0, 0.6);
   text-align: center;
 }
