@@ -663,7 +663,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   padding: 6px 8px;
   margin-inline: -8px;
 }
-.key-row:nth-child(even) {
+.key-row:nth-child(odd) {
   background: var(--launcher-surface);
   border-radius: 4px;
 }
