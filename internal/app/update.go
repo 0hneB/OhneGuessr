@@ -38,7 +38,6 @@ type updateArtifact struct {
 
 type updateManifest struct {
 	Version  string         `json:"version"`
-	Notes    string         `json:"notes"`
 	Setup    updateArtifact `json:"setup"`
 	Portable updateArtifact `json:"portable"`
 }
@@ -48,7 +47,6 @@ type updateStatus struct {
 	CurrentVersion string `json:"currentVersion"`
 	Installed      bool   `json:"installed"`
 	Version        string `json:"version,omitempty"`
-	Notes          string `json:"notes,omitempty"`
 	ReleaseURL     string `json:"releaseUrl,omitempty"`
 	Percent        int    `json:"percent"`
 	Error          string `json:"error,omitempty"`
@@ -153,7 +151,6 @@ func (u *updater) check(parent context.Context) updateStatus {
 		u.mu.Lock()
 		u.status.Phase = "up-to-date"
 		u.status.Version = ""
-		u.status.Notes = ""
 		u.status.ReleaseURL = ""
 		u.status.Percent = 0
 		u.status.Error = ""
@@ -170,7 +167,6 @@ func (u *updater) check(parent context.Context) updateStatus {
 	u.artifact = manifest.Setup
 	u.status.Phase = "available"
 	u.status.Version = manifest.Version
-	u.status.Notes = strings.TrimSpace(manifest.Notes)
 	u.status.ReleaseURL = u.releaseBase + "/v" + manifest.Version
 	u.status.Percent = 0
 	u.status.Error = ""

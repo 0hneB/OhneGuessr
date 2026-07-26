@@ -19,7 +19,6 @@
     currentVersion: string;
     installed: boolean;
     version?: string;
-    notes?: string;
     releaseUrl?: string;
     percent: number;
     error?: string;
@@ -96,7 +95,7 @@
   <div class="app-update" aria-live="polite">
     {#if status.phase === 'available'}
       <button type="button" class="update-action" onclick={update}
-              title={status.notes || `Update to v${status.version}`}>
+              title={`Update to v${status.version}`}>
         Update v{status.version}
       </button>
     {:else if status.phase === 'downloading'}

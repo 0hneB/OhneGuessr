@@ -41,7 +41,7 @@ func TestUpdaterChecksDownloadsAndVerifies(t *testing.T) {
 	}
 	payload := []byte("a verified Windows installer")
 	digest := sha256.Sum256(payload)
-	manifest := updateManifest{Version: "1.1.0", Notes: "Smaller and better."}
+	manifest := updateManifest{Version: "1.1.0"}
 
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
@@ -69,7 +69,7 @@ func TestUpdaterChecksDownloadsAndVerifies(t *testing.T) {
 	u.client = server.Client()
 
 	status := u.check(context.Background())
-	if status.Phase != "available" || status.Version != "1.1.0" || status.Notes != manifest.Notes {
+	if status.Phase != "available" || status.Version != "1.1.0" {
 		t.Fatalf("check status = %#v", status)
 	}
 	if _, err := u.startDownload(); err != nil {

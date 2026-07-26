@@ -264,10 +264,8 @@ jobs:
           $setup = Sign-Artifact "release/$setupName"
           $portable = Sign-Artifact "release/$portableName"
           $base = "https://github.com/0hneB/OhneGuessr/releases/download/$env:RELEASE_TAG"
-          $notes = gh release view $env:RELEASE_TAG --json body --jq .body
           $manifest = [ordered]@{
             version = $env:RELEASE_VERSION
-            notes = ($notes -join "`n").Trim()
             setup = [ordered]@{
               url = "$base/$setupName"
               sha256 = $setup.hash
