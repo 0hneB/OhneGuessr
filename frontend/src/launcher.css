@@ -53,6 +53,10 @@
   border-radius: 4px;
 }
 
+.launcher-shell :where(button, input, select, textarea) {
+  font-family: inherit;
+}
+
 .launcher-shell[data-theme="ohneguessr"] {
   --launcher-elevated: #36352f;
   --launcher-field: #2d2d28;
