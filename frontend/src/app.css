@@ -439,15 +439,16 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   appearance: none;
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
-  background: #222;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--launcher-text);
+  background: var(--launcher-element);
+  border: 1px solid var(--launcher-control-border);
   border-radius: 8px;
   cursor: pointer;
 }
 .setting select:focus { outline: none; }
-.map-style-select { position: relative; width: 100%; }
-.map-style-select .chevron-icon {
+.setting-select { position: relative; width: 100%; }
+.setting-select select { height: 37px; }
+.setting-select .chevron-icon {
   position: absolute;
   top: 50%;
   right: 12px;
@@ -457,7 +458,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   transform: translateY(-50%);
   transition: transform 0.15s ease;
 }
-.map-style-select select:open + .chevron-icon {
+.setting-select select:open + .chevron-icon {
   transform: translateY(-50%) rotate(90deg);
 }
 .setting-sub { font-size: 13px; font-weight: 400; opacity: 0.6; }
@@ -467,13 +468,14 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   grid-template-columns: 1fr auto;
   align-items: center;
 }
-.accent-color-actions { display: flex; align-items: center; gap: 6px; }
+.theme-actions { display: flex; align-items: center; gap: 6px; }
+.theme-select { flex: 1; min-width: 0; }
 .setting-color input {
   width: 46px;
-  height: 30px;
+  height: 37px;
   padding: 3px;
-  background: #222;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--launcher-element);
+  border: 1px solid var(--launcher-control-border);
   border-radius: 8px;
   cursor: pointer;
 }
@@ -499,8 +501,8 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   width: 46px;
   height: 26px;
   border-radius: 999px;
-  background: #2a2a2a;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--launcher-switch);
+  border: 1px solid var(--launcher-control-border);
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 .switch::after {
@@ -511,7 +513,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #cbd2dd;
+  background: var(--launcher-control-text);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
   transition: transform 0.15s ease, background 0.15s ease;
 }
@@ -529,8 +531,8 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   display: flex;
   gap: 4px;
   padding: 4px;
-  background: #222;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--launcher-element);
+  border: 1px solid var(--launcher-control-border);
   border-radius: 10px;
 }
 .segmented button {
@@ -542,14 +544,17 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   padding: 4px 6px;
   font-size: 15px;
   font-weight: 700;
-  color: #cbd2dd;
+  color: var(--launcher-control-text);
   background: none;
   border: none;
   border-radius: 7px;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.segmented button:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.segmented button:hover {
+  color: var(--launcher-text);
+  background: var(--launcher-segment-hover);
+}
 .segmented button.active { background: var(--accent); color: var(--accent-ink); }
 .segmented button.active .svg-icon { background: var(--accent-ink); }
 .segmented .unlimited-icon {
@@ -560,9 +565,9 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   padding: 10px;
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
-  background: #222;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--launcher-text);
+  background: var(--launcher-element);
+  border: 1px solid var(--launcher-control-border);
   border-radius: 8px;
   -moz-appearance: textfield;  /* hide the number spinner (Firefox) */
   appearance: textfield;
@@ -570,7 +575,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 /* hide the number spinner (Chrome/Edge/Safari) */
 .seg-custom::-webkit-outer-spin-button,
 .seg-custom::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.seg-custom::placeholder { color: #6b7280; }
+.seg-custom::placeholder { color: var(--launcher-disabled); }
 
 .setting-range-head {
   display: flex;
@@ -580,7 +585,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 .setting-range-head label { font-weight: 700; }
 .setting-range output {
   min-width: 32px;
-  color: #cbd2dd;
+  color: var(--launcher-control-text);
   font-size: 14px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -602,7 +607,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   background: linear-gradient(
     to right,
     var(--accent) 0 var(--range-progress),
-    rgba(255, 255, 255, 0.16) var(--range-progress) 100%
+    var(--launcher-range-track) var(--range-progress) 100%
   );
 }
 .setting-range input[type="range"]::-webkit-slider-thumb {
@@ -612,13 +617,13 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   appearance: none;
   -webkit-appearance: none;
   background: var(--accent);
-  border: 2px solid #181818;
+  border: 2px solid var(--launcher-thumb-border);
   border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 1px var(--launcher-control-border);
 }
 .setting-range input[type="range"]::-moz-range-track {
   height: 4px;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--launcher-range-track);
   border: none;
   border-radius: 999px;
 }
@@ -631,9 +636,9 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   width: 14px;
   height: 14px;
   background: var(--accent);
-  border: 2px solid #181818;
+  border: 2px solid var(--launcher-thumb-border);
   border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 1px var(--launcher-control-border);
 }
 .setting-range input[type="range"]:focus-visible { outline: none; }
 
@@ -651,9 +656,9 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   padding: 7px 12px;
   font-size: 14px;
   font-weight: 700;
-  color: #fff;
-  background: #222;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--launcher-text);
+  background: var(--launcher-element);
+  border: 1px solid var(--launcher-control-border);
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -670,8 +675,10 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.key-cap:hover { border-color: rgba(255, 255, 255, 0.35); }
-.key-cap.unbound { color: #6b7280; font-weight: 600; }
+.key-cap:hover {
+  border-color: color-mix(in srgb, var(--launcher-text) 35%, transparent);
+}
+.key-cap.unbound { color: var(--launcher-disabled); font-weight: 600; }
 .key-cap.capturing {
   color: var(--accent-ink);
   background: var(--accent);
@@ -708,22 +715,28 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   padding: 8px 14px;
   font-size: 14px;
   font-weight: 600;
-  color: #cbd2dd;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--launcher-control-text);
+  background: color-mix(in srgb, var(--launcher-text) 6%, transparent);
+  border: 1px solid var(--launcher-border-variant);
   border-radius: 8px;
   cursor: pointer;
 }
-.settings-action:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+.settings-action:hover {
+  color: var(--launcher-text);
+  background: var(--launcher-element-active);
+}
 .settings-action:disabled { opacity: 0.45; cursor: default; }
-.settings-action:disabled:hover { color: #cbd2dd; background: rgba(255, 255, 255, 0.06); }
+.settings-action:disabled:hover {
+  color: var(--launcher-control-text);
+  background: color-mix(in srgb, var(--launcher-text) 6%, transparent);
+}
 .icon-action {
   display: grid;
   place-items: center;
   width: 30px;
   height: 30px;
   padding: 0;
-  color: rgba(244, 243, 239, 0.55);
+  color: color-mix(in srgb, var(--launcher-text-soft) 55%, transparent);
   background: transparent;
   border: none;
   border-radius: 50%;
@@ -732,9 +745,15 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
     color 64ms ease-in-out,
     background 64ms ease-in-out;
 }
-.icon-action:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
+.icon-action:hover {
+  color: var(--launcher-text);
+  background: var(--launcher-element-hover);
+}
 .icon-action:disabled { opacity: 0.45; cursor: default; }
-.icon-action:disabled:hover { color: rgba(244, 243, 239, 0.55); background: transparent; }
+.icon-action:disabled:hover {
+  color: color-mix(in srgb, var(--launcher-text-soft) 55%, transparent);
+  background: transparent;
+}
 .icon-action .svg-icon { width: 17px; height: 17px; }
 .sync-actions .icon-action { flex: none; }
 
@@ -746,7 +765,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 .sync-section {
   margin-top: 17px;
   padding-top: 15px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--launcher-section-border);
 }
 .sync-toggle { margin: 0; font-size: 15px; font-weight: 700; }
 .sync-details {
@@ -756,21 +775,29 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   margin-top: 10px;
 }
 .sync-account-row { display: flex; align-items: center; gap: 10px; }
-.sync-account { flex: 1; min-width: 0; font-size: 12px; color: #cbd2dd; }
+.sync-account {
+  flex: 1;
+  min-width: 0;
+  color: var(--launcher-control-text);
+  font-size: 12px;
+}
 .sync-account:empty { display: none; }
 .sync-key-form { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; }
 .sync-key-form input {
   height: 36px;
   min-width: 0;
   padding: 0 10px;
-  color: #f4f3ef;
-  background: #2d2d28;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--launcher-text-soft);
+  background: var(--launcher-field);
+  border: 1px solid var(--launcher-field-border);
   border-radius: 4px;
   font: inherit;
   font-size: 15px;
 }
-.sync-key-form input:focus { outline: none; border-color: rgba(255, 255, 255, 0.22); }
+.sync-key-form input:focus {
+  outline: none;
+  border-color: var(--launcher-border-focused);
+}
 .sync-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .sync-footer {
   display: flex;
@@ -780,7 +807,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   margin-top: 10px;
 }
 .sync-status { flex: 1; min-width: 0; }
-.sync-status.error { color: #f87171; opacity: 0.9; }
+.sync-status.error { color: var(--launcher-error); opacity: 0.9; }
 .sync-info-link {
   flex: none;
   margin-left: auto;

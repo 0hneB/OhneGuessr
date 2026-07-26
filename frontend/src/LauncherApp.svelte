@@ -20,13 +20,14 @@
     updateSettings
   } from './settings/store.svelte.js';
   import {
-    DEFAULT_ACCENT_COLOR,
+    LAUNCHER_THEMES,
     MAP_STYLES
   } from './settings/settings.js';
   import UpdatePanel from './settings/UpdatePanel.svelte';
   import type {
     CompassStyle,
     GuessMapSize,
+    LauncherTheme,
     MovementMode,
     ScoringMode
   } from './types.js';
@@ -75,6 +76,10 @@
     }
   }
 
+  function selectTheme(theme: LauncherTheme) {
+    updateSettings({ theme, accentColor: LAUNCHER_THEMES[theme].accent });
+  }
+
   onMount(() => {
     const stopSettings = initSettingsSync();
     const stopGameState = onGameWindowState(receiveGameState);
@@ -89,7 +94,7 @@
 
 <svelte:body class:launcher-body={true} />
 
-<div class="launcher-shell">
+<div class="launcher-shell" data-theme={settings.theme}>
   <aside class="launcher-sidebar">
     <div class="launcher-brand">
       <img src="/images/ohneguessr-logo.svg" alt="" />
@@ -204,7 +209,7 @@
         <div class="settings-group">
           <label class="setting">
             <span>Map style</span>
-            <div class="map-style-select">
+            <div class="setting-select">
               <select value={settings.mapStyle}
                       onchange={(event) => updateSettings({ mapStyle: event.currentTarget.value })}>
                 {#each Object.entries(MAP_STYLES) as [key, style]}
@@ -236,13 +241,24 @@
           </div>
 
           <div class="setting setting-color">
-            <span>Accent color</span>
-            <div class="accent-color-actions">
+            <span>Theme</span>
+            <div class="theme-actions">
+              <div class="setting-select theme-select">
+                <select value={settings.theme} aria-label="Launcher theme"
+                        onchange={(event) => selectTheme(event.currentTarget.value as LauncherTheme)}>
+                  {#each Object.entries(LAUNCHER_THEMES) as [key, theme]}
+                    <option value={key}>{theme.label}</option>
+                  {/each}
+                </select>
+                <span class="svg-icon chevron-icon" aria-hidden="true"></span>
+              </div>
               <input type="color" value={settings.accentColor} aria-label="Accent color"
                      oninput={(event) => updateSettings({ accentColor: event.currentTarget.value })} />
               <button type="button" class="icon-action accent-reset"
                       aria-label="Reset accent color" title="Reset accent color"
-                      onclick={() => updateSettings({ accentColor: DEFAULT_ACCENT_COLOR })}>
+                      onclick={() => updateSettings({
+                        accentColor: LAUNCHER_THEMES[settings.theme].accent
+                      })}>
                 <span class="svg-icon reset-icon" aria-hidden="true"></span>
               </button>
             </div>
@@ -277,7 +293,7 @@
         </div>
       </section>
     {:else}
-      <section class="launcher-settings-page" aria-label="Controls settings">
+      <section class="launcher-settings-page controls-settings" aria-label="Controls settings">
         <div class="settings-group controls-group">
           <KeybindingsPanel />
         </div>

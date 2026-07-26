@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEFAULT_LAUNCHER_THEME,
   DEFAULT_SETTINGS,
+  LAUNCHER_THEMES,
   normalizeSettings
 } from './settings.js';
 
@@ -22,5 +24,20 @@ describe('normalizeSettings', () => {
       movement: 'moving'
     });
     expect(normalizeSettings({})).not.toHaveProperty('currentMap');
+  });
+
+  it('normalizes launcher themes without discarding a legacy custom accent', () => {
+    const themes = Object.keys(LAUNCHER_THEMES);
+    expect(themes.map((theme) => normalizeSettings({
+      ...DEFAULT_SETTINGS,
+      theme
+    }).theme)).toEqual(themes);
+    expect(normalizeSettings({
+      theme: 'unknown',
+      accentColor: '#abcdef'
+    })).toMatchObject({
+      theme: DEFAULT_LAUNCHER_THEME,
+      accentColor: '#abcdef'
+    });
   });
 });

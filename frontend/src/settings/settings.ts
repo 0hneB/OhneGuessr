@@ -3,6 +3,7 @@ import { publicAsset } from '../config.js';
 import type {
   CompassStyle,
   GuessMapSize,
+  LauncherTheme,
   MapStyleDefinition,
   Settings
 } from '../types.js';
@@ -98,6 +99,14 @@ export const MAP_STYLES: Record<string, MapStyleDefinition> = {
 export const isDarkMapStyle = (key: string) => MAP_STYLES[key]?.dark === true;
 
 export const DEFAULT_ACCENT_COLOR = '#22c55e';
+export const DEFAULT_LAUNCHER_THEME: LauncherTheme = 'ohneguessr';
+export const LAUNCHER_THEMES = {
+  ohneguessr: { label: 'OhneGuessr', accent: DEFAULT_ACCENT_COLOR },
+  'gruvbox-dark-soft': { label: 'Warm Dark', accent: '#83a598' },
+  'gruvbox-light-soft': { label: 'Warm Light', accent: '#0b6678' },
+  'ayu-light': { label: 'Cool Light', accent: '#3b9ee5' },
+  'ayu-mirage': { label: 'Cool Dark', accent: '#72cffe' }
+} satisfies Record<LauncherTheme, { label: string; accent: string }>;
 export const GUESS_MAP_SIZES = Object.freeze(['default', 'large', 'xl', 'xxl']);
 export const COMPASS_STYLES = Object.freeze(['bar', 'classic', 'both']);
 export const DEFAULT_MAP_ZOOM_SPEED = 1;
@@ -110,6 +119,12 @@ export function normalizeAccentColor(value: unknown) {
   return typeof value === 'string' && HEX_COLOR.test(value)
     ? value.toLowerCase()
     : DEFAULT_ACCENT_COLOR;
+}
+
+export function normalizeLauncherTheme(value: unknown): LauncherTheme {
+  return typeof value === 'string' && Object.hasOwn(LAUNCHER_THEMES, value)
+    ? value as LauncherTheme
+    : DEFAULT_LAUNCHER_THEME;
 }
 
 export function normalizeGuessMapSize(value: unknown): GuessMapSize {
@@ -180,6 +195,7 @@ export const SETTINGS_KEY = 'ohneguessr.settings';
 // rounds: 'unlimited' or a count. timer: 'unlimited' or seconds per location.
 export const DEFAULT_SETTINGS: Settings = {
   mapStyle: DEFAULT_MAP_STYLE_KEY, rounds: '5', timer: 'unlimited',
+  theme: DEFAULT_LAUNCHER_THEME,
   accentColor: DEFAULT_ACCENT_COLOR,
   guessMapSize: 'default',
   compassStyle: 'bar',
@@ -213,6 +229,7 @@ export function normalizeSettings(value: unknown): Settings {
       : DEFAULT_SETTINGS.mapStyle,
     rounds: positiveInteger(input.rounds, DEFAULT_SETTINGS.rounds),
     timer: positiveInteger(input.timer, DEFAULT_SETTINGS.timer),
+    theme: normalizeLauncherTheme(input.theme),
     accentColor: normalizeAccentColor(input.accentColor),
     guessMapSize: normalizeGuessMapSize(input.guessMapSize),
     compassStyle: normalizeCompassStyle(input.compassStyle),

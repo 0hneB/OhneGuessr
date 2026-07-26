@@ -26,12 +26,17 @@ describe('settings store', () => {
   it('normalizes, persists and notifies a patch', async () => {
     const { onSettingsChanged, settings, updateSettings } =
       await import('./store.svelte.js');
-    let observed = 0;
-    const stop = onSettingsChanged((next) => { observed = next.mapZoomSpeed; });
-    updateSettings({ mapZoomSpeed: 12 });
+    let observed = '';
+    const stop = onSettingsChanged((next) => { observed = next.theme; });
+    updateSettings({
+      theme: 'ayu-light',
+      accentColor: '#3b9ee5',
+      mapZoomSpeed: 12
+    });
     stop();
     expect(settings.mapZoomSpeed).toBe(3);
-    expect(observed).toBe(3);
+    expect(settings.accentColor).toBe('#3b9ee5');
+    expect(observed).toBe('ayu-light');
     expect(localStorage.setItem).toHaveBeenCalled();
   });
 });

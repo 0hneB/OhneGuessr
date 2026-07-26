@@ -1,11 +1,141 @@
 .launcher-body {
-  --launcher-panel: #171717;
-  --launcher-panel-soft: #1d1d1d;
-  --launcher-border: rgba(255, 255, 255, 0.09);
   background: #252521;
+}
+
+.launcher-shell {
+  color-scheme: dark;
+  --launcher-background: #252521;
+  --launcher-main: var(--launcher-background);
+  --launcher-surface: rgba(18, 18, 18, 0.96);
+  --launcher-elevated: var(--launcher-surface);
+  --launcher-element: #222;
+  --launcher-field: var(--launcher-element);
+  --launcher-element-hover: rgba(255, 255, 255, 0.07);
+  --launcher-ghost-hover: var(--launcher-element-hover);
+  --launcher-row-hover: var(--launcher-element-hover);
+  --launcher-segment-hover: var(--launcher-element-hover);
+  --launcher-element-active: rgba(255, 255, 255, 0.1);
+  --launcher-drop-target: color-mix(in srgb, var(--launcher-text-muted) 50%, transparent);
+  --launcher-border: rgba(255, 255, 255, 0.09);
+  --launcher-border-variant: rgba(255, 255, 255, 0.12);
+  --launcher-border-focused: rgba(255, 255, 255, 0.22);
+  --launcher-control-border: var(--launcher-border);
+  --launcher-field-border: var(--launcher-border);
+  --launcher-section-border: var(--launcher-border);
+  --launcher-text: #fff;
+  --launcher-text-soft: var(--launcher-text);
+  --launcher-text-muted: #969da6;
+  --launcher-control-text: var(--launcher-text-muted);
+  --launcher-text-placeholder: #8e8c83;
+  --launcher-disabled: var(--launcher-text-placeholder);
+  --launcher-danger: #fb7185;
+  --launcher-error: var(--launcher-danger);
+  --launcher-switch: var(--launcher-element-active);
+  --launcher-range-track: var(--launcher-border);
+  --launcher-thumb-border: var(--launcher-main);
+  --launcher-dialog: var(--launcher-elevated);
+  --launcher-dialog-border: var(--launcher-border-variant);
+  --launcher-dialog-border-hover: var(--launcher-border-focused);
+  --launcher-dialog-button-text: var(--launcher-control-text);
+  --launcher-dialog-muted: var(--launcher-text-muted);
+  --launcher-nav-icon-filter: invert(1);
+  color: var(--launcher-text);
+  background: var(--launcher-background);
   font-family: "Open Sans", "Segoe UI Variable Text", "Segoe UI", Arial, sans-serif;
   font-size: 16px;
   font-synthesis: none;
+}
+
+.launcher-shell[data-theme="ohneguessr"] {
+  --launcher-elevated: #36352f;
+  --launcher-field: #2d2d28;
+  --launcher-ghost-hover: rgba(255, 255, 255, 0.045);
+  --launcher-row-hover: rgba(255, 255, 255, 0.035);
+  --launcher-segment-hover: rgba(255, 255, 255, 0.06);
+  --launcher-drop-target: rgba(255, 255, 255, 0.1);
+  --launcher-control-border: rgba(255, 255, 255, 0.18);
+  --launcher-field-border: rgba(255, 255, 255, 0.08);
+  --launcher-section-border: rgba(255, 255, 255, 0.1);
+  --launcher-text-soft: #f4f3ef;
+  --launcher-control-text: #cbd2dd;
+  --launcher-disabled: #6b7280;
+  --launcher-error: #f87171;
+  --launcher-switch: #2a2a2a;
+  --launcher-range-track: rgba(255, 255, 255, 0.16);
+  --launcher-thumb-border: #181818;
+  --launcher-dialog: #202020;
+  --launcher-dialog-border: rgba(255, 255, 255, 0.13);
+  --launcher-dialog-border-hover: rgba(255, 255, 255, 0.2);
+  --launcher-dialog-button-text: #d6d9df;
+  --launcher-dialog-muted: #a5abb3;
+}
+
+.launcher-shell[data-theme="gruvbox-dark-soft"] {
+  --launcher-background: #4c4642;
+  --launcher-main: #32302f;
+  --launcher-surface: #3b3735;
+  --launcher-element: #3b3735;
+  --launcher-element-hover: #494340;
+  --launcher-element-active: #5b524c;
+  --launcher-border: #5b534d;
+  --launcher-border-variant: #494340;
+  --launcher-border-focused: #303a36;
+  --launcher-text: #fbf1c7;
+  --launcher-text-muted: #c5b597;
+  --launcher-text-placeholder: #998b78;
+  --launcher-danger: #fb4a35;
+}
+
+.launcher-shell[data-theme="gruvbox-light-soft"] {
+  color-scheme: light;
+  --launcher-background: #d9c8a4;
+  --launcher-main: #f2e5bc;
+  --launcher-surface: #ecdcb3;
+  --launcher-element: #ecdcb3;
+  --launcher-element-hover: #ddcca7;
+  --launcher-element-active: #c8b899;
+  --launcher-border: #c8b899;
+  --launcher-border-variant: #ddcca7;
+  --launcher-border-focused: #adc5cc;
+  --launcher-text: #282828;
+  --launcher-text-muted: #5f5650;
+  --launcher-text-placeholder: #897b6e;
+  --launcher-danger: #9d0308;
+  --launcher-nav-icon-filter: none;
+}
+
+.launcher-shell[data-theme="ayu-light"] {
+  color-scheme: light;
+  --launcher-background: #dcddde;
+  --launcher-main: #fcfcfc;
+  --launcher-surface: #ececed;
+  --launcher-element: #ececed;
+  --launcher-element-hover: #dfe0e1;
+  --launcher-element-active: #cfd0d2;
+  --launcher-border: #cfd1d2;
+  --launcher-border-variant: #dfe0e1;
+  --launcher-border-focused: #c4daf6;
+  --launcher-text: #5c6166;
+  --launcher-text-muted: #8b8e92;
+  --launcher-text-placeholder: #a9acae;
+  --launcher-danger: #ef7271;
+  --launcher-nav-icon-filter: none;
+}
+
+.launcher-shell[data-theme="ayu-mirage"] {
+  --launcher-background: #464a52;
+  --launcher-main: #242835;
+  --launcher-surface: #353944;
+  --launcher-element: #353944;
+  --launcher-element-hover: #43464f;
+  --launcher-element-active: #53565d;
+  --launcher-border: #53565d;
+  --launcher-border-variant: #43464f;
+  --launcher-border-focused: #24556f;
+  --launcher-text: #cccac2;
+  --launcher-text-muted: #9a9a98;
+  --launcher-text-placeholder: #7b7d7f;
+  --launcher-danger: #f18779;
 }
 
 #app,
@@ -24,7 +154,7 @@
   flex-direction: column;
   min-width: 0;
   padding: 18px 12px 14px;
-  background: rgba(18, 18, 18, 0.96);
+  background: var(--launcher-surface);
   border-right: 1px solid var(--launcher-border);
 }
 
@@ -58,7 +188,7 @@
   width: 100%;
   min-height: 48px;
   padding: 8px 11px;
-  color: #969da6;
+  color: var(--launcher-text-muted);
   background: transparent;
   border: 0;
   border-radius: 9px;
@@ -70,12 +200,12 @@
 }
 
 .launcher-sidebar nav button:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.045);
+  color: var(--launcher-text);
+  background: var(--launcher-ghost-hover);
 }
 
 .launcher-sidebar nav button.active {
-  color: #fff;
+  color: var(--launcher-text);
   background: transparent;
 }
 
@@ -104,7 +234,7 @@
   width: 24px;
   height: 24px;
   object-fit: contain;
-  filter: invert(1);
+  filter: var(--launcher-nav-icon-filter);
   opacity: 0.58;
 }
 
@@ -122,7 +252,7 @@
 
 .update-action {
   padding: 0;
-  color: rgba(255, 255, 255, 0.58);
+  color: color-mix(in srgb, var(--launcher-text) 58%, transparent);
   background: none;
   border: 0;
   font: inherit;
@@ -132,7 +262,7 @@
 }
 
 .update-action:hover,
-.update-action:focus-visible { color: #fff; }
+.update-action:focus-visible { color: var(--launcher-text); }
 
 .update-status { white-space: nowrap; }
 
@@ -141,6 +271,7 @@
   min-height: 0;
   overflow: auto;
   padding: clamp(18px, 2.3vw, 30px);
+  background: var(--launcher-main);
 }
 
 .maps-layout {
@@ -185,7 +316,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #f4f3ef;
+  color: var(--launcher-text-soft);
   background: transparent;
   border: 0;
   border-radius: 999px;
@@ -194,8 +325,8 @@
 }
 
 .library-toolbar button:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.07);
+  color: var(--launcher-text);
+  background: var(--launcher-element-hover);
 }
 
 .library-toolbar button:disabled {
@@ -215,7 +346,7 @@
   width: 1px;
   height: 18px;
   margin-inline: 4px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--launcher-border-variant);
 }
 
 .library-search {
@@ -230,7 +361,7 @@
 .library-search .svg-icon {
   position: absolute;
   left: 9px;
-  color: #8e8c83;
+  color: var(--launcher-text-placeholder);
   pointer-events: none;
 }
 
@@ -240,9 +371,9 @@
   height: 36px;
   min-width: 0;
   padding: 0 10px;
-  color: #f4f3ef;
-  background: #2d2d28;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--launcher-text-soft);
+  background: var(--launcher-field);
+  border: 1px solid var(--launcher-field-border);
   border-radius: 4px;
   font: inherit;
   font-size: 15px;
@@ -264,7 +395,7 @@
   right: 4px;
   width: 28px;
   height: 28px;
-  color: #8e8c83;
+  color: var(--launcher-text-placeholder);
 }
 
 .library-toolbar .search-clear:hover {
@@ -280,7 +411,7 @@
 .folder-select input:focus,
 .map-name-edit:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: var(--launcher-border-focused);
 }
 
 .launcher-settings-page input:focus,
@@ -323,7 +454,7 @@
 
 .library-folder:hover,
 .library-map:hover {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--launcher-row-hover);
 }
 
 .library-folder.selected::before,
@@ -332,15 +463,15 @@
   left: calc(var(--indent) + 2px);
   width: 2px;
   height: 18px;
-  background: rgba(255, 255, 255, 0.8);
+  background: color-mix(in srgb, var(--launcher-text) 80%, transparent);
   border-radius: 2px;
   content: "";
 }
 
 .library-folder.drop-target,
 .library-tree.drop-target {
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.1);
+  background: var(--launcher-drop-target);
+  box-shadow: 0 0 16px var(--launcher-drop-target);
 }
 
 .library-map.dragging {
@@ -363,7 +494,7 @@
   place-items: center;
   width: 28px;
   height: 32px;
-  color: #8e8c83;
+  color: var(--launcher-text-placeholder);
 }
 
 .tree-toggle .svg-icon {
@@ -393,7 +524,7 @@
 
 .folder-select strong {
   overflow: hidden;
-  color: #f4f3ef;
+  color: var(--launcher-text-soft);
   font-size: 15px;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -402,7 +533,7 @@
 
 .folder-select small {
   flex: none;
-  color: rgba(244, 243, 239, 0.65);
+  color: color-mix(in srgb, var(--launcher-text-soft) 65%, transparent);
   font-size: 13px;
   font-weight: 400;
   white-space: nowrap;
@@ -428,7 +559,7 @@
 }
 
 .drag-handle {
-  color: rgba(244, 243, 239, 0.65);
+  color: color-mix(in srgb, var(--launcher-text-soft) 65%, transparent);
   background: transparent;
   border: none;
   font: inherit;
@@ -467,7 +598,7 @@
 
 .map-launch b {
   overflow: hidden;
-  color: #f4f3ef;
+  color: var(--launcher-text-soft);
   font-size: 15px;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -476,7 +607,7 @@
 
 .map-launch small {
   flex: none;
-  color: rgba(244, 243, 239, 0.5);
+  color: color-mix(in srgb, var(--launcher-text-soft) 50%, transparent);
   font-size: 13px;
   font-weight: 400;
   white-space: nowrap;
@@ -506,7 +637,7 @@
   width: 30px;
   height: 30px;
   padding: 0;
-  color: rgba(244, 243, 239, 0.55);
+  color: color-mix(in srgb, var(--launcher-text-soft) 55%, transparent);
   background: transparent;
   border: 0;
   border-radius: 50%;
@@ -515,8 +646,8 @@
 }
 
 .row-action:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.07);
+  color: var(--launcher-text);
+  background: var(--launcher-element-hover);
 }
 
 .row-action .svg-icon {
@@ -525,7 +656,7 @@
 }
 
 .row-action.danger:hover {
-  color: #fb7185;
+  color: var(--launcher-danger);
 }
 
 .row-menu {
@@ -542,8 +673,8 @@
 }
 
 .row-menu[open] summary {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.07);
+  color: var(--launcher-text);
+  background: var(--launcher-element-hover);
 }
 
 .row-menu > div {
@@ -555,8 +686,8 @@
   flex-direction: column;
   width: 170px;
   padding: 6px;
-  background: #36352f;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--launcher-elevated);
+  border: 1px solid var(--launcher-border-variant);
   border-radius: 6px;
   box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
 }
@@ -564,14 +695,14 @@
 .row-menu label {
   width: 100%;
   padding: 8px 9px;
-  color: #f4f3ef;
+  color: var(--launcher-text-soft);
   font: inherit;
   font-size: 13px;
   text-align: left;
 }
 
 .delete-dialog .danger {
-  color: #fb7185;
+  color: var(--launcher-danger);
 }
 
 .row-menu label {
@@ -581,15 +712,15 @@
 }
 
 .row-menu label span {
-  color: rgba(244, 243, 239, 0.65);
+  color: color-mix(in srgb, var(--launcher-text-soft) 65%, transparent);
 }
 
 .row-menu select {
   width: 100%;
   padding: 6px;
-  color: #f4f3ef;
-  background: #252521;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--launcher-text-soft);
+  background: var(--launcher-main);
+  border: 1px solid var(--launcher-border-variant);
   border-radius: 4px;
   font: inherit;
   font-size: 13px;
@@ -598,7 +729,7 @@
 .library-root-drop {
   min-height: 32px;
   padding-left: 28px;
-  color: rgba(244, 243, 239, 0.55);
+  color: color-mix(in srgb, var(--launcher-text-soft) 55%, transparent);
   font-size: 13px;
   line-height: 32px;
 }
@@ -611,9 +742,9 @@
   max-width: min(320px, calc(100vw - 24px));
   padding: 6px 12px;
   overflow: hidden;
-  color: #f4f3ef;
-  background: #36352f;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--launcher-text-soft);
+  background: var(--launcher-elevated);
+  border: 1px solid var(--launcher-section-border);
   border-radius: 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   font-size: 14px;
@@ -631,13 +762,13 @@
   justify-content: center;
   min-height: 160px;
   gap: 5px;
-  color: rgba(244, 243, 239, 0.5);
+  color: color-mix(in srgb, var(--launcher-text-soft) 50%, transparent);
   font-size: 13px;
   text-align: center;
 }
 
 .library-empty b {
-  color: rgba(244, 243, 239, 0.85);
+  color: color-mix(in srgb, var(--launcher-text-soft) 85%, transparent);
   font-size: 15px;
   font-weight: 700;
 }
@@ -648,7 +779,7 @@
 }
 
 .library-notice.error {
-  color: #fb7185;
+  color: var(--launcher-danger);
 }
 
 .sync-panel {
@@ -679,7 +810,8 @@
   padding-bottom: 28px;
 }
 
-.launcher-settings-page.split-settings {
+.launcher-settings-page.split-settings,
+.launcher-settings-page.controls-settings {
   width: min(980px, 100%);
 }
 
@@ -699,13 +831,21 @@
   grid-column: 2;
 }
 
-.split-settings .seg-custom {
-  width: 100%;
+.split-settings .segmented,
+.split-settings .setting > .setting-select,
+.split-settings .seg-custom,
+.split-settings .setting-range > input[type="range"] {
+  width: min(400px, 100%);
+  justify-self: end;
 }
 
-.split-settings .accent-color-actions,
+.split-settings .theme-actions,
 .split-settings .setting-toggle .switch {
   justify-self: end;
+}
+
+.split-settings .theme-actions {
+  width: min(400px, 100%);
 }
 
 .split-settings .setting-range-head {
@@ -764,9 +904,9 @@
 .delete-dialog {
   width: min(400px, calc(100vw - 32px));
   padding: 0;
-  color: #fff;
-  background: #202020;
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  color: var(--launcher-text);
+  background: var(--launcher-dialog);
+  border: 1px solid var(--launcher-dialog-border);
   border-radius: 13px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65);
 }
@@ -785,7 +925,7 @@
 
 .delete-dialog p {
   margin: 10px 0 20px;
-  color: #a5abb3;
+  color: var(--launcher-dialog-muted);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -799,9 +939,9 @@
 .delete-dialog button {
   min-height: 34px;
   padding: 6px 12px;
-  color: #d6d9df;
-  background: #2d2d28;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--launcher-dialog-button-text);
+  background: var(--launcher-field);
+  border: 1px solid var(--launcher-section-border);
   border-radius: 6px;
   font: inherit;
   font-size: 13px;
@@ -810,8 +950,8 @@
 }
 
 .delete-dialog button:hover {
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--launcher-text);
+  border-color: var(--launcher-dialog-border-hover);
 }
 
 button:focus-visible,

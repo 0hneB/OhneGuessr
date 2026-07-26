@@ -3,6 +3,12 @@ export type MovementMode = 'moving' | 'nm' | 'nmpz';
 export type ScoringMode = 'world' | 'country';
 export type GuessMapSize = 'default' | 'large' | 'xl' | 'xxl';
 export type CompassStyle = 'bar' | 'classic' | 'both';
+export type LauncherTheme =
+  | 'ohneguessr'
+  | 'gruvbox-dark-soft'
+  | 'gruvbox-light-soft'
+  | 'ayu-light'
+  | 'ayu-mirage';
 
 export interface Point {
   lat: number;
@@ -45,6 +51,7 @@ export interface Settings {
   mapStyle: string;
   rounds: string;
   timer: string;
+  theme: LauncherTheme;
   accentColor: string;
   guessMapSize: GuessMapSize;
   compassStyle: CompassStyle;
