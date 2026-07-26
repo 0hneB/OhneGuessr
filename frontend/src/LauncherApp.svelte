@@ -265,14 +265,14 @@
           </div>
 
           <div class="setting setting-range">
-            <div class="setting-range-head">
-              <label for="mapZoomSpeed">Map zoom speed</label>
+            <label for="mapZoomSpeed">Map zoom speed</label>
+            <div class="setting-range-control">
+              <input id="mapZoomSpeed" type="range" min="0.5" max="3" step="0.1"
+                     value={settings.mapZoomSpeed}
+                     style={`--range-progress:${((settings.mapZoomSpeed - 0.5) / 2.5) * 100}%`}
+                     oninput={(event) => updateSettings({ mapZoomSpeed: Number(event.currentTarget.value) })} />
               <output for="mapZoomSpeed">{settings.mapZoomSpeed}×</output>
             </div>
-            <input id="mapZoomSpeed" type="range" min="0.5" max="3" step="0.1"
-                   value={settings.mapZoomSpeed}
-                   style={`--range-progress:${((settings.mapZoomSpeed - 0.5) / 2.5) * 100}%`}
-                   oninput={(event) => updateSettings({ mapZoomSpeed: Number(event.currentTarget.value) })} />
           </div>
 
           <label class="setting setting-toggle">

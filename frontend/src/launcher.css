@@ -41,7 +41,6 @@
   --launcher-error: var(--launcher-danger);
   --launcher-switch: var(--launcher-element-active);
   --launcher-range-track: var(--launcher-border);
-  --launcher-thumb-border: var(--launcher-main);
   --launcher-nav-icon-filter: invert(1);
   color: var(--launcher-text);
   background: var(--launcher-background);
@@ -70,7 +69,6 @@
   --launcher-error: #f87171;
   --launcher-switch: #2a2a2a;
   --launcher-range-track: rgba(255, 255, 255, 0.16);
-  --launcher-thumb-border: #181818;
 }
 
 .launcher-shell[data-theme="ohneb"] {
@@ -803,7 +801,7 @@
 .split-settings .segmented,
 .split-settings .setting > .setting-select,
 .split-settings .seg-custom,
-.split-settings .setting-range > input[type="range"] {
+.split-settings .setting-range-control {
   width: min(400px, 100%);
   justify-self: end;
 }
@@ -815,27 +813,6 @@
 
 .split-settings .theme-actions {
   width: min(400px, 100%);
-}
-
-.split-settings .setting-range-head {
-  display: contents;
-}
-
-.split-settings .setting-range-head label {
-  grid-column: 1;
-  grid-row: 1 / span 2;
-  align-self: center;
-}
-
-.split-settings .setting-range-head output {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: end;
-}
-
-.split-settings .setting-range > input {
-  grid-column: 2;
-  grid-row: 2;
 }
 
 .settings-group {
