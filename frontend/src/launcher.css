@@ -452,9 +452,6 @@
   padding: 8px;
   overflow: auto;
   border-radius: 4px;
-  transition:
-    background 160ms ease-in-out,
-    box-shadow 160ms ease-in-out;
 }
 
 .library-tree.loading {
@@ -472,10 +469,7 @@
   min-height: 36px;
   padding-left: var(--indent);
   border-radius: 4px;
-  transition:
-    background 80ms ease-in-out,
-    box-shadow 160ms ease-in-out,
-    opacity 80ms ease-in-out;
+  transition: opacity 80ms ease-in-out;
 }
 
 .library-folder:hover,
@@ -498,7 +492,6 @@
 .library-tree.drop-target,
 .library-tree.file-drop-target-active {
   background: var(--launcher-drop-target);
-  box-shadow: 0 0 16px var(--launcher-drop-target);
 }
 
 .library-map.dragging {
