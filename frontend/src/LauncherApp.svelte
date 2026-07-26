@@ -46,8 +46,8 @@
   const timerPreset = $derived(timerPresets.includes(settings.timer) ? settings.timer : 'custom');
   let page = $state<Page>('maps');
   let gameWindow = $state<GameWindowState>({ open: false, fullscreen: false });
-  let roundsDraft = $state(settings.rounds === 'unlimited' ? '7' : settings.rounds);
-  let timerDraft = $state(settings.timer === 'unlimited'
+  let roundsDraft = $state(roundPresets.includes(settings.rounds) ? '7' : settings.rounds);
+  let timerDraft = $state(timerPresets.includes(settings.timer)
     ? '3'
     : String(Number(settings.timer) / 60));
 
@@ -140,22 +140,23 @@
                       onclick={() => updateSettings({ rounds: 'unlimited' })}>Unlimited</button>
               {#each ['5', '10'] as value}
                 <button type="button" class:active={roundPreset === value}
-                        onclick={() => { roundsDraft = value; updateSettings({ rounds: value }); }}>
+                        onclick={() => updateSettings({ rounds: value })}>
                   {value}
                 </button>
               {/each}
-              <button type="button" class:active={roundPreset === 'custom'}
-                      onclick={() => updateSettings({ rounds: roundsDraft })}>Custom</button>
+              {#if roundPreset === 'custom'}
+                <input class="seg-custom" type="number" min="1" step="1"
+                       value={roundsDraft} aria-label="Custom round count"
+                       onblur={(event) => commitRounds(event.currentTarget)}
+                       onkeydown={(event) => {
+                         if (event.key === 'Enter') event.currentTarget.blur();
+                         if (event.key === 'Escape') { event.currentTarget.value = roundsDraft; event.currentTarget.blur(); }
+                       }} />
+              {:else}
+                <button type="button"
+                        onclick={() => updateSettings({ rounds: roundsDraft })}>Custom</button>
+              {/if}
             </div>
-            {#if roundPreset === 'custom'}
-              <input class="seg-custom" type="number" min="1" step="1"
-                     value={roundsDraft} aria-label="Custom round count"
-                     onblur={(event) => commitRounds(event.currentTarget)}
-                     onkeydown={(event) => {
-                       if (event.key === 'Enter') event.currentTarget.blur();
-                       if (event.key === 'Escape') { event.currentTarget.value = roundsDraft; event.currentTarget.blur(); }
-                     }} />
-            {/if}
           </div>
 
           <div class="setting">
@@ -164,23 +165,24 @@
               <button type="button" class:active={timerPreset === 'unlimited'}
                       onclick={() => updateSettings({ timer: 'unlimited' })}>Unlimited</button>
               <button type="button" class:active={timerPreset === '120'}
-                      onclick={() => { timerDraft = '2'; updateSettings({ timer: '120' }); }}>2 min</button>
+                      onclick={() => updateSettings({ timer: '120' })}>2 min</button>
               <button type="button" class:active={timerPreset === '300'}
-                      onclick={() => { timerDraft = '5'; updateSettings({ timer: '300' }); }}>5 min</button>
-              <button type="button" class:active={timerPreset === 'custom'}
-                      onclick={() => updateSettings({ timer: String(Math.round(Number(timerDraft) * 60)) })}>
-                Custom
-              </button>
+                      onclick={() => updateSettings({ timer: '300' })}>5 min</button>
+              {#if timerPreset === 'custom'}
+                <input class="seg-custom" type="number" min="0.5" step="0.5"
+                       value={timerDraft} aria-label="Custom time limit in minutes"
+                       onblur={(event) => commitTimer(event.currentTarget)}
+                       onkeydown={(event) => {
+                         if (event.key === 'Enter') event.currentTarget.blur();
+                         if (event.key === 'Escape') { event.currentTarget.value = timerDraft; event.currentTarget.blur(); }
+                       }} />
+              {:else}
+                <button type="button"
+                        onclick={() => updateSettings({ timer: String(Math.round(Number(timerDraft) * 60)) })}>
+                  Custom
+                </button>
+              {/if}
             </div>
-            {#if timerPreset === 'custom'}
-              <input class="seg-custom" type="number" min="0.5" step="0.5"
-                     value={timerDraft} aria-label="Custom time limit in minutes"
-                     onblur={(event) => commitTimer(event.currentTarget)}
-                     onkeydown={(event) => {
-                       if (event.key === 'Enter') event.currentTarget.blur();
-                       if (event.key === 'Escape') { event.currentTarget.value = timerDraft; event.currentTarget.blur(); }
-                     }} />
-            {/if}
           </div>
 
           <div class="setting">

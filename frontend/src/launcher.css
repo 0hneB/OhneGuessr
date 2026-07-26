@@ -804,7 +804,6 @@
 
 .split-settings .segmented,
 .split-settings .setting > .setting-select,
-.split-settings .seg-custom,
 .split-settings .setting-range-control {
   width: min(400px, 100%);
   justify-self: end;
