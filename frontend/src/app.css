@@ -263,8 +263,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 
 .classic-compass:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.9);
-  outline-offset: 2px;
+  outline: none;
 }
 
 .classic-compass-needle {
@@ -648,14 +647,6 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   background: var(--accent-strong);
 }
 .setting-range input[type="range"]:focus-visible { outline: none; }
-.setting-range input[type="range"]:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.setting-range input[type="range"]:focus-visible::-moz-range-thumb {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
 
 /* Editable keyboard shortcuts. */
 .key-list { display: flex; flex-direction: column; }
@@ -950,7 +941,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   background: rgba(var(--accent-rgb), 0.1);
   border-color: rgba(var(--accent-rgb), 0.65);
 }
-.final-round:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.final-round:focus-visible { outline: none; }
 .final-round.selected .fr-no { color: var(--accent); }
 .fr-no { color: #9aa3ad; font-weight: 700; text-align: left; }
 .fr-dist { color: #cbd2dd; text-align: left; }
