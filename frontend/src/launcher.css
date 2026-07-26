@@ -495,7 +495,8 @@
 }
 
 .library-folder.drop-target,
-.library-tree.drop-target {
+.library-tree.drop-target,
+.library-tree.file-drop-target-active {
   background: var(--launcher-drop-target);
   box-shadow: 0 0 16px var(--launcher-drop-target);
 }
@@ -687,14 +688,6 @@
 
 .delete-dialog .danger {
   color: var(--launcher-danger);
-}
-
-.library-root-drop {
-  min-height: 32px;
-  padding-left: 28px;
-  color: color-mix(in srgb, var(--launcher-text-soft) 55%, transparent);
-  font-size: 13px;
-  line-height: 32px;
 }
 
 .map-drag-preview {

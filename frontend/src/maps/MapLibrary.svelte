@@ -25,7 +25,6 @@
   const folderName = $derived(library.search.trim());
   const folderCreationAllowed = $derived(canCreateFolder(library.selectedFolder));
   const importAllowed = $derived(canStoreLocalMap(library.selectedFolder));
-  const hasRootMaps = $derived(library.maps.some((map) => !map.folder));
 
   let fileInput: HTMLInputElement;
   let searchInput: HTMLInputElement;
@@ -183,9 +182,17 @@
     void tick().then(() => positionPreview(event.clientX, event.clientY));
   }
 
-  async function acceptFile(file?: File) {
-    if (file) await importMap(file);
+  async function acceptFiles(files?: FileList | null) {
+    for (const file of Array.from(files || [])) {
+      if (!await importMap(file)) break;
+    }
     if (fileInput) fileInput.value = '';
+  }
+
+  async function handleFileDrop(event: DragEvent) {
+    event.preventDefault();
+    if (!importAllowed) return;
+    await acceptFiles(event.dataTransfer?.files);
   }
 
   onDestroy(cleanupDrag);
@@ -232,7 +239,7 @@
         <span class="svg-icon plus-icon" aria-hidden="true"></span>
       </button>
       <input bind:this={fileInput} type="file" accept=".json,application/json" hidden
-             onchange={(event) => acceptFile(event.currentTarget.files?.[0])} />
+             onchange={(event) => acceptFiles(event.currentTarget.files)} />
       <span class="toolbar-separator" aria-hidden="true"></span>
       <button class="icon-button" type="button" title="Open maps folder"
               aria-label="Open maps folder" onclick={openMapsFolder}>
@@ -247,7 +254,10 @@
   </header>
 
   <div class="library-tree" class:loading={library.loading}
-       bind:this={libraryTree} data-drop-folder="">
+       bind:this={libraryTree} data-drop-folder=""
+       data-file-drop-target={importAllowed ? '' : undefined}
+       role="region" aria-label="Map library"
+       ondrop={handleFileDrop}>
     {#if library.loading}
       <p class="library-empty">Loading maps…</p>
     {:else if !rows.length}
@@ -256,9 +266,6 @@
         <span>{library.search ? 'Try another search.' : 'Import a Map Making App JSON file.'}</span>
       </div>
     {:else}
-      {#if draggedMapID && draggedSourceFolder && !hasRootMaps}
-        <div class="library-root-drop" data-drop-folder="">Drop here to move to Maps</div>
-      {/if}
       {#each rows as row (row.kind === 'folder' ? `folder:${row.path}` : `map:${row.map.id}`)}
         {#if row.kind === 'folder'}
           <div class="library-folder" class:selected={row.selected} role="group"

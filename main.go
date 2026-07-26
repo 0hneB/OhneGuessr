@@ -73,6 +73,7 @@ func run() error {
 		InitialPosition:            application.WindowCentered,
 		BackgroundColour:           application.NewRGB(11, 11, 11),
 		DefaultContextMenuDisabled: true,
+		EnableFileDrop:             true,
 		URL:                        "/?view=launcher",
 		Windows: application.WindowsWindow{
 			Theme: application.Dark,

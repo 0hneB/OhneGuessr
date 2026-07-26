@@ -22,12 +22,13 @@ import {
   buildLibraryRows,
   canCreateFolder,
   canMoveMap,
+  canStoreLocalMap,
   mapMoveTargets,
   parentFolder,
   sourceType
 } from './library-tree.js';
 
-export { canCreateFolder, canStoreLocalMap } from './library-tree.js';
+export { canCreateFolder, canStoreLocalMap };
 
 const FOLDER_STATE_KEY = 'ohneguessr.mapFolders';
 
@@ -141,24 +142,34 @@ export async function playMap(map: MapItem) {
 }
 
 export async function importMap(file: File) {
+  if (!canStoreLocalMap(library.selectedFolder)) {
+    setNotice('Select Maps or a local folder before importing.', true);
+    return false;
+  }
+  if (!/\.json$/i.test(file.name)) {
+    setNotice('Only JSON files can be imported.', true);
+    return false;
+  }
   let json: unknown;
   try {
     json = JSON.parse(await file.text());
   } catch {
     setNotice('Could not parse that JSON file.', true);
-    return;
+    return false;
   }
   const locations = normalizeLocations(json);
   if (!locations.length) {
     setNotice('No usable coordinates found.', true);
-    return;
+    return false;
   }
   try {
     await addUserMap(mapNameFrom(json, file.name), locations, library.selectedFolder);
     await reloadLibrary();
     setNotice('');
+    return true;
   } catch (error) {
     setNotice(errorMessage(error, 'Could not import that map.'), true);
+    return false;
   }
 }
 
