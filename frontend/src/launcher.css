@@ -762,7 +762,7 @@
 
 .sync-panel .sync-section {
   margin-top: 0;
-  padding-top: 15px;
+  padding-top: 20px;
   border-top: 1px solid var(--launcher-border);
 }
 
@@ -772,7 +772,7 @@
 }
 
 .sync-panel .sync-plugin-mount + .sync-plugin-mount {
-  margin-top: 40px;
+  margin-top: 20px;
 }
 
 .launcher-settings-page {
