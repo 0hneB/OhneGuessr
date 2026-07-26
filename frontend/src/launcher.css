@@ -183,18 +183,18 @@
 .launcher-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 5px;
   height: 42px;
   padding: 0 9px;
   margin-bottom: 18px;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .launcher-brand img {
-  width: 27px;
-  height: 27px;
+  width: 32px;
+  height: 32px;
 }
 
 .launcher-sidebar nav {
