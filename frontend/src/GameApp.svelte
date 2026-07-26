@@ -1,7 +1,13 @@
 <script lang="ts">
   import { CONFIG } from './config.js';
   import { onMount } from 'svelte';
-  import { focusLauncher, gameReady } from './desktop.js';
+  import {
+    desktopRuntimeAvailable,
+    focusLauncher,
+    gameReady,
+    getGameWindowState,
+    setGameFullscreen
+  } from './desktop.js';
   import { formatDistance } from './game/scoring.js';
   import { state as gameState } from './game/state.svelte.js';
   import {
@@ -18,7 +24,13 @@
   const timerText = $derived(
     `${Math.floor(ui.timerRemaining / 60)}:${String(ui.timerRemaining % 60).padStart(2, '0')}`
   );
-  function handleEscape(event: KeyboardEvent) {
+  function handleWindowKeydown(event: KeyboardEvent) {
+    if (event.code === 'F11' && !event.repeat && !event.defaultPrevented &&
+        desktopRuntimeAvailable()) {
+      event.preventDefault();
+      void getGameWindowState().then(({ fullscreen }) => setGameFullscreen(!fullscreen));
+      return;
+    }
     if (event.key !== 'Escape' || event.repeat || event.defaultPrevented) return;
     event.preventDefault();
     focusLauncher();
@@ -30,7 +42,7 @@
   });
 </script>
 
-<svelte:window onkeydown={handleEscape} />
+<svelte:window onkeydown={handleWindowKeydown} />
 <svelte:body class:ui-hidden={ui.hudHidden} />
 
 <div id="pano"></div>

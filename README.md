@@ -93,6 +93,7 @@ API keys stay only in `plugin-data/`; they are never included in `maps.json` or 
 | Hold <kbd>B</kbd> | Look behind |
 | <kbd>M</kbd> | Pin / unpin the expanded map |
 | <kbd>F</kbd> | Toggle the fullscreen map |
+| <kbd>F11</kbd> | Toggle game-window fullscreen |
 | <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>4</kbd> | Select expanded map size |
 | <kbd>H</kbd> | Hide / show the interface |
 | <kbd>Esc</kbd> | Focus the launcher |
