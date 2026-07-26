@@ -1,9 +1,18 @@
+@font-face {
+  font-family: "Ubuntu Sans";
+  src: url("/vendor/ubuntu-sans/UbuntuSans-Variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+}
+
 .launcher-body {
   background: #252521;
 }
 
 .launcher-shell {
   color-scheme: dark;
+  --launcher-font-family: "Open Sans", "Segoe UI Variable Text", "Segoe UI", Arial, sans-serif;
   --launcher-background: #252521;
   --launcher-main: var(--launcher-background);
   --launcher-surface: rgba(18, 18, 18, 0.96);
@@ -41,7 +50,7 @@
   --launcher-nav-icon-filter: invert(1);
   color: var(--launcher-text);
   background: var(--launcher-background);
-  font-family: "Open Sans", "Segoe UI Variable Text", "Segoe UI", Arial, sans-serif;
+  font-family: var(--launcher-font-family);
   font-size: 16px;
   font-synthesis: none;
 }
@@ -68,6 +77,23 @@
   --launcher-dialog-border-hover: rgba(255, 255, 255, 0.2);
   --launcher-dialog-button-text: #d6d9df;
   --launcher-dialog-muted: #a5abb3;
+}
+
+.launcher-shell[data-theme="ohneb"] {
+  --launcher-font-family: "Ubuntu Sans", "Segoe UI", Arial, sans-serif;
+  --launcher-background: #2d2521;
+  --launcher-main: #1d1a18;
+  --launcher-surface: #25211e;
+  --launcher-element: #302925;
+  --launcher-element-hover: #3b302b;
+  --launcher-element-active: #4a3930;
+  --launcher-border: #4d3d35;
+  --launcher-border-variant: #3c312c;
+  --launcher-border-focused: #7f4f36;
+  --launcher-text: #f2ebe6;
+  --launcher-text-muted: #b7a79d;
+  --launcher-text-placeholder: #807168;
+  --launcher-danger: #ef7065;
 }
 
 .launcher-shell[data-theme="gruvbox-dark-soft"] {

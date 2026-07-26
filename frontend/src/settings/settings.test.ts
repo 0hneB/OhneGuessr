@@ -28,6 +28,7 @@ describe('normalizeSettings', () => {
 
   it('normalizes launcher themes without discarding a legacy custom accent', () => {
     const themes = Object.keys(LAUNCHER_THEMES);
+    expect(themes).toContain('ohneb');
     expect(themes.map((theme) => normalizeSettings({
       ...DEFAULT_SETTINGS,
       theme

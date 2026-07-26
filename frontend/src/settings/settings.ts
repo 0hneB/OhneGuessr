@@ -102,6 +102,7 @@ export const DEFAULT_ACCENT_COLOR = '#22c55e';
 export const DEFAULT_LAUNCHER_THEME: LauncherTheme = 'ohneguessr';
 export const LAUNCHER_THEMES = {
   ohneguessr: { label: 'OhneGuessr', accent: DEFAULT_ACCENT_COLOR },
+  ohneb: { label: 'OhneB', accent: '#df783c' },
   'gruvbox-dark-soft': { label: 'Warm Dark', accent: '#83a598' },
   'gruvbox-light-soft': { label: 'Warm Light', accent: '#0b6678' },
   'ayu-light': { label: 'Cool Light', accent: '#3b9ee5' },
