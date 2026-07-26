@@ -442,7 +442,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   color: var(--launcher-text);
   background: var(--launcher-element);
   border: 1px solid var(--launcher-control-border);
-  border-radius: 8px;
+  border-radius: 4px;
   cursor: pointer;
 }
 .setting select:focus { outline: none; }
@@ -533,7 +533,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   padding: 4px;
   background: var(--launcher-element);
   border: 1px solid var(--launcher-control-border);
-  border-radius: 10px;
+  border-radius: 4px;
 }
 .segmented button {
   flex: 1;
@@ -547,7 +547,6 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   color: var(--launcher-control-text);
   background: none;
   border: none;
-  border-radius: 7px;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -568,7 +567,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   color: var(--launcher-text);
   background: var(--launcher-element);
   border: 1px solid var(--launcher-control-border);
-  border-radius: 8px;
+  border-radius: 4px;
   -moz-appearance: textfield;  /* hide the number spinner (Firefox) */
   appearance: textfield;
 }
@@ -659,7 +658,6 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   color: var(--launcher-text);
   background: var(--launcher-element);
   border: 1px solid var(--launcher-control-border);
-  border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
@@ -718,7 +716,6 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   color: var(--launcher-control-text);
   background: color-mix(in srgb, var(--launcher-text) 6%, transparent);
   border: 1px solid var(--launcher-border-variant);
-  border-radius: 8px;
   cursor: pointer;
 }
 .settings-action:hover {
@@ -739,7 +736,6 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   color: color-mix(in srgb, var(--launcher-text-soft) 55%, transparent);
   background: transparent;
   border: none;
-  border-radius: 50%;
   cursor: pointer;
   transition:
     color 64ms ease-in-out,

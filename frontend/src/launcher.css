@@ -50,6 +50,10 @@
   font-synthesis: none;
 }
 
+.launcher-shell button {
+  border-radius: 4px;
+}
+
 .launcher-shell[data-theme="ohneguessr"] {
   --launcher-elevated: #36352f;
   --launcher-field: #2d2d28;
@@ -207,7 +211,6 @@
   color: var(--launcher-text-muted);
   background: transparent;
   border: 0;
-  border-radius: 9px;
   font: inherit;
   font-size: 15px;
   font-weight: 700;
@@ -335,7 +338,6 @@
   color: var(--launcher-text-soft);
   background: transparent;
   border: 0;
-  border-radius: 999px;
   font: inherit;
   cursor: pointer;
 }
@@ -650,7 +652,6 @@
   color: color-mix(in srgb, var(--launcher-text-soft) 55%, transparent);
   background: transparent;
   border: 0;
-  border-radius: 50%;
   font: inherit;
   cursor: pointer;
 }
@@ -687,7 +688,6 @@
   color: var(--launcher-control-text);
   background: var(--launcher-field);
   border: 1px solid var(--launcher-section-border);
-  border-radius: 4px;
   font: inherit;
   font-size: 12px;
   font-weight: 600;
