@@ -349,27 +349,6 @@
                   <span class="svg-icon pencil-icon" aria-hidden="true"></span>
                 </button>
               {/if}
-              {#if row.canMove}
-                <details class="row-menu">
-                  <summary class="row-action" title="Move map" aria-label={`Move ${row.map.name}`}>
-                    <span class="svg-icon folder-icon" aria-hidden="true"></span>
-                  </summary>
-                  <div>
-                    <label>
-                      <span>Move to</span>
-                      <select value={row.map.folder}
-                              onchange={(event) => {
-                                void moveMap(row.map, event.currentTarget.value);
-                                event.currentTarget.closest('details')?.removeAttribute('open');
-                              }}>
-                        {#each moveTargets(row.map) as folder}
-                          <option value={folder}>{folder || 'Maps'}</option>
-                        {/each}
-                      </select>
-                    </label>
-                  </div>
-                </details>
-              {/if}
               {#if row.canRemove}
                 <button class="row-action danger" type="button" title="Delete map"
                         aria-label={`Delete ${row.map.name}`}
