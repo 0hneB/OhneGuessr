@@ -372,11 +372,11 @@ jobs:
             echo "Release files do not match the expected set" >&2
             exit 1
           fi
-      - name: Upload to draft prerelease
+      - name: Upload to draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          test "$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq '.isDraft and .isPrerelease')" = "true"
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft')" = "true"
           gh release upload "$RELEASE_TAG" \
             "release/OhneGuessr-$RELEASE_VERSION-linux-x64.AppImage" \
             "release/OhneGuessr-$RELEASE_VERSION-linux-x64.deb" \

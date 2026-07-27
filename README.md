@@ -139,7 +139,7 @@ Builds go to `bin/`. To build only the frontend, run:
 npm --prefix frontend run build
 ```
 
-This creates the ignored `frontend/dist/` directory. The **Check** workflow runs source checks on pushes and pull requests; its temporary Windows package is manual. The **Release** workflow builds Windows, Linux, and macOS files and uploads them to a draft prerelease.
+This creates the ignored `frontend/dist/` directory. The **Check** workflow runs source checks on pushes and pull requests; its temporary Windows package is manual. The **Release** workflow builds Windows, Linux, and macOS files and uploads them to a draft release.
 
 Run frontend logic tests with `npm --prefix frontend test`.
 
