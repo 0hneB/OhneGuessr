@@ -105,7 +105,6 @@ html, body {
 .plus-icon { --icon-url: url("/icons/plus.svg"); }
 .sync-icon { --icon-url: url("/icons/sync.svg"); }
 .pencil-icon { --icon-url: url("/icons/pencil.svg"); }
-.rm-bookmark-icon { --icon-url: url("/icons/rm-bookmark.svg"); }
 .info-icon { --icon-url: url("/icons/info.svg"); }
 .link-icon { --icon-url: url("/icons/link.svg"); }
 .close-icon { --icon-url: url("/icons/close.svg"); }
@@ -711,26 +710,6 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 .controls-reset .svg-icon,
 .accent-reset .svg-icon { width: 20px; height: 20px; }
-.settings-action {
-  align-self: flex-start;
-  margin-top: 6px;
-  padding: 8px 14px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--launcher-control-text);
-  background: color-mix(in srgb, var(--launcher-text) 6%, transparent);
-  border: 1px solid var(--launcher-border-variant);
-  cursor: pointer;
-}
-.settings-action:hover {
-  color: var(--launcher-text);
-  background: var(--launcher-element-active);
-}
-.settings-action:disabled { opacity: 0.45; cursor: default; }
-.settings-action:disabled:hover {
-  color: var(--launcher-control-text);
-  background: color-mix(in srgb, var(--launcher-text) 6%, transparent);
-}
 .icon-action {
   display: grid;
   place-items: center;
