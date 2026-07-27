@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -257,7 +258,7 @@ func (s *mapStore) rescanLocked() (scanResult, error) {
 				candidate.Size = item.size
 				candidate.MtimeNS = item.mtimeNS
 				if sourceType(candidate.Source) == "map-making-app" {
-					candidate.Source = cloneMap(candidate.Source)
+					candidate.Source = maps.Clone(candidate.Source)
 					if !strings.EqualFold(path.Base(oldFile), path.Base(item.rel)) {
 						candidate.Source["nameOverride"] = true
 						candidate.Name = item.name
@@ -559,7 +560,7 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 	entry.Name = name
 	entry.File = newRel
 	if source == "map-making-app" {
-		entry.Source = cloneMap(entry.Source)
+		entry.Source = maps.Clone(entry.Source)
 		if requestedName != nil {
 			entry.Source["nameOverride"] = true
 		}
@@ -728,7 +729,7 @@ func (s *mapStore) renameFolder(folder, name string) (string, error) {
 		}
 		entry.File = path.Join(target, strings.TrimPrefix(entry.File, folder+"/"))
 		if sourceType(entry.Source) == "map-making-app" {
-			entry.Source = cloneMap(entry.Source)
+			entry.Source = maps.Clone(entry.Source)
 			entry.Source["folderOverride"] = true
 		}
 	}
@@ -1065,14 +1066,6 @@ func managedRoot(source map[string]any) string {
 
 func underRoot(rel, root string) bool {
 	return strings.EqualFold(rel, root) || strings.HasPrefix(strings.ToLower(rel), strings.ToLower(root)+"/")
-}
-
-func cloneMap(value map[string]any) map[string]any {
-	result := make(map[string]any, len(value))
-	for key, item := range value {
-		result[key] = item
-	}
-	return result
 }
 
 func randomID() (string, error) {

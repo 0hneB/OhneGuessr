@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"path"
@@ -395,7 +396,7 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 		target := canonicalMMATarget(remote, existing, reserved)
 		source := map[string]any{}
 		if existing != nil {
-			source = cloneMap(existing.Source)
+			source = maps.Clone(existing.Source)
 		}
 		source["type"] = "map-making-app"
 		source["mapId"] = remote.ID
