@@ -30,8 +30,6 @@ interface ClueLayout {
   height: number;
 }
 
-type CacheEntry = { data: LearnableMetaClue; missing?: false } | { missing: true };
-
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className = '',
@@ -58,7 +56,7 @@ function iconControl(tag: 'a' | 'button', iconClass: string, label: string) {
 
 export class LearnableMetaClues {
   private enabled = false;
-  private readonly cache = new Map<string, CacheEntry>();
+  private readonly cache = new Map<string, Promise<LearnableMetaClue | null>>();
   private requestToken = 0;
   private viewKey: string | null = null;
   private closedViewKey: string | null = null;
@@ -93,6 +91,13 @@ export class LearnableMetaClues {
     this._persistLayout();
   }
 
+  preload({ map, location }: Pick<ClueView, 'map' | 'location'>) {
+    if (!this.enabled || !isLearnableMap(map)) return;
+    const mapId = String(map?.source?.mapId || '');
+    const panoId = location.panoid;
+    if (mapId && panoId) void this._load(mapId, panoId).catch(() => {});
+  }
+
   async show({ map, location, roundIndex, context }: ClueView) {
     if (!this.enabled || !isLearnableMap(map)) {
       this.hide({ resetClose: true });
@@ -113,28 +118,38 @@ export class LearnableMetaClues {
 
     const token = ++this.requestToken;
     this._renderLoading();
-    const cacheKey = `${mapId}:${panoId}`;
-    const cached = this.cache.get(cacheKey);
-    if (cached) {
-      if (cached.missing) this._renderMessage('No Learnable Meta clue was found for this location.');
-      else this._renderClue(cached.data);
-      return;
-    }
-
     try {
-      const data = await getClue(mapId, panoId);
+      const data = await this._load(mapId, panoId);
       if (token !== this.requestToken || this.viewKey !== nextViewKey) return;
-      this.cache.set(cacheKey, { data });
-      this._renderClue(data);
+      if (data) this._renderClue(data);
+      else this._renderMessage('No Learnable Meta clue was found for this location.');
     } catch (error) {
       if (token !== this.requestToken || this.viewKey !== nextViewKey) return;
-      if (error instanceof ApiError && error.status === 404) {
-        this.cache.set(cacheKey, { missing: true });
-        this._renderMessage('No Learnable Meta clue was found for this location.');
-      } else {
-        this._renderMessage(errorMessage(error, 'Could not load this Learnable Meta clue.'), true);
-      }
+      this._renderMessage(errorMessage(error, 'Could not load this Learnable Meta clue.'), true);
     }
+  }
+
+  private _load(mapId: string, panoId: string) {
+    const key = `${mapId}:${panoId}`;
+    let request = this.cache.get(key);
+    if (request) return request;
+    request = getClue(mapId, panoId)
+      .then((data) => {
+        const imageUrl = safeImageUrls(data.images)[0];
+        if (imageUrl) {
+          const image = new Image();
+          image.src = imageUrl;
+          void image.decode().catch(() => {});
+        }
+        return data;
+      })
+      .catch((error) => {
+        if (error instanceof ApiError && error.status === 404) return null;
+        this.cache.delete(key);
+        throw error;
+      });
+    this.cache.set(key, request);
+    return request;
   }
 
   _createWindow(): HTMLElementTagNameMap['aside'] {

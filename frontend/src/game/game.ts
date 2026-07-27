@@ -650,7 +650,7 @@ export async function init() {
   initSettingsSync();
   try {
     const { setupLearnableMeta } = await import('../plugins/learnable-meta/index.js');
-    setupLearnableMeta();
+    await setupLearnableMeta();
   } catch (error) {
     console.warn('Learnable Meta plugin unavailable:', error);
   }
