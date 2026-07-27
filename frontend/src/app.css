@@ -896,11 +896,9 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   max-height: calc(100vh - 56px);
   text-align: center;
   padding: 24px 28px;
-  background: rgba(17, 17, 17, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--hud-bg);
   border-radius: 16px;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--hud-shadow);
 }
 .final-card h1 { font-size: 24px; margin-bottom: 8px; }
 .final-score { font-size: 30px; font-weight: 800; color: var(--accent); margin-bottom: 14px; }
@@ -931,11 +929,11 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 .final-round:hover { background: rgba(255, 255, 255, 0.08); }
 .final-round.selected {
-  background: rgba(var(--accent-rgb), 0.1);
-  border-color: rgba(var(--accent-rgb), 0.65);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 .final-round:focus-visible { outline: none; }
-.final-round.selected .fr-no { color: var(--accent); }
+.final-round.selected .fr-no { color: #fff; }
 .fr-no { color: #9aa3ad; font-weight: 700; text-align: left; }
 .fr-dist { color: #cbd2dd; text-align: left; }
 .fr-pts { color: var(--accent); font-weight: 800; }
