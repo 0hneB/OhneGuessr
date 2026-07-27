@@ -1,5 +1,4 @@
 // Shared heading state for the horizontal bar and classic needle.
-import { normalizeCompassStyle } from '../settings/settings.js';
 import type { CompassStyle } from '../types.js';
 
 const CONFIG = {
@@ -8,7 +7,6 @@ const CONFIG = {
   pxPerDegree: 2.4,
   tick: {
     step: 4.5,
-    offsetX: 0,
     y1: 8,
     y2: 23,
     width: 1.25,
@@ -20,7 +18,6 @@ const CONFIG = {
   },
   label: {
     font: '800 11px "Manrope", system-ui, sans-serif',
-    tracking: 0,
     y: 19,
     color: '#fbfbfd',
     shadow: 'rgba(15, 21, 32, .55)',
@@ -30,14 +27,7 @@ const CONFIG = {
   },
   marker: {
     x: 120,
-    width: 2,
-    stops: [
-      [0.00, 'rgba(232, 235, 240, .75)'],
-      [0.18, 'rgba(158, 167, 179, .36)'],
-      [0.48, 'rgba(158, 167, 179, .00)'],
-      [0.78, 'rgba(158, 167, 179, .22)'],
-      [1.00, 'rgba(232, 235, 240, .72)']
-    ]
+    width: 2
   },
   fill: 'rgba(0, 0, 0, .6)'
 } as const;
@@ -59,34 +49,30 @@ export class CompassHUD {
   private readonly canvas: HTMLCanvasElement;
   private readonly needle: HTMLElement;
   private readonly ctx: CanvasRenderingContext2D;
-  private readonly config = CONFIG;
   private heading = 0;
   private style: CompassStyle;
 
-  constructor(canvas: HTMLCanvasElement, needle: HTMLElement, { style = 'bar' }: { style?: unknown } = {}) {
+  constructor(canvas: HTMLCanvasElement, needle: HTMLElement, style: CompassStyle) {
     this.canvas = canvas;
     this.needle = needle;
     const context = canvas.getContext('2d');
     if (!context) throw new Error('2D canvas is unavailable');
     this.ctx = context;
-    this.style = normalizeCompassStyle(style);
+    this.style = style;
     document.documentElement.dataset.compassStyle = this.style;
     this.resize = this.resize.bind(this);
     this.resize();
     window.addEventListener('resize', this.resize);
   }
 
-  setStyle(value: unknown) {
-    this.style = normalizeCompassStyle(value);
+  setStyle(style: CompassStyle) {
+    this.style = style;
     document.documentElement.dataset.compassStyle = this.style;
     this.render();
-    return this.style;
   }
 
-  setHeading(value: unknown) {
-    const h = Number(value);
-    if (!Number.isFinite(h)) return;
-    this.heading = wrap(h);
+  setHeading(heading: number) {
+    this.heading = wrap(heading);
     this.render();
   }
 
@@ -100,7 +86,7 @@ export class CompassHUD {
   }
 
   resize() {
-    const { w, h } = this.config.size;
+    const { w, h } = CONFIG.size;
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
@@ -111,37 +97,31 @@ export class CompassHUD {
   }
 
   draw() {
-    const { w, h } = this.config.size;
-    this.ctx.clearRect(0, 0, w, h);
-    this.drawBar();
-    this.withBarClip(() => {
-      const labels = this.visibleLabels();
-      this.drawTicks(labels);
-      this.drawLabels(labels);
-      this.drawMarker();
-    });
-  }
-
-  drawBar() {
     const { ctx } = this;
-    const { bar, fill } = this.config;
-    this.pathBar();
+    const { w, h } = CONFIG.size;
+    ctx.clearRect(0, 0, w, h);
     ctx.save();
+    this.pathBar();
+    ctx.fillStyle = CONFIG.fill;
+    ctx.fill();
     ctx.clip();
-    ctx.fillStyle = fill;
-    ctx.fillRect(bar.x, bar.y, bar.w, bar.h);
+    ctx.font = CONFIG.label.font;
+    const labels = this.visibleLabels();
+    this.drawTicks(labels);
+    this.drawLabels(labels);
+    this.drawMarker();
     ctx.restore();
   }
 
   drawTicks(labels: VisibleLabel[]) {
     const { ctx } = this;
-    const { bar, tick } = this.config;
+    const { bar, tick } = CONFIG;
     const firstTick = Math.floor((this.heading - 70) / tick.step) * tick.step;
     const lastTick = this.heading + 70;
     ctx.lineCap = 'butt';
     ctx.lineWidth = tick.width;
     for (let angle = firstTick; angle <= lastTick; angle += tick.step) {
-      const x = this.xForAngle(wrap(angle), tick.offsetX);
+      const x = this.xForAngle(wrap(angle));
       if (x < bar.x - 2 || x > bar.x + bar.w + 2) continue;
       if (this.tickHitsLabel(x, labels)) continue;
       const nearEdge = x < bar.x + tick.edgeFade || x > bar.x + bar.w - tick.edgeFade;
@@ -156,17 +136,14 @@ export class CompassHUD {
 
   drawLabels(labels: VisibleLabel[]) {
     const { ctx } = this;
-    const { label } = this.config;
-    ctx.font = label.font;
+    const { label } = CONFIG;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = label.color;
     ctx.shadowColor = label.shadow;
     ctx.shadowBlur = label.shadowBlur;
     ctx.shadowOffsetY = label.shadowOffsetY;
-    for (const item of labels) {
-      this.drawTrackedText(item.text, Math.round(item.x), label.y);
-    }
+    for (const item of labels) ctx.fillText(item.text, Math.round(item.x), label.y);
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
@@ -174,8 +151,14 @@ export class CompassHUD {
 
   drawMarker() {
     const { ctx } = this;
-    const { bar, marker } = this.config;
-    ctx.strokeStyle = this.gradient(marker.stops, 0, bar.y, 0, bar.y + bar.h);
+    const { bar, marker } = CONFIG;
+    const fade = ctx.createLinearGradient(0, bar.y, 0, bar.y + bar.h);
+    fade.addColorStop(0, 'rgba(232, 235, 240, .75)');
+    fade.addColorStop(0.18, 'rgba(158, 167, 179, .36)');
+    fade.addColorStop(0.48, 'rgba(158, 167, 179, 0)');
+    fade.addColorStop(0.78, 'rgba(158, 167, 179, .22)');
+    fade.addColorStop(1, 'rgba(232, 235, 240, .72)');
+    ctx.strokeStyle = fade;
     ctx.lineWidth = marker.width;
     ctx.beginPath();
     ctx.moveTo(marker.x, bar.y);
@@ -184,67 +167,26 @@ export class CompassHUD {
   }
 
   visibleLabels() {
-    const { ctx } = this;
-    const { bar, label } = this.config;
-    ctx.font = label.font;
+    const { bar, label } = CONFIG;
     return LABELS
       .map(([angle, text]) => ({ text, x: this.xForAngle(angle) }))
       .filter((item) => item.x >= bar.x - label.overscan && item.x <= bar.x + bar.w + label.overscan);
   }
 
   tickHitsLabel(x: number, labels: VisibleLabel[]) {
-    const { tick } = this.config;
-    return labels.some((label) => {
-      const halfWidth = this.measureTrackedText(label.text) / 2;
-      return Math.abs(x - label.x) < halfWidth + tick.labelGap;
-    });
+    return labels.some((label) =>
+      Math.abs(x - label.x) < this.ctx.measureText(label.text).width / 2 + CONFIG.tick.labelGap
+    );
   }
 
-  drawTrackedText(text: string, x: number, y: number) {
-    const chars = [...text];
-    const width = this.measureTrackedText(text);
-    let cursor = x - width / 2;
-    for (const char of chars) {
-      const charWidth = this.ctx.measureText(char).width;
-      this.ctx.fillText(char, cursor + charWidth / 2, y);
-      cursor += charWidth + this.config.label.tracking;
-    }
-  }
-
-  measureTrackedText(text: string) {
-    const chars = [...text];
-    const textWidth = chars.reduce((total, char) => total + this.ctx.measureText(char).width, 0);
-    return textWidth + Math.max(0, chars.length - 1) * this.config.label.tracking;
-  }
-
-  xForAngle(angle: number, offset = 0) {
-    const { bar, pxPerDegree } = this.config;
-    return bar.x + bar.w / 2 + signedAngle(angle, this.heading) * pxPerDegree + offset;
-  }
-
-  withBarClip(drawInside: () => void) {
-    this.ctx.save();
-    this.pathBar();
-    this.ctx.clip();
-    drawInside();
-    this.ctx.restore();
+  xForAngle(angle: number) {
+    const { bar, pxPerDegree } = CONFIG;
+    return bar.x + bar.w / 2 + signedAngle(angle, this.heading) * pxPerDegree;
   }
 
   pathBar() {
-    const { ctx } = this;
-    const { x, y, w, h, r } = this.config.bar;
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-
-  gradient(stops: readonly (readonly [number, string])[], x0: number, y0: number, x1: number, y1: number) {
-    const g = this.ctx.createLinearGradient(x0, y0, x1, y1);
-    for (const [position, color] of stops) g.addColorStop(position, color);
-    return g;
+    const { x, y, w, h, r } = CONFIG.bar;
+    this.ctx.beginPath();
+    this.ctx.roundRect(x, y, w, h, r);
   }
 }

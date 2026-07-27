@@ -619,9 +619,7 @@ async function loadRequestedMap() {
 export async function init() {
   const compassCanvas = $<HTMLCanvasElement>('compass-hud');
   const classicCompass = $('classicCompass');
-  compass = new CompassHUD(compassCanvas, $('classicCompassNeedle'), {
-    style: settings.compassStyle
-  });
+  compass = new CompassHUD(compassCanvas, $('classicCompassNeedle'), settings.compassStyle);
   await loadOpenSV();
   viewer = new OpenSvViewer($('pano'));
   const faceNorth = () => {
