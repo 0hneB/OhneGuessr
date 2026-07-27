@@ -427,6 +427,7 @@ class RevealEngine {
 
   create() {
     const created = createMap(this.container, this.styleKey, {
+      attributionControl: false,
       zoom: 1,
       minZoom: -2
     }, { fillWorld: false });
