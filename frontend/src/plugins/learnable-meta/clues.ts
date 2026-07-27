@@ -8,7 +8,6 @@ const DEFAULT_HEIGHT = 550;
 const MIN_WIDTH = 280;
 const MIN_HEIGHT = 220;
 const DEFAULT_INSET = 12;
-const IMAGE_LOAD_TIMEOUT_MS = 12_000;
 const IMAGE_LENS_SIZE = 150;
 const IMAGE_LENS_SCALE = 2;
 const errorMessage = (error: unknown, fallback: string) =>
@@ -118,7 +117,7 @@ export class LearnableMetaClues {
     const cached = this.cache.get(cacheKey);
     if (cached) {
       if (cached.missing) this._renderMessage('No Learnable Meta clue was found for this location.');
-      else await this._renderClue(cached.data, token, nextViewKey);
+      else this._renderClue(cached.data);
       return;
     }
 
@@ -126,7 +125,7 @@ export class LearnableMetaClues {
       const data = await getClue(mapId, panoId);
       if (token !== this.requestToken || this.viewKey !== nextViewKey) return;
       this.cache.set(cacheKey, { data });
-      await this._renderClue(data, token, nextViewKey);
+      this._renderClue(data);
     } catch (error) {
       if (token !== this.requestToken || this.viewKey !== nextViewKey) return;
       if (error instanceof ApiError && error.status === 404) {
@@ -180,9 +179,8 @@ export class LearnableMetaClues {
     this.content.replaceChildren(row);
   }
 
-  async _renderClue(data: LearnableMetaClue, token: number, viewKey: string) {
-    const images = await this._preloadImages(safeImageUrls(data?.images));
-    if (token !== this.requestToken || this.viewKey !== viewKey) return;
+  _renderClue(data: LearnableMetaClue) {
+    const images = [...new Set(safeImageUrls(data?.images))];
     const fragment = document.createDocumentFragment();
     const heading = element('p', 'lm-clue-meta');
     const country = String(data?.country || '').trim();
@@ -206,36 +204,6 @@ export class LearnableMetaClues {
     if (images.length) fragment.append(this._createCarousel(images));
     if (!fragment.childNodes.length) fragment.append(element('p', 'lm-clue-message', 'This clue has no content.'));
     this.content.replaceChildren(fragment);
-  }
-
-  async _preloadImages(urls: string[]) {
-    const uniqueUrls = [...new Set(urls)];
-    const loaded = await Promise.all(uniqueUrls.map((url) => this._preloadImage(url)));
-    return loaded.filter((url): url is string => Boolean(url));
-  }
-
-  _preloadImage(url: string): Promise<string | null> {
-    return new Promise<string | null>((resolve) => {
-      const image = new Image();
-      let timer = 0;
-      let settled = false;
-      const finish = (value: string | null) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        image.onload = null;
-        image.onerror = null;
-        resolve(value);
-      };
-      timer = window.setTimeout(() => finish(null), IMAGE_LOAD_TIMEOUT_MS);
-      image.decoding = 'async';
-      image.onload = async () => {
-        try { await image.decode(); } catch { /* loaded image can still be displayed */ }
-        finish(url);
-      };
-      image.onerror = () => finish(null);
-      image.src = url;
-    });
   }
 
   _createCarousel(images: string[]) {
