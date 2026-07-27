@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "Manrope";
+  src: url("/vendor/manrope/Manrope-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -54,10 +62,12 @@
 html, body {
   height: 100%;
   overflow: hidden;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Manrope", system-ui, sans-serif;
   background: #111;
   color: #fff;
 }
+
+button { font-family: inherit; }
 
 #pano {
   position: fixed;
@@ -157,7 +167,6 @@ html, body {
   background: var(--hud-bg);
   border-radius: 16px;
   box-shadow: var(--hud-shadow);
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.2px;

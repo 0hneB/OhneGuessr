@@ -19,7 +19,7 @@ const CONFIG = {
     labelGap: 7
   },
   label: {
-    font: '800 11px "Helvetica Neue", Helvetica, Arial, sans-serif',
+    font: '800 11px "Manrope", system-ui, sans-serif',
     tracking: 0,
     y: 19,
     color: '#fbfbfd',
