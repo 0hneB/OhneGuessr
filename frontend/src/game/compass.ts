@@ -7,8 +7,8 @@ const CONFIG = {
   pxPerDegree: 2.4,
   tick: {
     step: 4.5,
-    y1: 8,
-    y2: 23,
+    y1: 10,
+    y2: 21,
     width: 1.25,
     color: '202, 210, 221',
     alpha: 0.78,
@@ -17,8 +17,7 @@ const CONFIG = {
     labelGap: 7
   },
   label: {
-    font: '800 11px "Manrope", system-ui, sans-serif',
-    y: 19,
+    font: '800 12px "Manrope", system-ui, sans-serif',
     color: '#fbfbfd',
     shadow: 'rgba(15, 21, 32, .55)',
     shadowBlur: 1,
@@ -62,6 +61,7 @@ export class CompassHUD {
     document.documentElement.dataset.compassStyle = this.style;
     this.resize = this.resize.bind(this);
     this.resize();
+    void document.fonts.load(CONFIG.label.font).then(() => this.render());
     window.addEventListener('resize', this.resize);
   }
 
@@ -136,17 +136,19 @@ export class CompassHUD {
 
   drawLabels(labels: VisibleLabel[]) {
     const { ctx } = this;
-    const { label } = CONFIG;
+    const { bar, label } = CONFIG;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = label.color;
     ctx.shadowColor = label.shadow;
     ctx.shadowBlur = label.shadowBlur;
     ctx.shadowOffsetY = label.shadowOffsetY;
-    for (const item of labels) ctx.fillText(item.text, Math.round(item.x), label.y);
+    const bounds = ctx.measureText('NESW');
+    const y = bar.y + (
+      bar.h + bounds.actualBoundingBoxAscent - bounds.actualBoundingBoxDescent
+    ) / 2;
+    for (const item of labels) ctx.fillText(item.text, Math.round(item.x), y);
     ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
   }
 
   drawMarker() {
