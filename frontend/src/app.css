@@ -11,22 +11,8 @@
     drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
     drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4));
 
-  /* Translucent HUD background, mirroring the compass bar (compass.js CONFIG):
-     top layer = subtle dark bottom shade (no white highlight), bottom layer =
-     horizontal black fill that darkens toward the ends. No blur, to match the
-     canvas compass. */
-  --hud-bg:
-    linear-gradient(180deg,
-      rgba(0, 0, 0, 0) 0%,
-      rgba(0, 0, 0, 0) 32%,
-      rgba(0, 0, 0, 0.06) 72%,
-      rgba(0, 0, 0, 0.16) 100%),
-    linear-gradient(90deg,
-      rgba(0, 0, 0, 0.58) 0%,
-      rgba(0, 0, 0, 0.60) 32%,
-      rgba(0, 0, 0, 0.54) 50%,
-      rgba(0, 0, 0, 0.62) 72%,
-      rgba(0, 0, 0, 0.68) 100%);
+  /* Shared translucent HUD background, matched by compass.ts. */
+  --hud-bg: rgba(0, 0, 0, 0.6);
   --hud-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   --timer-top: 52px;
 }
@@ -846,12 +832,10 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   align-items: center;
   gap: 8px;
   padding: 16px 30px;
-  background: rgba(17, 17, 17, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--hud-bg);
   border-radius: 16px;
-  backdrop-filter: blur(6px);
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--hud-shadow);
 }
 .result-dist { font-size: 15px; opacity: 0.85; }
 .result-dist b { font-size: 22px; font-weight: 800; color: #fff; }

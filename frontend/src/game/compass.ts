@@ -39,19 +39,7 @@ const CONFIG = {
       [1.00, 'rgba(232, 235, 240, .72)']
     ]
   },
-  fillStops: [
-    [0.00, 'rgba(0, 0, 0, .58)'],
-    [0.32, 'rgba(0, 0, 0, .60)'],
-    [0.50, 'rgba(0, 0, 0, .54)'],
-    [0.72, 'rgba(0, 0, 0, .62)'],
-    [1.00, 'rgba(0, 0, 0, .68)']
-  ],
-  shadeStops: [
-    [0.00, 'rgba(0,0,0,0)'],
-    [0.32, 'rgba(0,0,0,0)'],
-    [0.72, 'rgba(0,0,0,.06)'],
-    [1.00, 'rgba(0,0,0,.16)']
-  ]
+  fill: 'rgba(0, 0, 0, .6)'
 } as const;
 
 const LABELS = [
@@ -136,13 +124,11 @@ export class CompassHUD {
 
   drawBar() {
     const { ctx } = this;
-    const { bar, fillStops, shadeStops } = this.config;
+    const { bar, fill } = this.config;
     this.pathBar();
     ctx.save();
     ctx.clip();
-    ctx.fillStyle = this.gradient(fillStops, bar.x, 0, bar.x + bar.w, 0);
-    ctx.fillRect(bar.x, bar.y, bar.w, bar.h);
-    ctx.fillStyle = this.gradient(shadeStops, 0, bar.y, 0, bar.y + bar.h);
+    ctx.fillStyle = fill;
     ctx.fillRect(bar.x, bar.y, bar.w, bar.h);
     ctx.restore();
   }
