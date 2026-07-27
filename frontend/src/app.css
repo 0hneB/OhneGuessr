@@ -144,7 +144,7 @@ html, body {
 .maplibregl-canvas { cursor: crosshair; }
 .maplibregl-canvas:focus { outline: none; }
 
-/* Top HUD pills — same recipe as the compass HUD: 32px tall, the gradient HUD
+/* Top HUD pills — same recipe as the compass HUD: 32px tall, the shared HUD
    background and drop shadow, no blur. */
 .hud-pill {
   position: fixed;
@@ -183,15 +183,39 @@ html, body {
 
 /* Round timer — centred just below the compass; turns red in the last seconds. */
 #timerBox {
+  --timer-ring: var(--accent);
   left: 50%;
   top: var(--timer-top);
   transform: translateX(-50%);
   gap: 6px;
   padding-left: 12px; /* the icon glyph has transparent margin; trim to balance */
 }
+.timer-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.timer-ring path {
+  fill: none;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+.timer-ring-track { stroke: rgba(255, 255, 255, 0.18); }
+.timer-ring-progress {
+  stroke: var(--timer-ring);
+  stroke-linecap: round;
+  transition: stroke-dasharray 1s linear;
+}
 #timerBox .timer-icon { width: 15px; height: 15px; } /* inherits currentColor (red when .low) */
-#timerBox.low { color: #fca5a5; }
-#timerBox.low b { color: #f87171; }
+#timerBox.low { --timer-ring: #f87171; color: #f87171; }
+#timerBox.low b { color: inherit; }
+#timerVal { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .timer-ring-progress { transition: none; }
+}
 
 /* 'H' on the guess page leaves only the panorama. */
 body.ui-hidden #settingsBtn,

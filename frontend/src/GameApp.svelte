@@ -9,7 +9,7 @@
     setGameFullscreen
   } from './desktop.js';
   import { formatDistance } from './game/scoring.js';
-  import { state as gameState } from './game/state.svelte.js';
+  import { settings, state as gameState } from './game/state.svelte.js';
   import {
     endUnlimitedGame,
     init,
@@ -23,6 +23,11 @@
   const currentResult = $derived(gameState.results[gameState.round] ?? null);
   const timerText = $derived(
     `${Math.floor(ui.timerRemaining / 60)}:${String(ui.timerRemaining % 60).padStart(2, '0')}`
+  );
+  const timerProgress = $derived(
+    ui.timerVisible && settings.timer !== 'unlimited'
+      ? Math.max(0, Math.min(100, ui.timerRemaining / Number(settings.timer) * 100))
+      : 100
   );
   function handleWindowKeydown(event: KeyboardEvent) {
     if (event.code === 'F11' && !event.repeat && !event.defaultPrevented &&
@@ -77,6 +82,13 @@
 </button>
 
 <div id="timerBox" class="hud-pill" class:hidden={!ui.timerVisible} class:low={ui.timerLow}>
+  <svg class="timer-ring" viewBox="0 0 78 32" preserveAspectRatio="none" aria-hidden="true">
+    <path class="timer-ring-track"
+          d="M39 1.5H62A14.5 14.5 0 0 1 76.5 16A14.5 14.5 0 0 1 62 30.5H16A14.5 14.5 0 0 1 1.5 16A14.5 14.5 0 0 1 16 1.5Z" />
+    <path class="timer-ring-progress" pathLength="100"
+          d="M39 1.5H62A14.5 14.5 0 0 1 76.5 16A14.5 14.5 0 0 1 62 30.5H16A14.5 14.5 0 0 1 1.5 16A14.5 14.5 0 0 1 16 1.5Z"
+          style={`stroke-dasharray:${timerProgress} 100`} />
+  </svg>
   <span class="svg-icon timer-icon" aria-hidden="true"></span><b id="timerVal">{timerText}</b>
 </div>
 
