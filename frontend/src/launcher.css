@@ -464,6 +464,7 @@
   min-width: 0;
   min-height: 36px;
   padding-left: var(--indent);
+  padding-right: 3px;
   border-radius: 4px;
   transition: opacity 80ms ease-in-out;
 }
@@ -561,10 +562,6 @@
   margin-right: 8px;
 }
 
-.library-map {
-  padding-right: 2px;
-}
-
 .drag-handle,
 .drag-spacer {
   display: grid;
@@ -635,10 +632,15 @@
   margin-inline: 6px 8px;
 }
 
-.row-actions {
+.row-actions,
+.delete-confirm {
   display: flex;
   flex: none;
   align-items: center;
+  gap: 3px;
+}
+
+.row-actions {
   opacity: 0;
   transition: opacity 64ms ease-in-out;
 }
@@ -674,9 +676,7 @@
   color: var(--launcher-danger);
 }
 
-.row-actions.delete-confirm {
-  gap: 6px;
-  opacity: 1;
+.delete-confirm {
   font-size: 13px;
 }
 

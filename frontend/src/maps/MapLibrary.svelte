@@ -333,9 +333,8 @@
               </button>
             {/if}
             {#if row.canRename || row.canDelete}
-              <div class="row-actions"
-                   class:delete-confirm={pendingDelete?.kind === 'folder' && pendingDelete.path === row.path}>
-                {#if pendingDelete?.kind === 'folder' && pendingDelete.path === row.path}
+              {#if pendingDelete?.kind === 'folder' && pendingDelete.path === row.path}
+                <div class="delete-confirm">
                   <span>{folderDeletePrompt(pendingDelete)}</span>
                   <button bind:this={deleteCancel} type="button"
                           aria-label={`Cancel deleting ${row.name}`}
@@ -345,7 +344,9 @@
                           aria-label={`Delete ${row.name} and its contents`}
                           onkeydown={cancelDeleteOnEscape}
                           onclick={confirmDelete}>Delete</button>
-                {:else}
+                </div>
+              {:else}
+                <div class="row-actions">
                   {#if row.canRename}
                     <button class="row-action" type="button" title="Rename folder"
                             aria-label={`Rename ${row.name}`}
@@ -360,8 +361,8 @@
                       <span class="svg-icon close-icon" aria-hidden="true"></span>
                     </button>
                   {/if}
-                {/if}
-              </div>
+                </div>
+              {/if}
             {/if}
           </div>
         {:else}
@@ -400,9 +401,8 @@
                 </small>
               </button>
             {/if}
-              <div class="row-actions"
-                 class:delete-confirm={pendingDelete?.kind === 'map' && pendingDelete.map.id === row.map.id}>
-              {#if pendingDelete?.kind === 'map' && pendingDelete.map.id === row.map.id}
+            {#if pendingDelete?.kind === 'map' && pendingDelete.map.id === row.map.id}
+              <div class="delete-confirm">
                 <span>{row.map.source?.type === 'map-making-app'
                   ? 'Delete until next sync?'
                   : 'Delete permanently?'}</span>
@@ -416,7 +416,9 @@
                           : `Permanently delete ${row.map.name}`}
                         onkeydown={cancelDeleteOnEscape}
                         onclick={confirmDelete}>Delete</button>
-              {:else}
+              </div>
+            {:else}
+              <div class="row-actions">
                 {#if row.canRename}
                   <button class="row-action" type="button" title="Rename map"
                           aria-label={`Rename ${row.map.name}`}
@@ -431,8 +433,8 @@
                     <span class="svg-icon close-icon" aria-hidden="true"></span>
                   </button>
                 {/if}
-              {/if}
-            </div>
+              </div>
+            {/if}
           </div>
         {/if}
       {/each}
