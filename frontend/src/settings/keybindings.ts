@@ -94,21 +94,17 @@ export function resetBindings() {
 export class Keybindings {
   actions: Record<string, (event: KeyboardEvent) => void>;
   releases: Record<string, (event: KeyboardEvent) => void>;
-  isPanelOpen: () => boolean;
   map: Record<string, string> = {};
 
   constructor({
     actions,
-    releases = {},
-    isPanelOpen
+    releases = {}
   }: {
     actions: Record<string, (event: KeyboardEvent) => void>;
     releases?: Record<string, (event: KeyboardEvent) => void>;
-    isPanelOpen: () => boolean;
   }) {
     this.actions = actions;
     this.releases = releases;
-    this.isPanelOpen = isPanelOpen;
     this.rebuild();
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
@@ -122,7 +118,7 @@ export class Keybindings {
   }
 
   onKeyDown(event: KeyboardEvent) {
-    if (this.isPanelOpen() || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     const action = this.map[event.code];
     if (!action || !this.actions[action]) return;
     if (event.code === 'Space') event.preventDefault();

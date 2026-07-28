@@ -460,8 +460,7 @@ const KEY_RELEASES: Record<string, (event: KeyboardEvent) => void> = {
 
 const keybindings = new Keybindings({
   actions: KEY_ACTIONS,
-  releases: KEY_RELEASES,
-  isPanelOpen: () => false
+  releases: KEY_RELEASES
 });
 
 export function submitGuess() {
