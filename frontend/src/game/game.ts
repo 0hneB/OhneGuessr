@@ -75,7 +75,6 @@ const currentMapItem = (): MapItem | null => {
 // Countdown policy for the current round; RoundTimer handles the ticking.
 const roundTimer = new RoundTimer({
   getSeconds: () => (settings.timer === 'unlimited' ? 0 : (parseInt(settings.timer, 10) || 0)),
-  isPaused: () => false,
   isActive: () => state.phase === GAME_PHASE.GUESSING,
   onExpire: () => finishRound(), // forfeit
   onTick: ({ visible, remaining, low }) => {
