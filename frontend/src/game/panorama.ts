@@ -315,6 +315,46 @@ export class OpenSvViewer {
     this.pano.setZoom(direction > 0 ? ZOOM_IN : FULLY_ZOOMED_OUT);
   }
 
+  private _settlePanorama(ready: () => boolean, signal?: AbortSignal) {
+    let done = false;
+    let poll = 0;
+    let timer = 0;
+    let listeners: google.maps.MapsEventListener[] = [];
+    let resolve!: (ok: boolean) => void;
+    const promise = new Promise<boolean>((next) => { resolve = next; });
+    const cleanup = () => {
+      clearInterval(poll);
+      clearTimeout(timer);
+      for (const listener of listeners) listener?.remove?.();
+      signal?.removeEventListener('abort', cancel);
+    };
+    const finish = (ok: boolean) => {
+      if (done) return;
+      done = true;
+      cleanup();
+      resolve(ok);
+    };
+    const cancel = () => finish(false);
+    const check = () => {
+      if (ready()) finish(true);
+    };
+    const start = () => {
+      if (done || listeners.length) return;
+      listeners = [
+        this.pano.addListener('pano_changed', check),
+        this.pano.addListener('position_changed', check),
+        this.pano.addListener('status_changed', check)
+      ];
+      // Some builds coalesce unchanged status events, so keep a cheap fallback.
+      poll = setInterval(check, 150);
+    };
+
+    timer = setTimeout(cancel, 12000);
+    signal?.addEventListener('abort', cancel, { once: true });
+    if (signal?.aborted) cancel();
+    return { promise, cancel, check, start, active: () => !done };
+  }
+
   // Resolve one exact pano before touching the shared viewer. A failed lookup may
   // finish late, but its promise can no longer move a newer replacement location.
   showLocation(
@@ -326,71 +366,42 @@ export class OpenSvViewer {
     this._trailActive = false;
     this._trail = [];
 
-    return new Promise((resolve) => {
-      let done = false;
-      let poll = 0;
-      let timer = 0;
-      let listeners: google.maps.MapsEventListener[] = [];
-      let targetPano: string | null = null;
-      let targetPosition: google.maps.LatLng | null = null;
+    let targetPano: string | null = null;
+    let targetPosition: google.maps.LatLng | null = null;
+    const wait = this._settlePanorama(() => {
+      if (!targetPano ||
+          this.pano.getPano?.() !== targetPano ||
+          (targetPosition && !samePosition(this.pano.getPosition?.(), targetPosition)) ||
+          this.pano.getStatus?.() !== 'OK') return false;
+      this._startPanoId = targetPano;
+      return true;
+    }, signal);
+    if (!wait.active()) return wait.promise;
 
-      const cleanup = () => {
-        clearInterval(poll);
-        clearTimeout(timer);
-        for (const listener of listeners) listener?.remove?.();
-        signal?.removeEventListener('abort', onAbort);
-      };
-      const finish = (ok: boolean) => {
-        if (done) return;
-        done = true;
-        cleanup();
-        resolve(ok);
-      };
-      const isTarget = () =>
-        this.pano.getPano?.() === targetPano &&
-        (!targetPosition || samePosition(this.pano.getPosition?.(), targetPosition));
-      const check = () => {
-        if (!isTarget() || this.pano.getStatus?.() !== 'OK') return;
-        this._startPanoId = targetPano;
-        finish(true);
-      };
-      const onAbort = () => finish(false);
+    const request = loc.panoid
+      ? { pano: loc.panoid }
+      : { location: { lat: loc.lat, lng: loc.lng } };
 
-      timer = setTimeout(() => finish(false), 12000);
-      signal?.addEventListener('abort', onAbort, { once: true });
-      if (signal?.aborted) { finish(false); return; }
+    try {
+      this.streetView.getPanorama(request).then(({ data }) => {
+        if (!wait.active()) return;
+        const location = data?.location;
+        if (!location?.pano) { wait.cancel(); return; }
 
-      const request = loc.panoid
-        ? { pano: loc.panoid }
-        : { location: { lat: loc.lat, lng: loc.lng } };
-
-      try {
-        this.streetView.getPanorama(request).then(({ data }) => {
-          if (done) return;
-          const location = data?.location;
-          if (!location?.pano) { finish(false); return; }
-
-          targetPano = location.pano;
-          targetPosition = location.latLng || null;
-          listeners = [
-            this.pano.addListener('pano_changed', check),
-            this.pano.addListener('position_changed', check),
-            this.pano.addListener('status_changed', check)
-          ];
-          // Some builds coalesce unchanged status events, so keep a cheap fallback.
-          poll = setInterval(check, 150);
-
-          this.pano.setPov({ heading: loc.heading ?? 0, pitch: loc.pitch ?? 0 });
-          this.pano.setZoom(resolveStartZoom(loc.zoom, this._forceStartZoomedOut));
-          this.pano.setPano(targetPano);
-          this.pano.setVisible(true);
-          if (focus && this.mode !== 'nmpz') this.pano.focus?.();
-          check();
-        }).catch(() => finish(false));
-      } catch {
-        finish(false);
-      }
-    });
+        targetPano = location.pano;
+        targetPosition = location.latLng || null;
+        wait.start();
+        this.pano.setPov({ heading: loc.heading ?? 0, pitch: loc.pitch ?? 0 });
+        this.pano.setZoom(resolveStartZoom(loc.zoom, this._forceStartZoomedOut));
+        this.pano.setPano(targetPano);
+        this.pano.setVisible(true);
+        if (focus && this.mode !== 'nmpz') this.pano.focus?.();
+        wait.check();
+      }).catch(wait.cancel);
+    } catch {
+      wait.cancel();
+    }
+    return wait.promise;
   }
 
   _clearCheckpoint() {
@@ -438,43 +449,19 @@ export class OpenSvViewer {
 
   _jumpToView(view: SavedView): Promise<boolean> {
     this._cancelTween();
-    return new Promise<boolean>((resolve) => {
-      let done = false;
-      let poll = 0;
-      let timer = 0;
-      let listeners: google.maps.MapsEventListener[] = [];
-      const cleanup = () => {
-        clearInterval(poll);
-        clearTimeout(timer);
-        for (const listener of listeners) listener?.remove?.();
-      };
-      const finish = (ok: boolean) => {
-        if (done) return;
-        done = true;
-        cleanup();
-        resolve(ok);
-      };
-      const check = () => {
-        if (this.pano.getStatus?.() !== 'OK' ||
-            this.pano.getPano?.() !== view.panoid ||
-            !samePosition(this.pano.getPosition?.(), view.position)) return;
-        this.pano.setPov(view.pov);
-        this.pano.setZoom(view.zoom);
-        finish(true);
-      };
-
-      listeners = [
-        this.pano.addListener('pano_changed', check),
-        this.pano.addListener('position_changed', check),
-        this.pano.addListener('status_changed', check)
-      ];
-      poll = setInterval(check, 150);
-      timer = setTimeout(() => finish(false), 12000);
-      this._cancelCheckpointJump = () => finish(false);
-
-      if (this.pano.getPano?.() !== view.panoid) this.pano.setPano(view.panoid);
-      check();
+    const wait = this._settlePanorama(() => {
+      if (this.pano.getStatus?.() !== 'OK' ||
+          this.pano.getPano?.() !== view.panoid ||
+          !samePosition(this.pano.getPosition?.(), view.position)) return false;
+      this.pano.setPov(view.pov);
+      this.pano.setZoom(view.zoom);
+      return true;
     });
+    wait.start();
+    this._cancelCheckpointJump = wait.cancel;
+    if (this.pano.getPano?.() !== view.panoid) this.pano.setPano(view.panoid);
+    wait.check();
+    return wait.promise;
   }
 
   // Eased POV move (quadratic ease-out, shortest-angle), à la MMA's tweenPov.
