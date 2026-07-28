@@ -52,7 +52,7 @@ func TestMapStoreLifecycleAndStableMove(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if entry.Count != 1 || entry.File != "my-map.json" || len(entry.ID) != 32 {
+	if entry.Count != 1 || entry.File != "my-map.json" || entry.ID == "" {
 		t.Fatalf("unexpected entry: %#v", entry)
 	}
 	rename, err := store.renameLocal(entry.ID, "Renamed")

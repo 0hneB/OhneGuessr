@@ -274,10 +274,7 @@ func (s *mapStore) rescanLocked() (scanResult, error) {
 				continue
 			}
 		}
-		id, idErr := randomID()
-		if idErr != nil {
-			return scanResult{}, idErr
-		}
+		id := rand.Text()
 		moved = append(moved, mapEntry{
 			ID: id, Name: item.name, File: item.rel, Count: item.count,
 			Checksum: item.checksum, Size: item.size, MtimeNS: item.mtimeNS,
@@ -421,10 +418,7 @@ func (s *mapStore) createLocal(name string, locations json.RawMessage, folder st
 	if err != nil {
 		return mapEntry{}, err
 	}
-	id, err := randomID()
-	if err != nil {
-		return mapEntry{}, err
-	}
+	id := rand.Text()
 	if err := atomicWrite(filename, encoded, 0o644); err != nil {
 		return mapEntry{}, err
 	}
@@ -1066,14 +1060,6 @@ func managedRoot(source map[string]any) string {
 
 func underRoot(rel, root string) bool {
 	return strings.EqualFold(rel, root) || strings.HasPrefix(strings.ToLower(rel), strings.ToLower(root)+"/")
-}
-
-func randomID() (string, error) {
-	raw := make([]byte, 16)
-	if _, err := rand.Read(raw); err != nil {
-		return "", fmt.Errorf("generate map ID: %w", err)
-	}
-	return hex.EncodeToString(raw), nil
 }
 
 func fileChecksum(filename string) (string, error) {
