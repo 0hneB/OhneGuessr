@@ -48,7 +48,6 @@
 </script>
 
 <svelte:window onkeydown={handleWindowKeydown} />
-<svelte:body class:ui-hidden={ui.hudHidden} />
 
 <div id="pano"></div>
 

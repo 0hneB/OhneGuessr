@@ -449,7 +449,7 @@ const KEY_ACTIONS: Record<string, (event: KeyboardEvent) => void> = {
   mapSizeXl: (event) => setGuessMapSizeFromShortcut('xl', event),
   mapSizeXxl: (event) => setGuessMapSizeFromShortcut('xxl', event),
   hideHud: () => {
-    if (state.phase === GAME_PHASE.GUESSING) ui.hudHidden = !ui.hudHidden;
+    if (state.phase === GAME_PHASE.GUESSING) document.body.classList.toggle('ui-hidden');
   }
 };
 
