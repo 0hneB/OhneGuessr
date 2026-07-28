@@ -5,24 +5,16 @@ import type { Location, MapItem, MapSource } from '../types.js';
 
 const MANIFEST_URL = '/data/maps.json';
 
-interface ManifestMap {
-  id: string;
-  name?: string;
-  count?: number;
-  file: string;
-  source?: MapSource | null;
-}
-
 interface Manifest {
   version: number;
   folders: string[];
-  maps: ManifestMap[];
+  maps: StoredMap[];
 }
 
 interface StoredMap {
   id: string;
-  name: string;
-  count: number;
+  name?: string;
+  count?: number;
   file: string;
   source?: MapSource | null;
 }
@@ -47,15 +39,19 @@ const folderOf = (file: string) => {
   return parts.join('/');
 };
 
-const mapItemFrom = (entry: StoredMap): MapItem => ({
-  id: entry.id,
-  name: entry.name,
-  count: entry.count,
-  file: cleanPath(entry.file),
-  folder: folderOf(entry.file),
-  source: entry.source && typeof entry.source === 'object' ? entry.source : null,
-  managed: entry.source?.managed === true || entry.source?.type === 'map-making-app'
-});
+const mapItemFrom = (entry: StoredMap): MapItem => {
+  const id = String(entry.id);
+  const file = cleanPath(entry.file);
+  return {
+    id,
+    name: entry.name || id,
+    count: typeof entry.count === 'number' && Number.isFinite(entry.count) ? entry.count : null,
+    file,
+    folder: folderOf(file),
+    source: entry.source && typeof entry.source === 'object' ? entry.source : null,
+    managed: entry.source?.managed === true || entry.source?.type === 'map-making-app'
+  };
+};
 
 export const dataFileUrl = (file: string) =>
   '/data/' + cleanPath(file).split('/').map(encodeURIComponent).join('/');
@@ -67,7 +63,7 @@ async function loadManifest(): Promise<Manifest> {
     if (data && typeof data === 'object' &&
         (data as { version?: unknown }).version === 2 &&
         Array.isArray((data as { maps?: unknown }).maps)) {
-      const manifest = data as { version: number; folders?: unknown; maps: ManifestMap[] };
+      const manifest = data as { version: number; folders?: unknown; maps: StoredMap[] };
       return {
         version: 2,
         folders: Array.isArray(manifest.folders)
@@ -87,15 +83,7 @@ export async function loadLibrary() {
   const manifest = await loadManifest();
   const maps: MapItem[] = manifest.maps
     .filter((m) => m && m.id && m.file)
-    .map((m) => ({
-      id: String(m.id),
-      name: m.name || String(m.id),
-      count: typeof m.count === 'number' && Number.isFinite(m.count) ? m.count : null,
-      file: cleanPath(m.file),
-      folder: folderOf(m.file),
-      source: m.source && typeof m.source === 'object' ? m.source : null,
-      managed: m.source?.managed === true || m.source?.type === 'map-making-app'
-    }));
+    .map(mapItemFrom);
 
   const folders = new Set<string>(
     manifest.folders.map(cleanPath).filter(Boolean)
