@@ -14,7 +14,6 @@ const map = (
   type = '',
   managed = false
 ): MapItem => ({
-  key: id,
   id,
   name,
   count: 1,

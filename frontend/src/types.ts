@@ -38,7 +38,6 @@ export interface MapSource extends Record<string, unknown> {
 }
 
 export interface MapItem {
-  key: string;
   id: string;
   name: string;
   count: number | null;

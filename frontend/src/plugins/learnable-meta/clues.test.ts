@@ -29,7 +29,7 @@ it('shares an in-flight clue request and preloads its first image', async () => 
   });
   const target = {
     map: {
-      key: 'map', id: 'map', name: 'Map', count: 1, file: '', folder: '', managed: true,
+      id: 'map', name: 'Map', count: 1, file: '', folder: '', managed: true,
       source: { type: 'learnable-meta', mapId: 'map' }
     },
     location: { lat: 0, lng: 0, panoid: 'pano' }

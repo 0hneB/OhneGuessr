@@ -55,7 +55,7 @@ const panoLoad: { controller: AbortController | null } = { controller: null };
 
 interface RoundPreparation {
   index: number;
-  mapKey: string | null;
+  mapID: string | null;
   deck: Location[];
   locations: Location[];
   load: { controller: AbortController; signal: AbortSignal };
@@ -127,7 +127,7 @@ function prepareRound(index: number): RoundPreparation {
   const load = beginPanoLoad();
   const preparation: RoundPreparation = {
     index,
-    mapKey: state.map?.key || null,
+    mapID: state.map?.id || null,
     deck: state.deck,
     locations: state.all,
     load,
@@ -167,7 +167,7 @@ function preparationMatches(
     preparation.status !== 'aborted' &&
     !preparation.load.signal.aborted &&
     preparation.index === index &&
-    preparation.mapKey === state.map?.key &&
+    preparation.mapID === state.map?.id &&
     preparation.deck === state.deck);
 }
 
@@ -176,12 +176,12 @@ function scheduleNextRoundPreload() {
   if (state.phase !== GAME_PHASE.RESULT || !hasNextRound()) return;
 
   const index = state.round + 1;
-  const mapKey = state.map?.key;
+  const mapID = state.map?.id;
   preloadFrame = requestAnimationFrame(() => {
     preloadFrame = 0;
     if (state.phase !== GAME_PHASE.RESULT ||
         state.round + 1 !== index ||
-        state.map?.key !== mapKey ||
+        state.map?.id !== mapID ||
         !hasNextRound()) return;
     roundPreload = prepareRound(index);
   });
@@ -219,7 +219,7 @@ export async function startGame() {
 function saveProgress({ resultTrail }: { resultTrail?: Trail } = {}) {
   if (!state.map || !state.deck.length) return;
   const snapshot: GameSnapshot = {
-    map: state.map.key,
+    map: state.map.id,
     deck: state.deck,
     round: state.round,
     total: state.total,
@@ -270,7 +270,7 @@ function cleanSavedTrail(value: unknown): Trail | null {
 async function tryResume() {
   cancelRoundPreload();
   const snap = loadGame<GameSnapshot>();
-  if (!snap || snap.map !== state.map?.key) return false;
+  if (!snap || snap.map !== state.map?.id) return false;
   if (!Array.isArray(snap.deck) || !snap.deck.length) return false;
   const unlimited = !!snap.unlimited;
   const rounds = unlimited ? Infinity : (Number(snap.rounds) || 0);

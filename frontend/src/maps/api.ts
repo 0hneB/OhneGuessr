@@ -48,7 +48,6 @@ const folderOf = (file: string) => {
 };
 
 const mapItemFrom = (entry: StoredMap): MapItem => ({
-  key: entry.id,
   id: entry.id,
   name: entry.name,
   count: entry.count,
@@ -89,7 +88,6 @@ export async function loadLibrary() {
   const maps: MapItem[] = manifest.maps
     .filter((m) => m && m.id && m.file)
     .map((m) => ({
-      key: String(m.id),
       id: String(m.id),
       name: m.name || String(m.id),
       count: typeof m.count === 'number' && Number.isFinite(m.count) ? m.count : null,
