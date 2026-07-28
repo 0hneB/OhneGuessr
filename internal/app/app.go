@@ -184,7 +184,7 @@ func decodeJSON[T any](r *http.Request) (T, error) {
 	if r.ContentLength > maxBodySize {
 		return result, responseError(http.StatusRequestEntityTooLarge, "request body is too large")
 	}
-	r.Body = http.MaxBytesReader(discardWriter{}, r.Body, maxBodySize)
+	r.Body = http.MaxBytesReader(nil, r.Body, maxBodySize)
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&result); err != nil {
 		var tooLarge *http.MaxBytesError
@@ -199,12 +199,6 @@ func decodeJSON[T any](r *http.Request) (T, error) {
 	}
 	return result, nil
 }
-
-type discardWriter struct{}
-
-func (discardWriter) Header() http.Header       { return make(http.Header) }
-func (discardWriter) Write([]byte) (int, error) { return 0, nil }
-func (discardWriter) WriteHeader(int)           {}
 
 type syncCoordinator struct {
 	mu      sync.Mutex
