@@ -204,6 +204,12 @@ func (s *learnableMetaSync) publicStatusLocked() map[string]any {
 	}
 }
 
+func (s *learnableMetaSync) enabled() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.loadConfigLocked().Enabled
+}
+
 func (s *learnableMetaSync) setEnabled(enabled bool) (map[string]any, error) {
 	if enabled {
 		if err := os.MkdirAll(filepath.Join(s.maps.dir, learnableRoot), 0o755); err != nil {

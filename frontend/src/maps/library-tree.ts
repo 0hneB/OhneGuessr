@@ -13,7 +13,8 @@ export type LibraryRow =
       depth: number;
       open: boolean;
       selected: boolean;
-      mutable: boolean;
+      canRename: boolean;
+      canDelete: boolean;
     }
   | {
       kind: 'map';
@@ -39,6 +40,15 @@ const rootRank = (value: string) =>
 
 export function canRenameFolder(folder: string) {
   return folder !== MMA_ROOT && !isUnder(folder, LEARNABLE_META_ROOT);
+}
+
+export function isManagedRoot(folder: string) {
+  return folder.toLocaleLowerCase() === MMA_ROOT.toLocaleLowerCase() ||
+    folder.toLocaleLowerCase() === LEARNABLE_META_ROOT.toLocaleLowerCase();
+}
+
+export function canDeleteFolder(folder: string) {
+  return !isUnder(folder, LEARNABLE_META_ROOT) || isManagedRoot(folder);
 }
 
 export function canCreateFolder(folder: string) {
@@ -117,7 +127,8 @@ export function buildLibraryRows(
         depth,
         open,
         selected: folder === selectedFolder,
-        mutable: canRenameFolder(folder)
+        canRename: canRenameFolder(folder),
+        canDelete: canDeleteFolder(folder)
       });
       if (open) addChildren(folder, depth + 1);
     }
@@ -131,7 +142,7 @@ export function buildLibraryRows(
         depth,
         canRename: true,
         canMove: canMoveMap(map),
-        canRemove: !map.managed || type === 'learnable-meta'
+        canRemove: !map.managed || type === 'learnable-meta' || type === 'map-making-app'
       });
     }
   }

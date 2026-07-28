@@ -1,6 +1,7 @@
 import { closeGame, launchMap } from '../desktop.js';
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
 import {
+  getStatus as getLearnableMetaStatus,
   removeMap as removeLearnableMap,
   renameMap as renameLearnableMap
 } from '../plugins/learnable-meta/api.js';
@@ -23,12 +24,15 @@ import {
   canCreateFolder,
   canMoveMap,
   canStoreLocalMap,
+  isManagedRoot,
+  LEARNABLE_META_ROOT,
   mapMoveTargets,
+  MMA_ROOT,
   parentFolder,
   sourceType
 } from './library-tree.js';
 
-export { canCreateFolder, canStoreLocalMap };
+export { canCreateFolder, canStoreLocalMap, isManagedRoot };
 
 const FOLDER_STATE_KEY = 'ohneguessr.mapFolders';
 
@@ -200,14 +204,25 @@ export async function renameFolder(folder: string, name: string) {
   }
 }
 
-export async function removeFolder(folder: string) {
+async function refreshManagedStatus(folder: string) {
   try {
-    await deleteFolderAPI(folder);
+    if (folder === MMA_ROOT) {
+      window.dispatchEvent(new Event('ohneguessr:mma-sync-changed'));
+    } else if (folder === LEARNABLE_META_ROOT) {
+      publishLearnableMetaStatus(await getLearnableMetaStatus());
+    }
+  } catch { /* deletion already succeeded */ }
+}
+
+export async function removeFolder(folder: string, recursive = false) {
+  try {
+    const result = await deleteFolderAPI(folder, recursive);
     if (library.selectedFolder === folder) library.selectedFolder = parentFolder(folder);
-    await reloadLibrary();
+    await Promise.all([reloadLibrary(), refreshManagedStatus(folder)]);
+    if (result.deletedMapIds?.includes(library.activeMapID)) closeGame();
     setNotice('');
   } catch (error) {
-    setNotice(errorMessage(error, 'Only empty folders can be deleted.'), true);
+    setNotice(errorMessage(error, 'Could not delete that folder.'), true);
   }
 }
 

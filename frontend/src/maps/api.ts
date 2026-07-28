@@ -31,6 +31,10 @@ interface RescanResult {
   ignored?: unknown[];
 }
 
+interface DeleteFolderResult {
+  deletedMapIds?: string[];
+}
+
 const cleanPath = (value: unknown) => String(value || '')
   .replaceAll('\\', '/')
   .split('/')
@@ -158,10 +162,10 @@ export const renameFolder = (folder: string, name: string) =>
     method: 'PATCH',
     body: JSON.stringify({ path: folder, name })
   });
-export const deleteFolder = (folder: string) =>
-  api('/api/folders', {
+export const deleteFolder = (folder: string, recursive = false) =>
+  api<DeleteFolderResult>('/api/folders', {
     method: 'DELETE',
-    body: JSON.stringify({ path: folder })
+    body: JSON.stringify({ path: folder, recursive })
   });
 export const rescanMaps = () => api<RescanResult>('/api/maps/rescan', { method: 'POST' });
 export const openDataFolder = () => api('/api/open-data-folder', { method: 'POST' });

@@ -113,7 +113,7 @@ func TestFolderAndMapMutations(t *testing.T) {
 	if err != nil || caseChild != "Trips/Case child" {
 		t.Fatalf("canonical parent folder = %q, %v", caseChild, err)
 	}
-	if err := store.deleteFolder("TRIPS/CASE CHILD"); err != nil {
+	if _, err := store.deleteFolder("TRIPS/CASE CHILD", false); err != nil {
 		t.Fatalf("case-insensitive folder delete: %v", err)
 	}
 	entry, err := store.createLocal("Capitals", json.RawMessage(`[{"lat":1,"lng":2}]`), child)
@@ -123,7 +123,7 @@ func TestFolderAndMapMutations(t *testing.T) {
 	if entry.File != "Trips/Europe/capitals.json" {
 		t.Fatalf("selected-folder import = %q", entry.File)
 	}
-	if err := store.deleteFolder(parent); !errors.Is(err, errFolderNotEmpty) {
+	if _, err := store.deleteFolder(parent, false); !errors.Is(err, errFolderNotEmpty) {
 		t.Fatalf("non-empty folder delete error = %v", err)
 	}
 
@@ -156,11 +156,51 @@ func TestFolderAndMapMutations(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(store.dir, "Journeys", "Europe")); err != nil {
 		t.Fatalf("descendant folder was not moved: %v", err)
 	}
-	if err := store.deleteFolder("Journeys/Europe"); err != nil {
+	if _, err := store.deleteFolder("Journeys/Europe", false); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.deleteFolder("Journeys"); err != nil {
+	if _, err := store.deleteFolder("Journeys", false); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRecursiveFolderDelete(t *testing.T) {
+	t.Parallel()
+	store, err := newMapStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	parent, err := store.createFolder("", "Delete me")
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := store.createFolder(parent, "Nested")
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := store.createLocal("First", json.RawMessage(`[{"lat":1,"lng":2}]`), parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := store.createLocal("Second", json.RawMessage(`[{"lat":3,"lng":4}]`), child)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	deleted, err := store.deleteFolder(parent, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(deleted) != 2 || deleted[0] != first.ID || deleted[1] != second.ID {
+		t.Fatalf("deleted map IDs = %#v", deleted)
+	}
+	if _, err := os.Stat(filepath.Join(store.dir, "Delete me")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("deleted folder still exists: %v", err)
+	}
+	manifest := store.loadManifestLocked()
+	if len(manifest.Maps) != 0 || len(manifest.Folders) != 0 {
+		t.Fatalf("manifest retained deleted content: %#v", manifest)
 	}
 }
 

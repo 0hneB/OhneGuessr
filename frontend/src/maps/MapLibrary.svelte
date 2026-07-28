@@ -6,6 +6,7 @@
     canStoreLocalMap,
     createFolder,
     importMap,
+    isManagedRoot,
     library,
     libraryRows,
     moveMap,
@@ -33,7 +34,10 @@
   let libraryTree: HTMLDivElement;
   let dragPreview = $state<HTMLDivElement>();
   let editing = $state<{ kind: 'map' | 'folder'; id: string; value: string } | null>(null);
-  let pendingDelete = $state<MapItem | null>(null);
+  type PendingDelete =
+    | { kind: 'map'; map: MapItem }
+    | { kind: 'folder'; path: string; count: number; managedRoot: boolean };
+  let pendingDelete = $state<PendingDelete | null>(null);
   let draggedMapID = $state('');
   let draggedMapName = $state('');
   let draggedSourceFolder = $state('');
@@ -88,15 +92,43 @@
     }
   }
 
-  function requestDelete(map: MapItem) {
-    pendingDelete = map;
+  function focusDeleteCancel() {
     void tick().then(() => deleteCancel?.focus());
   }
 
+  function requestMapDelete(map: MapItem) {
+    pendingDelete = { kind: 'map', map };
+    focusDeleteCancel();
+  }
+
+  function requestFolderDelete(path: string) {
+    pendingDelete = {
+      kind: 'folder',
+      path,
+      count: library.maps.filter((map) =>
+        map.folder === path || map.folder.startsWith(path + '/')).length,
+      managedRoot: isManagedRoot(path)
+    };
+    focusDeleteCancel();
+  }
+
   async function confirmDelete() {
-    const map = pendingDelete;
+    const target = pendingDelete;
     pendingDelete = null;
-    if (map) await removeMap(map);
+    if (target?.kind === 'map') await removeMap(target.map);
+    else if (target) await removeFolder(target.path, true);
+  }
+
+  function folderDeletePrompt(folder: Extract<PendingDelete, { kind: 'folder' }>) {
+    if (!folder.count) {
+      return folder.managedRoot
+        ? 'Disable sync and delete folder?'
+        : 'Delete folder and all contents?';
+    }
+    const maps = `${folder.count.toLocaleString()} ${folder.count === 1 ? 'map' : 'maps'}`;
+    return folder.managedRoot
+      ? `Disable sync and delete ${maps}?`
+      : `Delete folder and ${maps}?`;
   }
 
   function cancelDeleteOnEscape(event: KeyboardEvent) {
@@ -300,18 +332,35 @@
                 </small>
               </button>
             {/if}
-            {#if row.mutable}
-              <div class="row-actions">
-                <button class="row-action" type="button" title="Rename folder"
-                        aria-label={`Rename ${row.name}`}
-                        onclick={() => beginFolderRename(row.path, row.name)}>
-                  <span class="svg-icon pencil-icon" aria-hidden="true"></span>
-                </button>
-                <button class="row-action danger" type="button" title="Delete empty folder"
-                        aria-label={`Delete empty folder ${row.name}`}
-                        onclick={() => removeFolder(row.path)}>
-                  <span class="svg-icon close-icon" aria-hidden="true"></span>
-                </button>
+            {#if row.canRename || row.canDelete}
+              <div class="row-actions"
+                   class:delete-confirm={pendingDelete?.kind === 'folder' && pendingDelete.path === row.path}>
+                {#if pendingDelete?.kind === 'folder' && pendingDelete.path === row.path}
+                  <span>{folderDeletePrompt(pendingDelete)}</span>
+                  <button bind:this={deleteCancel} type="button"
+                          aria-label={`Cancel deleting ${row.name}`}
+                          onkeydown={cancelDeleteOnEscape}
+                          onclick={() => { pendingDelete = null; }}>Cancel</button>
+                  <button class="danger" type="button"
+                          aria-label={`Delete ${row.name} and its contents`}
+                          onkeydown={cancelDeleteOnEscape}
+                          onclick={confirmDelete}>Delete</button>
+                {:else}
+                  {#if row.canRename}
+                    <button class="row-action" type="button" title="Rename folder"
+                            aria-label={`Rename ${row.name}`}
+                            onclick={() => beginFolderRename(row.path, row.name)}>
+                      <span class="svg-icon pencil-icon" aria-hidden="true"></span>
+                    </button>
+                  {/if}
+                  {#if row.canDelete}
+                    <button class="row-action danger" type="button" title="Delete folder"
+                            aria-label={`Delete ${row.name} and its contents`}
+                            onclick={() => requestFolderDelete(row.path)}>
+                      <span class="svg-icon close-icon" aria-hidden="true"></span>
+                    </button>
+                  {/if}
+                {/if}
               </div>
             {/if}
           </div>
@@ -351,16 +400,20 @@
                 </small>
               </button>
             {/if}
-            <div class="row-actions"
-                 class:delete-confirm={pendingDelete?.id === row.map.id}>
-              {#if pendingDelete?.id === row.map.id}
-                <span>Delete permanently?</span>
+              <div class="row-actions"
+                 class:delete-confirm={pendingDelete?.kind === 'map' && pendingDelete.map.id === row.map.id}>
+              {#if pendingDelete?.kind === 'map' && pendingDelete.map.id === row.map.id}
+                <span>{row.map.source?.type === 'map-making-app'
+                  ? 'Delete until next sync?'
+                  : 'Delete permanently?'}</span>
                 <button bind:this={deleteCancel} type="button"
                         aria-label={`Cancel deleting ${row.map.name}`}
                         onkeydown={cancelDeleteOnEscape}
                         onclick={() => { pendingDelete = null; }}>Cancel</button>
                 <button class="danger" type="button"
-                        aria-label={`Permanently delete ${row.map.name}`}
+                        aria-label={row.map.source?.type === 'map-making-app'
+                          ? `Delete local copy of ${row.map.name}`
+                          : `Permanently delete ${row.map.name}`}
                         onkeydown={cancelDeleteOnEscape}
                         onclick={confirmDelete}>Delete</button>
               {:else}
@@ -374,7 +427,7 @@
                 {#if row.canRemove}
                   <button class="row-action danger" type="button" title="Delete map"
                           aria-label={`Delete ${row.map.name}`}
-                          onclick={() => requestDelete(row.map)}>
+                          onclick={() => requestMapDelete(row.map)}>
                     <span class="svg-icon close-icon" aria-hidden="true"></span>
                   </button>
                 {/if}

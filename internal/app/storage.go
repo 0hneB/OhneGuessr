@@ -591,7 +591,7 @@ func (s *mapStore) deleteLocal(id string) error {
 		return errMapNotFound
 	}
 	entry := manifest.Maps[index]
-	if isManagedSource(entry.Source) {
+	if isManagedSource(entry.Source) && sourceType(entry.Source) != "map-making-app" {
 		return errManagedMap
 	}
 	filename, err := s.resolve(entry.File)
@@ -738,50 +738,75 @@ func (s *mapStore) renameFolder(folder, name string) (string, error) {
 	return target, nil
 }
 
-func (s *mapStore) deleteFolder(folder string) error {
+func (s *mapStore) deleteFolder(folder string, recursive bool) ([]string, error) {
 	folder, err := normalizeRelative(folder)
 	if err != nil || folder == "" {
-		return errInvalidFolder
+		return nil, errInvalidFolder
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	manifest := s.loadManifestLocked()
 	canonical, found := findFolder(manifest, folder)
 	if !found {
-		return errFolderNotFound
+		return nil, errFolderNotFound
 	}
 	folder = canonical
-	if strings.EqualFold(folder, mmaRoot) || underRoot(folder, learnableRoot) {
-		return errManagedFolder
+	if underRoot(folder, learnableRoot) && !strings.EqualFold(folder, learnableRoot) {
+		return nil, errManagedFolder
 	}
+	deleted := make([]string, 0)
+	kept := make([]mapEntry, 0, len(manifest.Maps))
 	for _, entry := range manifest.Maps {
 		if underRoot(entry.File, folder) {
-			return errFolderNotEmpty
+			deleted = append(deleted, entry.ID)
+		} else {
+			kept = append(kept, entry)
 		}
 	}
+	hasChildren := false
 	for _, child := range manifest.Folders {
 		if !strings.EqualFold(child, folder) && underRoot(child, folder) {
-			return errFolderNotEmpty
+			hasChildren = true
+			break
 		}
+	}
+	if !recursive && (len(deleted) > 0 || hasChildren) {
+		return nil, errFolderNotEmpty
 	}
 	filename, err := s.resolve(folder)
 	if err != nil {
-		return errInvalidFolder
+		return nil, errInvalidFolder
 	}
-	if err := os.Remove(filename); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return errFolderNotFound
+	if !recursive {
+		entries, readErr := os.ReadDir(filename)
+		if readErr != nil {
+			if errors.Is(readErr, os.ErrNotExist) {
+				return nil, errFolderNotFound
+			}
+			return nil, readErr
 		}
-		return errFolderNotEmpty
+		if len(entries) > 0 {
+			return nil, errFolderNotEmpty
+		}
 	}
+	staged, existed, err := stageRemoval(filename)
+	if err != nil {
+		return nil, err
+	}
+	if !existed {
+		return nil, errFolderNotFound
+	}
+	manifest.Maps = kept
 	manifest.Folders, _, err = scanDisk(s.dir)
 	if err == nil {
 		err = s.saveManifestLocked(manifest)
 	}
 	if err != nil {
-		_ = os.Mkdir(filename, 0o755)
+		_ = os.Rename(staged, filename)
+		return nil, err
 	}
-	return err
+	_ = os.RemoveAll(staged)
+	return deleted, nil
 }
 
 func stageRemoval(filename string) (string, bool, error) {

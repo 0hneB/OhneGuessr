@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 )
 
 func (a *App) registerMapRoutes(mux *http.ServeMux) {
@@ -82,16 +83,50 @@ func (a *App) registerMapRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("DELETE /api/folders", api(func(r *http.Request) (any, int, error) {
 		body, err := decodeJSON[struct {
-			Path string `json:"path"`
+			Path      string `json:"path"`
+			Recursive bool   `json:"recursive"`
 		}](r)
 		if err != nil {
 			return nil, 0, err
 		}
-		if err := a.maps.deleteFolder(body.Path); err != nil {
+		deleted, err := a.deleteFolder(body.Path, body.Recursive)
+		if err != nil {
 			return nil, 0, mapMutationResponse(err, "delete folder failed")
 		}
-		return map[string]any{"ok": true}, http.StatusOK, nil
+		return map[string]any{"ok": true, "deletedMapIds": deleted}, http.StatusOK, nil
 	}))
+}
+
+func (a *App) deleteFolder(folder string, recursive bool) ([]string, error) {
+	clean, _ := normalizeRelative(folder)
+	var restore func()
+	switch {
+	case strings.EqualFold(clean, mmaRoot):
+		if !recursive {
+			return nil, errFolderNotEmpty
+		}
+		if a.mma.enabled() {
+			if _, err := a.mma.setEnabled(false); err != nil {
+				return nil, err
+			}
+			restore = func() { _, _ = a.mma.setEnabled(true) }
+		}
+	case strings.EqualFold(clean, learnableRoot):
+		if !recursive {
+			return nil, errFolderNotEmpty
+		}
+		if a.learnable.enabled() {
+			if _, err := a.learnable.setEnabled(false); err != nil {
+				return nil, err
+			}
+			restore = func() { _, _ = a.learnable.setEnabled(true) }
+		}
+	}
+	deleted, err := a.maps.deleteFolder(folder, recursive)
+	if err != nil && restore != nil {
+		restore()
+	}
+	return deleted, err
 }
 
 func mapMutationResponse(err error, fallback string) error {

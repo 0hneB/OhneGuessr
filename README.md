@@ -45,7 +45,7 @@ OhneGuessr/
 Your data stays in this folder when you update, move, or uninstall the app.
 
 > [!CAUTION]
-> Deleting a local map removes its JSON file permanently. Keep a copy if you may need it again.
+> Deleting a local map or folder permanently removes its JSON files. Keep a copy if you may need it again.
 
 ## Maps
 

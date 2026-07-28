@@ -144,6 +144,12 @@ func (s *mapMakingAppSync) publicStatusLocked() map[string]any {
 	}
 }
 
+func (s *mapMakingAppSync) enabled() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.loadConfigLocked().Enabled
+}
+
 func (s *mapMakingAppSync) setEnabled(enabled bool) (map[string]any, error) {
 	s.mu.Lock()
 	config := s.loadConfigLocked()

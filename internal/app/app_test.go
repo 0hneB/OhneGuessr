@@ -3,8 +3,11 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -171,6 +174,35 @@ func TestHTTPFolderAndMapMutations(t *testing.T) {
 	if deleteFolder.Code != http.StatusOK {
 		t.Fatalf("empty folder delete = %d %s", deleteFolder.Code, deleteFolder.Body.String())
 	}
+	recursiveFolder := perform(handler, localRequest(
+		http.MethodPost,
+		"/api/folders",
+		`{"parent":"","name":"Recursive"}`,
+	))
+	if recursiveFolder.Code != http.StatusOK {
+		t.Fatalf("create recursive folder = %d %s", recursiveFolder.Code, recursiveFolder.Body.String())
+	}
+	recursiveMap := perform(handler, localRequest(
+		http.MethodPost,
+		"/api/maps",
+		`{"name":"Nested","folder":"Recursive","locations":[{"lat":3,"lng":4}]}`,
+	))
+	if recursiveMap.Code != http.StatusOK {
+		t.Fatalf("create recursive map = %d %s", recursiveMap.Code, recursiveMap.Body.String())
+	}
+	var recursiveEntry mapEntry
+	if err := json.Unmarshal(recursiveMap.Body.Bytes(), &recursiveEntry); err != nil {
+		t.Fatal(err)
+	}
+	recursiveDelete := perform(handler, localRequest(
+		http.MethodDelete,
+		"/api/folders",
+		`{"path":"Recursive","recursive":true}`,
+	))
+	if recursiveDelete.Code != http.StatusOK ||
+		!strings.Contains(recursiveDelete.Body.String(), recursiveEntry.ID) {
+		t.Fatalf("recursive folder delete = %d %s", recursiveDelete.Code, recursiveDelete.Body.String())
+	}
 	missing := perform(handler, localRequest(
 		http.MethodDelete,
 		"/api/maps/missing",
@@ -178,5 +210,78 @@ func TestHTTPFolderAndMapMutations(t *testing.T) {
 	))
 	if missing.Code != http.StatusNotFound {
 		t.Fatalf("missing map delete = %d %s", missing.Code, missing.Body.String())
+	}
+}
+
+func TestManagedRootDeleteDisablesSync(t *testing.T) {
+	a := newTestApp(t)
+	a.mma.mu.Lock()
+	err := a.mma.saveConfigLocked(mmaConfig{
+		Version: 1, Enabled: true, APIKey: "mma-key", Username: "mapper",
+	})
+	a.mma.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.learnable.mu.Lock()
+	err = a.learnable.saveConfigLocked(learnableConfig{
+		Version: 1, Enabled: true, APIKey: "lm-key",
+		Maps: []learnableConfigMap{{MapID: "demo", Name: "Demo"}},
+	})
+	a.learnable.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a.maps.mu.Lock()
+	manifest := a.maps.loadManifestLocked()
+	manifest.Folders = append(manifest.Folders, mmaRoot)
+	err = a.maps.saveManifestLocked(manifest)
+	a.maps.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.deleteFolder(mmaRoot, true); !errors.Is(err, errFolderNotFound) || !a.mma.enabled() {
+		t.Fatalf("failed delete did not restore MMA sync: %v", err)
+	}
+
+	for _, folder := range []string{mmaRoot, learnableRoot} {
+		filename := filepath.Join(a.maps.dir, folder, "Map.json")
+		if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filename, []byte(`[{"lat":1,"lng":2}]`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := a.maps.Rescan(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := a.deleteFolder(mmaRoot, false); !errors.Is(err, errFolderNotEmpty) || !a.mma.enabled() {
+		t.Fatalf("unconfirmed managed delete = %v", err)
+	}
+	for _, folder := range []string{mmaRoot, learnableRoot} {
+		deleted, err := a.deleteFolder(folder, true)
+		if err != nil || len(deleted) != 1 {
+			t.Fatalf("delete %s = %#v, %v", folder, deleted, err)
+		}
+		if _, err := os.Stat(filepath.Join(a.maps.dir, folder)); !os.IsNotExist(err) {
+			t.Fatalf("%s still exists: %v", folder, err)
+		}
+	}
+
+	a.mma.mu.Lock()
+	mma := a.mma.loadConfigLocked()
+	a.mma.mu.Unlock()
+	if mma.Enabled || mma.APIKey != "mma-key" || mma.Username != "mapper" {
+		t.Fatalf("MMA config = %#v", mma)
+	}
+	a.learnable.mu.Lock()
+	learnable := a.learnable.loadConfigLocked()
+	a.learnable.mu.Unlock()
+	if learnable.Enabled || learnable.APIKey != "lm-key" ||
+		len(learnable.Maps) != 1 || learnable.Maps[0].MapID != "demo" {
+		t.Fatalf("Learnable Meta config = %#v", learnable)
 	}
 }

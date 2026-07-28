@@ -118,6 +118,20 @@ func TestMapMakingAppSyncPartialFailureAndRedaction(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if err := store.deleteLocal("mma:1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.start(); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, func() bool { return !service.publicStatus()["running"].(bool) })
+	store.mu.Lock()
+	manifest = store.loadManifestLocked()
+	store.mu.Unlock()
+	if len(manifest.Maps) != 1 || manifest.Maps[0].ID != "mma:1" {
+		t.Fatalf("sync did not restore deleted MMA map: %#v", manifest.Maps)
+	}
+
 	mode.Store(1)
 	if _, err := service.start(); err != nil {
 		t.Fatal(err)

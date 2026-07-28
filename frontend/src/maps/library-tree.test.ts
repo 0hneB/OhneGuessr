@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { MapItem } from '../types.js';
 import {
   buildLibraryRows,
+  LEARNABLE_META_ROOT,
+  MMA_ROOT,
   mapMoveTargets
 } from './library-tree.js';
 
@@ -51,5 +53,32 @@ describe('library tree', () => {
       .toEqual(['map-making-app', 'map-making-app/Custom']);
     expect(mapMoveTargets(map('local', 'Local', ''), folders))
       .toEqual(['', 'Local']);
+  });
+
+  it('allows managed roots and MMA maps to be deleted', () => {
+    const rows = buildLibraryRows(
+      [
+        map('mma', 'MMA', `${MMA_ROOT}/World`, 'map-making-app', true),
+        map('lm', 'LM', LEARNABLE_META_ROOT, 'learnable-meta', true)
+      ],
+      [MMA_ROOT, `${MMA_ROOT}/World`, LEARNABLE_META_ROOT],
+      '',
+      new Set([MMA_ROOT, `${MMA_ROOT}/World`, LEARNABLE_META_ROOT]),
+      ''
+    );
+    const folders = rows.filter((row) => row.kind === 'folder');
+    expect(folders[0]).toMatchObject({ path: MMA_ROOT, canRename: false, canDelete: true });
+    expect(folders[1]).toMatchObject({
+      path: `${MMA_ROOT}/World`,
+      canRename: true,
+      canDelete: true
+    });
+    expect(folders[2]).toMatchObject({
+      path: LEARNABLE_META_ROOT,
+      canRename: false,
+      canDelete: true
+    });
+    expect(rows.filter((row) => row.kind === 'map').map((row) => row.canRemove))
+      .toEqual([true, true]);
   });
 });
