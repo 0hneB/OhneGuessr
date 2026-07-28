@@ -1,3 +1,4 @@
+import { SvelteSet } from 'svelte/reactivity';
 import { closeGame, launchMap } from '../desktop.js';
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
 import {
@@ -39,9 +40,9 @@ const FOLDER_STATE_KEY = 'ohneguessr.mapFolders';
 function loadExpandedFolders() {
   try {
     const value = JSON.parse(localStorage.getItem(FOLDER_STATE_KEY) || 'null');
-    return new Set<string>(Array.isArray(value) ? value : []);
+    return new SvelteSet<string>(Array.isArray(value) ? value : []);
   } catch {
-    return new Set<string>();
+    return new SvelteSet<string>();
   }
 }
 
@@ -56,8 +57,7 @@ export const library = $state({
   launchingMapID: '',
   activeMapID: '',
   notice: '',
-  noticeError: false,
-  revision: 0
+  noticeError: false
 });
 
 const setNotice = (message: string, error = false) => {
@@ -66,7 +66,6 @@ const setNotice = (message: string, error = false) => {
 };
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
-const refreshView = () => { library.revision += 1; };
 
 function saveExpandedFolders() {
   try {
@@ -79,7 +78,6 @@ export function moveTargets(map: MapItem) {
 }
 
 export function libraryRows() {
-  void library.revision;
   return buildLibraryRows(
     library.maps,
     library.folders,
@@ -97,14 +95,12 @@ export function selectFolder(folder: string) {
     parent = parentFolder(parent);
   }
   saveExpandedFolders();
-  refreshView();
 }
 
 export function toggleFolder(folder: string) {
   if (library.expandedFolders.has(folder)) library.expandedFolders.delete(folder);
   else library.expandedFolders.add(folder);
   saveExpandedFolders();
-  refreshView();
 }
 
 export function setActiveMap(mapID = '') {
@@ -119,7 +115,6 @@ export async function reloadLibrary() {
     library.selectedFolder = '';
   }
   library.loading = false;
-  refreshView();
   return result;
 }
 
