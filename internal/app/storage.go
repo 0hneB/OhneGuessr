@@ -157,7 +157,7 @@ func (s *mapStore) saveManifestLocked(manifest mapManifest) error {
 		addFolderParents(folders, folderOf(rel))
 	}
 	clean.Folders = folderValues(folders)
-	return atomicWriteJSON(s.manifestPath, clean, false, 0o644)
+	return atomicWriteJSON(s.manifestPath, clean, 0o644)
 }
 
 func (s *mapStore) Rescan() (scanResult, error) {
@@ -1105,18 +1105,12 @@ func checksumBytes(value []byte) string {
 	return "sha256:" + hex.EncodeToString(digest[:])
 }
 
-func atomicWriteJSON(filename string, value any, compact bool, permission os.FileMode) error {
-	var encoded []byte
-	var err error
-	if compact {
-		encoded, err = json.Marshal(value)
-	} else {
-		encoded, err = json.MarshalIndent(value, "", "  ")
-		encoded = append(encoded, '\n')
-	}
+func atomicWriteJSON(filename string, value any, permission os.FileMode) error {
+	encoded, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
 		return err
 	}
+	encoded = append(encoded, '\n')
 	return atomicWrite(filename, encoded, permission)
 }
 

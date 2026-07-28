@@ -114,7 +114,7 @@ func (s *mapMakingAppSync) loadConfigLocked() mmaConfig {
 
 func (s *mapMakingAppSync) saveConfigLocked(config mmaConfig) error {
 	config.Version = 1
-	return atomicWriteJSON(s.configPath, config, false, 0o600)
+	return atomicWriteJSON(s.configPath, config, 0o600)
 }
 
 func (s *mapMakingAppSync) publicStatus() map[string]any {

@@ -176,7 +176,7 @@ func (s *learnableMetaSync) saveConfigLocked(config learnableConfig) error {
 	if config.Maps == nil {
 		config.Maps = []learnableConfigMap{}
 	}
-	return atomicWriteJSON(s.configPath, config, false, 0o600)
+	return atomicWriteJSON(s.configPath, config, 0o600)
 }
 
 func (s *learnableMetaSync) publicStatus() map[string]any {
