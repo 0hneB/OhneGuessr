@@ -357,10 +357,7 @@ export class OpenSvViewer {
 
   // Resolve one exact pano before touching the shared viewer. A failed lookup may
   // finish late, but its promise can no longer move a newer replacement location.
-  showLocation(
-    loc: Location,
-    { signal, focus = true }: { signal?: AbortSignal; focus?: boolean } = {}
-  ): Promise<boolean> {
+  showLocation(loc: Location, signal?: AbortSignal): Promise<boolean> {
     this._clearCheckpoint();
     this._clearLookBehind();
     this._trailActive = false;
@@ -395,7 +392,6 @@ export class OpenSvViewer {
         this.pano.setZoom(resolveStartZoom(loc.zoom, this._forceStartZoomedOut));
         this.pano.setPano(targetPano);
         this.pano.setVisible(true);
-        if (focus && this.mode !== 'nmpz') this.pano.focus?.();
         wait.check();
       }).catch(wait.cancel);
     } catch {

@@ -144,12 +144,12 @@ function prepareRound(index: number): RoundPreparation {
   preparation.promise = (async () => {
     let loc = firstLocation;
     let tries = 0;
-    let ok = await viewer.showLocation(loc, { signal: load.signal, focus: false });
+    let ok = await viewer.showLocation(loc, load.signal);
     while (isPanoLoadActive(load) && !ok && tries < 8) {
       tries++;
       loc = randomLocation(preparation.locations);
       preparation.deck[index] = loc;
-      ok = await viewer.showLocation(loc, { signal: load.signal, focus: false });
+      ok = await viewer.showLocation(loc, load.signal);
     }
 
     preparation.location = loc;
