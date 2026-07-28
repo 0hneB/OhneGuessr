@@ -60,7 +60,7 @@ func run() error {
 			ProgramName: "ohneguessr",
 		},
 	})
-	desktop.setApplication(wailsApp)
+	desktop.wails = wailsApp
 	wailsApp.RegisterService(application.NewService(desktop))
 	launcher := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:                       "launcher",
@@ -82,7 +82,7 @@ func run() error {
 			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,
 		},
 	})
-	desktop.setLauncher(launcher)
+	desktop.launcher = launcher
 	launcher.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
 		go wailsApp.Quit()
 	})

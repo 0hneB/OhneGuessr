@@ -28,18 +28,6 @@ type DesktopService struct {
 	gameMap  string
 }
 
-func (d *DesktopService) setApplication(wails *application.App) {
-	d.mu.Lock()
-	d.wails = wails
-	d.mu.Unlock()
-}
-
-func (d *DesktopService) setLauncher(window *application.WebviewWindow) {
-	d.mu.Lock()
-	d.launcher = window
-	d.mu.Unlock()
-}
-
 func (d *DesktopService) shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
