@@ -517,11 +517,11 @@
 .tree-toggle .svg-icon {
   width: 16px;
   height: 16px;
-  transform: rotate(0);
+  transform: rotate(-90deg);
 }
 
 .tree-toggle[aria-expanded="true"] .svg-icon {
-  transform: rotate(90deg);
+  transform: rotate(0);
 }
 
 .folder-select {
