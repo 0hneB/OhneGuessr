@@ -1,5 +1,4 @@
 // The in-game guess map panel owns its expanded, pinned, and fullscreen states.
-// GuessMap's ResizeObserver handles hover resizing without delayed relayout passes.
 import { $ } from '../dom.js';
 import { normalizeGuessMapSize } from '../settings/settings.js';
 import { ui } from '../ui.svelte.js';
@@ -33,6 +32,8 @@ export function createGuessPanel(gmap: ResizableMap) {
   }
 
   function setup() {
+    $('guessPanel').addEventListener('mouseenter', () => requestAnimationFrame(syncLayout));
+    $('guessPanel').addEventListener('mouseleave', () => requestAnimationFrame(syncLayout));
     $('map').addEventListener('dblclick', (event) => {
       event.preventDefault();
       event.stopImmediatePropagation();
