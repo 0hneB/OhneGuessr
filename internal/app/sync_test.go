@@ -22,11 +22,22 @@ func testStore(t *testing.T) *mapStore {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Rescan(); err != nil {
+	if err := store.initialize(); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
 	return store
+}
+
+func testManifest(t *testing.T, store *mapStore) mapManifest {
+	t.Helper()
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	manifest, err := store.loadManifestLocked()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return manifest
 }
 
 func waitUntil(t *testing.T, check func() bool) {
@@ -108,9 +119,7 @@ func TestMapMakingAppSyncPartialFailureAndRedaction(t *testing.T) {
 	if strings.Contains(string(encoded), "secret-mma") {
 		t.Fatal("public status exposed the API key")
 	}
-	store.mu.Lock()
-	manifest := store.loadManifestLocked()
-	store.mu.Unlock()
+	manifest := testManifest(t, store)
 	if len(manifest.Maps) != 1 || manifest.Maps[0].ID != "mma:1" || manifest.Maps[0].File != "map-making-app/World/One.json" {
 		t.Fatalf("manifest = %#v", manifest.Maps)
 	}
@@ -125,9 +134,7 @@ func TestMapMakingAppSyncPartialFailureAndRedaction(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitUntil(t, func() bool { return !service.publicStatus()["running"].(bool) })
-	store.mu.Lock()
-	manifest = store.loadManifestLocked()
-	store.mu.Unlock()
+	manifest = testManifest(t, store)
 	if len(manifest.Maps) != 1 || manifest.Maps[0].ID != "mma:1" {
 		t.Fatalf("sync did not restore deleted MMA map: %#v", manifest.Maps)
 	}
@@ -137,9 +144,7 @@ func TestMapMakingAppSyncPartialFailureAndRedaction(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitUntil(t, func() bool { return !service.publicStatus()["running"].(bool) })
-	store.mu.Lock()
-	manifest = store.loadManifestLocked()
-	store.mu.Unlock()
+	manifest = testManifest(t, store)
 	if len(manifest.Maps) != 1 || manifest.Maps[0].ID != "mma:1" {
 		t.Fatalf("failed refresh did not retain last good map: %#v", manifest.Maps)
 	}
@@ -152,9 +157,7 @@ func TestMapMakingAppSyncPartialFailureAndRedaction(t *testing.T) {
 	if result := service.publicStatus()["lastResult"].(map[string]any); result["removed"] != 1 {
 		t.Fatalf("stale result = %#v", result)
 	}
-	store.mu.Lock()
-	manifest = store.loadManifestLocked()
-	store.mu.Unlock()
+	manifest = testManifest(t, store)
 	if len(manifest.Maps) != 0 {
 		t.Fatalf("stale map was not removed: %#v", manifest.Maps)
 	}
@@ -255,9 +258,7 @@ func TestLearnableMetaLifecycleSyncAndClues(t *testing.T) {
 	if strings.Contains(string(encoded), "secret-lm") {
 		t.Fatal("public status exposed the API key")
 	}
-	store.mu.Lock()
-	manifest := store.loadManifestLocked()
-	store.mu.Unlock()
+	manifest := testManifest(t, store)
 	if len(manifest.Maps) != 1 || manifest.Maps[0].ID != learnableEntryID("demo") || manifest.Maps[0].Count != 1 {
 		t.Fatalf("manifest = %#v", manifest.Maps)
 	}
@@ -280,9 +281,7 @@ func TestLearnableMetaLifecycleSyncAndClues(t *testing.T) {
 	if result := service.publicStatus()["lastResult"].(map[string]any); result["updated"] != 1 || result["failed"] != 0 {
 		t.Fatalf("sync result = %#v", result)
 	}
-	store.mu.Lock()
-	manifest = store.loadManifestLocked()
-	store.mu.Unlock()
+	manifest = testManifest(t, store)
 	if len(manifest.Maps) != 1 || manifest.Maps[0].Name != "Renamed" || !strings.Contains(manifest.Maps[0].File, "Renamed-") {
 		t.Fatalf("renamed manifest = %#v", manifest.Maps)
 	}
@@ -305,9 +304,7 @@ func TestLearnableMetaLifecycleSyncAndClues(t *testing.T) {
 	if _, err := service.removeMap("demo"); err != nil {
 		t.Fatal(err)
 	}
-	store.mu.Lock()
-	manifest = store.loadManifestLocked()
-	store.mu.Unlock()
+	manifest = testManifest(t, store)
 	if len(manifest.Maps) != 0 {
 		t.Fatalf("map was not removed: %#v", manifest.Maps)
 	}

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 )
@@ -27,15 +26,4 @@ func defaultDataDir() (string, error) {
 		return filepath.Join(dataHome, "ohneguessr"), nil
 	}
 	return filepath.Join(home, ".local", "share", "ohneguessr"), nil
-}
-
-func openFolder(value string) error {
-	switch runtime.GOOS {
-	case "windows":
-		return exec.Command("explorer", value).Start()
-	case "darwin":
-		return exec.Command("open", value).Start()
-	default:
-		return exec.Command("xdg-open", value).Start()
-	}
 }

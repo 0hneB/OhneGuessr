@@ -23,15 +23,6 @@ func (a *App) registerMapRoutes(mux *http.ServeMux) {
 		}
 		return entry, http.StatusOK, nil
 	}))
-	mux.HandleFunc("POST /api/maps/rescan", api(func(_ *http.Request) (any, int, error) {
-		result, err := a.maps.Rescan()
-		if err != nil {
-			return nil, 0, responseError(http.StatusInternalServerError, "refresh failed")
-		}
-		return map[string]any{
-			"ok": true, "maps": len(result.Manifest.Maps), "folders": len(result.Manifest.Folders), "ignored": result.Ignored,
-		}, http.StatusOK, nil
-	}))
 	mux.HandleFunc("PATCH /api/maps/{id}", api(func(r *http.Request) (any, int, error) {
 		body, err := decodeJSON[struct {
 			Name   *string `json:"name"`
@@ -131,7 +122,8 @@ func (a *App) deleteFolder(folder string, recursive bool) ([]string, error) {
 
 func mapMutationResponse(err error, fallback string) error {
 	switch {
-	case errors.Is(err, errMapNotFound), errors.Is(err, errFolderNotFound):
+	case errors.Is(err, errMapNotFound), errors.Is(err, errFolderNotFound),
+		errors.Is(err, errMapDataMissing):
 		return responseError(http.StatusNotFound, err.Error())
 	case errors.Is(err, errNoLocations), errors.Is(err, errNameRequired),
 		errors.Is(err, errNameTooLong), errors.Is(err, errInvalidFolder),

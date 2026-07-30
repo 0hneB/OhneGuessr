@@ -34,9 +34,9 @@ func New(dataDir, version string) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := maps.Rescan(); err != nil {
+	if err := maps.initialize(); err != nil {
 		maps.Close()
-		return nil, fmt.Errorf("index maps: %w", err)
+		return nil, fmt.Errorf("load map library: %w", err)
 	}
 	pluginData := filepath.Join(dataDir, "plugin-data")
 	if err := os.MkdirAll(pluginData, 0o700); err != nil {
@@ -101,12 +101,6 @@ func (a *App) Shutdown(ctx context.Context) error {
 
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/open-data-folder", api(func(_ *http.Request) (any, int, error) {
-		if err := openFolder(a.maps.dir); err != nil {
-			return nil, 0, responseError(http.StatusInternalServerError, "could not open maps folder")
-		}
-		return map[string]any{"ok": true}, http.StatusOK, nil
-	}))
 	a.registerMapRoutes(mux)
 	a.mma.registerRoutes(mux)
 	a.learnable.registerRoutes(mux)
@@ -123,12 +117,20 @@ func (a *App) Handler() http.Handler {
 func (a *App) HasMap(id string) bool {
 	a.maps.mu.Lock()
 	defer a.maps.mu.Unlock()
-	for _, entry := range a.maps.loadManifestLocked().Maps {
+	manifest, err := a.maps.loadManifestLocked()
+	if err != nil {
+		return false
+	}
+	for _, entry := range manifest.Maps {
 		if entry.ID == id {
 			return true
 		}
 	}
 	return false
+}
+
+func (a *App) ExportMaps(filename string) error {
+	return a.maps.exportZIP(filename)
 }
 
 func api(fn func(*http.Request) (any, int, error)) http.HandlerFunc {

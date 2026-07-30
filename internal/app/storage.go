@@ -1,7 +1,7 @@
 package app
 
 import (
-	"bytes"
+	"archive/zip"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"maps"
 	"os"
 	"path"
@@ -38,6 +37,7 @@ var (
 	errMoveRestricted = errors.New("that map cannot be moved there")
 	errNoMutation     = errors.New("name or folder required")
 	errNoLocations    = errors.New("no locations")
+	errMapDataMissing = errors.New("map data is missing")
 	errNameRequired   = errors.New("name required")
 	errNameTooLong    = errors.New("name is too long")
 	errInvalidFolder  = errors.New("invalid folder")
@@ -56,8 +56,6 @@ type mapEntry struct {
 	File     string         `json:"file"`
 	Count    int            `json:"count"`
 	Checksum string         `json:"checksum,omitempty"`
-	Size     int64          `json:"size,omitempty"`
-	MtimeNS  int64          `json:"mtimeNs,omitempty"`
 	Source   map[string]any `json:"source,omitempty"`
 }
 
@@ -65,16 +63,6 @@ type mapManifest struct {
 	Version int        `json:"version"`
 	Folders []string   `json:"folders"`
 	Maps    []mapEntry `json:"maps"`
-}
-
-type ignoredMap struct {
-	File  string `json:"file"`
-	Error string `json:"error"`
-}
-
-type scanResult struct {
-	Manifest mapManifest
-	Ignored  []ignoredMap
 }
 
 type mapStore struct {
@@ -101,22 +89,54 @@ func emptyManifest() mapManifest {
 	return mapManifest{Version: manifestVersion, Folders: []string{}, Maps: []mapEntry{}}
 }
 
-func (s *mapStore) loadManifestLocked() mapManifest {
+func (s *mapStore) initialize() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, err := s.loadManifestLocked(); err == nil {
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	entries, err := os.ReadDir(s.dir)
+	if err != nil {
+		return err
+	}
+	if len(entries) != 0 {
+		return errors.New("maps.json is missing from the non-empty maps directory")
+	}
+	return s.saveManifestLocked(emptyManifest())
+}
+
+func (s *mapStore) loadManifestLocked() (mapManifest, error) {
 	raw, err := os.ReadFile(s.manifestPath)
 	if err != nil {
-		return emptyManifest()
+		return mapManifest{}, err
 	}
 	var decoded mapManifest
-	if json.Unmarshal(raw, &decoded) != nil || decoded.Version != manifestVersion {
-		return emptyManifest()
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		return mapManifest{}, fmt.Errorf("maps.json is invalid: %w", err)
 	}
+	if decoded.Version != manifestVersion {
+		return mapManifest{}, fmt.Errorf("maps.json version %d is unsupported", decoded.Version)
+	}
+	return cleanManifest(decoded)
+}
+
+func cleanManifest(manifest mapManifest) (mapManifest, error) {
 	clean := emptyManifest()
 	folders := map[string]string{}
-	for _, entry := range decoded.Maps {
+	ids := map[string]bool{}
+	files := map[string]bool{}
+	for _, entry := range manifest.Maps {
 		rel, err := normalizeRelative(entry.File)
-		if err != nil || rel == "" || entry.ID == "" {
-			continue
+		if err != nil || rel == "" || entry.ID == "" || !strings.EqualFold(path.Ext(rel), ".json") {
+			return mapManifest{}, errors.New("maps.json contains an invalid map entry")
 		}
+		fileKey := strings.ToLower(rel)
+		if ids[entry.ID] || files[fileKey] {
+			return mapManifest{}, errors.New("maps.json contains duplicate map entries")
+		}
+		ids[entry.ID], files[fileKey] = true, true
 		entry.File = rel
 		if entry.Name == "" {
 			entry.Name = strings.TrimSpace(strings.TrimSuffix(path.Base(rel), path.Ext(rel)))
@@ -127,249 +147,23 @@ func (s *mapStore) loadManifestLocked() mapManifest {
 		clean.Maps = append(clean.Maps, entry)
 		addFolderParents(folders, folderOf(rel))
 	}
-	for _, folder := range decoded.Folders {
-		if rel, err := normalizeRelative(folder); err == nil && rel != "" {
-			folders[strings.ToLower(rel)] = rel
+	for _, folder := range manifest.Folders {
+		rel, err := normalizeRelative(folder)
+		if err != nil || rel == "" {
+			return mapManifest{}, errors.New("maps.json contains an invalid folder")
 		}
+		folders[strings.ToLower(rel)] = rel
 	}
 	clean.Folders = folderValues(folders)
-	return clean
+	return clean, nil
 }
 
 func (s *mapStore) saveManifestLocked(manifest mapManifest) error {
-	clean := emptyManifest()
-	folders := map[string]string{}
-	for _, folder := range manifest.Folders {
-		if rel, err := normalizeRelative(folder); err == nil && rel != "" {
-			folders[strings.ToLower(rel)] = rel
-		}
+	clean, err := cleanManifest(manifest)
+	if err != nil {
+		return err
 	}
-	for _, entry := range manifest.Maps {
-		rel, err := normalizeRelative(entry.File)
-		if err != nil || rel == "" || entry.ID == "" {
-			continue
-		}
-		entry.File = rel
-		if entry.Name == "" {
-			entry.Name = strings.TrimSuffix(path.Base(rel), path.Ext(rel))
-		}
-		clean.Maps = append(clean.Maps, entry)
-		addFolderParents(folders, folderOf(rel))
-	}
-	clean.Folders = folderValues(folders)
 	return atomicWriteJSON(s.manifestPath, clean, 0o644)
-}
-
-func (s *mapStore) Rescan() (scanResult, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.rescanLocked()
-}
-
-func (s *mapStore) rescanLocked() (scanResult, error) {
-	manifest := s.loadManifestLocked()
-	folders, files, err := scanDisk(s.dir)
-	if err != nil {
-		return scanResult{}, err
-	}
-	oldByPath := make(map[string]mapEntry, len(manifest.Maps))
-	for _, entry := range manifest.Maps {
-		oldByPath[strings.ToLower(entry.File)] = entry
-	}
-	used := map[string]bool{}
-	exact := make([]mapEntry, 0, len(files))
-	pending := make([]pendingMap, 0, len(files))
-	ignored := make([]ignoredMap, 0)
-
-	for _, file := range files {
-		info, statErr := os.Stat(file.full)
-		if statErr != nil {
-			ignored = append(ignored, ignoredMap{File: file.rel, Error: statErr.Error()})
-			continue
-		}
-		if old, ok := oldByPath[strings.ToLower(file.rel)]; ok {
-			entry := old
-			checksum, count := entry.Checksum, entry.Count
-			if entry.Size != info.Size() || entry.MtimeNS != info.ModTime().UnixNano() || checksum == "" || count <= 0 {
-				count, _, statErr = readMapPayload(file.full)
-				if statErr == nil {
-					checksum, statErr = fileChecksum(file.full)
-				}
-			}
-			if statErr != nil {
-				ignored = append(ignored, ignoredMap{File: file.rel, Error: statErr.Error()})
-				continue
-			}
-			entry.File = file.rel
-			entry.Count = count
-			entry.Checksum = checksum
-			entry.Size = info.Size()
-			entry.MtimeNS = info.ModTime().UnixNano()
-			exact = append(exact, entry)
-			used[entry.ID] = true
-			continue
-		}
-
-		count, embeddedName, readErr := readMapPayload(file.full)
-		if readErr != nil {
-			ignored = append(ignored, ignoredMap{File: file.rel, Error: readErr.Error()})
-			continue
-		}
-		checksum, readErr := fileChecksum(file.full)
-		if readErr != nil {
-			ignored = append(ignored, ignoredMap{File: file.rel, Error: readErr.Error()})
-			continue
-		}
-		name := embeddedName
-		if name == "" {
-			name = strings.TrimSpace(strings.TrimSuffix(path.Base(file.rel), path.Ext(file.rel)))
-		}
-		if name == "" {
-			name = "Untitled map"
-		}
-		pending = append(pending, pendingMap{
-			rel: file.rel, count: count, name: name, checksum: checksum,
-			size: info.Size(), mtimeNS: info.ModTime().UnixNano(),
-		})
-	}
-
-	byChecksum := map[string][]mapEntry{}
-	for _, entry := range manifest.Maps {
-		if !used[entry.ID] && entry.Checksum != "" {
-			byChecksum[entry.Checksum] = append(byChecksum[entry.Checksum], entry)
-		}
-	}
-	moved := make([]mapEntry, 0, len(pending))
-	for _, item := range pending {
-		candidates := make([]mapEntry, 0, 1)
-		for _, entry := range byChecksum[item.checksum] {
-			if !used[entry.ID] {
-				candidates = append(candidates, entry)
-			}
-		}
-		if len(candidates) == 1 {
-			candidate := candidates[0]
-			root := managedRoot(candidate.Source)
-			if !isManagedSource(candidate.Source) || root == "" || underRoot(item.rel, root) {
-				oldFile := candidate.File
-				candidate.File = item.rel
-				candidate.Count = item.count
-				candidate.Checksum = item.checksum
-				candidate.Size = item.size
-				candidate.MtimeNS = item.mtimeNS
-				if sourceType(candidate.Source) == "map-making-app" {
-					candidate.Source = maps.Clone(candidate.Source)
-					if !strings.EqualFold(path.Base(oldFile), path.Base(item.rel)) {
-						candidate.Source["nameOverride"] = true
-						candidate.Name = item.name
-					}
-					if !strings.EqualFold(folderOf(oldFile), folderOf(item.rel)) {
-						candidate.Source["folderOverride"] = true
-					}
-				} else if !strings.EqualFold(path.Base(oldFile), path.Base(item.rel)) {
-					candidate.Name = item.name
-				}
-				moved = append(moved, candidate)
-				used[candidate.ID] = true
-				continue
-			}
-		}
-		id := rand.Text()
-		moved = append(moved, mapEntry{
-			ID: id, Name: item.name, File: item.rel, Count: item.count,
-			Checksum: item.checksum, Size: item.size, MtimeNS: item.mtimeNS,
-		})
-	}
-
-	result := mapManifest{Version: manifestVersion, Folders: folders, Maps: append(exact, moved...)}
-	sort.Slice(result.Maps, func(i, j int) bool {
-		left, right := strings.ToLower(result.Maps[i].File), strings.ToLower(result.Maps[j].File)
-		if left == right {
-			return strings.ToLower(result.Maps[i].Name) < strings.ToLower(result.Maps[j].Name)
-		}
-		return left < right
-	})
-	if err := s.saveManifestLocked(result); err != nil {
-		return scanResult{}, err
-	}
-	return scanResult{Manifest: result, Ignored: ignored}, nil
-}
-
-type diskMap struct{ rel, full string }
-
-type pendingMap struct {
-	rel, name, checksum string
-	count               int
-	size, mtimeNS       int64
-}
-
-func scanDisk(base string) ([]string, []diskMap, error) {
-	folders := make([]string, 0)
-	files := make([]diskMap, 0)
-	err := filepath.WalkDir(base, func(full string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if full == base {
-			return nil
-		}
-		relOS, err := filepath.Rel(base, full)
-		if err != nil {
-			return err
-		}
-		rel := filepath.ToSlash(relOS)
-		name := entry.Name()
-		if entry.IsDir() {
-			if strings.HasPrefix(name, ".") || name == "__pycache__" || entry.Type()&os.ModeSymlink != 0 {
-				return filepath.SkipDir
-			}
-			folders = append(folders, rel)
-			return nil
-		}
-		if entry.Type()&os.ModeSymlink != 0 || strings.HasPrefix(name, ".") || !strings.EqualFold(filepath.Ext(name), ".json") || rel == manifestName {
-			return nil
-		}
-		files = append(files, diskMap{rel: rel, full: full})
-		return nil
-	})
-	sortFold(folders)
-	sort.Slice(files, func(i, j int) bool { return strings.ToLower(files[i].rel) < strings.ToLower(files[j].rel) })
-	return folders, files, err
-}
-
-func readMapPayload(filename string) (int, string, error) {
-	raw, err := os.ReadFile(filename)
-	if err != nil {
-		return 0, "", err
-	}
-	trimmed := bytes.TrimSpace(raw)
-	if len(trimmed) == 0 {
-		return 0, "", errors.New("not a supported map JSON")
-	}
-	var locations []json.RawMessage
-	name := ""
-	switch trimmed[0] {
-	case '[':
-		err = json.Unmarshal(trimmed, &locations)
-	case '{':
-		var object struct {
-			Name              string          `json:"name"`
-			CustomCoordinates json.RawMessage `json:"customCoordinates"`
-		}
-		if err = json.Unmarshal(trimmed, &object); err == nil {
-			err = json.Unmarshal(object.CustomCoordinates, &locations)
-			name = strings.TrimSpace(object.Name)
-		}
-	default:
-		err = errors.New("not a supported map JSON")
-	}
-	if err != nil {
-		return 0, "", fmt.Errorf("not a supported map JSON: %w", err)
-	}
-	if len(locations) == 0 {
-		return 0, "", errors.New("map is empty")
-	}
-	return len(locations), name, nil
 }
 
 func (s *mapStore) createLocal(name string, locations json.RawMessage, folder string) (mapEntry, error) {
@@ -391,7 +185,10 @@ func (s *mapStore) createLocal(name string, locations json.RawMessage, folder st
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	manifest := s.loadManifestLocked()
+	manifest, err := s.loadManifestLocked()
+	if err != nil {
+		return mapEntry{}, err
+	}
 	folder, err = normalizeRelative(folder)
 	if err != nil {
 		return mapEntry{}, errInvalidFolder
@@ -422,20 +219,9 @@ func (s *mapStore) createLocal(name string, locations json.RawMessage, folder st
 	if err := atomicWrite(filename, encoded, 0o644); err != nil {
 		return mapEntry{}, err
 	}
-	info, err := os.Stat(filename)
-	if err != nil {
-		_ = os.Remove(filename)
-		return mapEntry{}, err
-	}
-	entry := mapEntry{
-		ID: id, Name: name, File: rel, Count: len(values),
-		Checksum: checksumBytes(encoded), Size: info.Size(), MtimeNS: info.ModTime().UnixNano(),
-	}
+	entry := mapEntry{ID: id, Name: name, File: rel, Count: len(values)}
 	manifest.Maps = append(manifest.Maps, entry)
-	manifest.Folders, _, err = scanDisk(s.dir)
-	if err == nil {
-		err = s.saveManifestLocked(manifest)
-	}
+	err = s.saveManifestLocked(manifest)
 	if err != nil {
 		_ = os.Remove(filename)
 		return mapEntry{}, err
@@ -463,7 +249,10 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	manifest := s.loadManifestLocked()
+	manifest, err := s.loadManifestLocked()
+	if err != nil {
+		return mapEntry{}, err
+	}
 	index := -1
 	for i := range manifest.Maps {
 		if manifest.Maps[i].ID == id {
@@ -535,6 +324,12 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 	if err != nil {
 		return mapEntry{}, err
 	}
+	if _, err := os.Stat(oldPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return mapEntry{}, fmt.Errorf("%w for %q", errMapDataMissing, entry.Name)
+		}
+		return mapEntry{}, err
+	}
 	newPath, err := s.resolve(newRel)
 	if err != nil {
 		return mapEntry{}, err
@@ -543,13 +338,11 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 		return mapEntry{}, err
 	}
 	moved := false
-	if _, err := os.Stat(oldPath); err == nil && oldPath != newPath {
+	if oldPath != newPath {
 		if err := os.Rename(oldPath, newPath); err != nil {
 			return mapEntry{}, err
 		}
 		moved = true
-	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return mapEntry{}, err
 	}
 	entry.Name = name
 	entry.File = newRel
@@ -562,14 +355,7 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 			entry.Source["folderOverride"] = true
 		}
 	}
-	if info, err := os.Stat(newPath); err == nil {
-		entry.Size = info.Size()
-		entry.MtimeNS = info.ModTime().UnixNano()
-	}
-	manifest.Folders, _, err = scanDisk(s.dir)
-	if err == nil {
-		err = s.saveManifestLocked(manifest)
-	}
+	err = s.saveManifestLocked(manifest)
 	if err != nil && moved {
 		_ = os.Rename(newPath, oldPath)
 	}
@@ -579,7 +365,10 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 func (s *mapStore) deleteLocal(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	manifest := s.loadManifestLocked()
+	manifest, err := s.loadManifestLocked()
+	if err != nil {
+		return err
+	}
 	index := -1
 	for i := range manifest.Maps {
 		if manifest.Maps[i].ID == id {
@@ -603,10 +392,7 @@ func (s *mapStore) deleteLocal(id string) error {
 		return err
 	}
 	manifest.Maps = append(manifest.Maps[:index], manifest.Maps[index+1:]...)
-	manifest.Folders, _, err = scanDisk(s.dir)
-	if err == nil {
-		err = s.saveManifestLocked(manifest)
-	}
+	err = s.saveManifestLocked(manifest)
 	if err != nil && existed {
 		_ = os.Rename(staged, filename)
 	} else if existed {
@@ -626,7 +412,10 @@ func (s *mapStore) createFolder(parent, name string) (string, error) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	manifest := s.loadManifestLocked()
+	manifest, err := s.loadManifestLocked()
+	if err != nil {
+		return "", err
+	}
 	if parent != "" {
 		canonical, found := findFolder(manifest, parent)
 		if !found {
@@ -656,10 +445,8 @@ func (s *mapStore) createFolder(parent, name string) (string, error) {
 	if err := os.Mkdir(filename, 0o755); err != nil {
 		return "", err
 	}
-	manifest.Folders, _, err = scanDisk(s.dir)
-	if err == nil {
-		err = s.saveManifestLocked(manifest)
-	}
+	manifest.Folders = append(manifest.Folders, folder)
+	err = s.saveManifestLocked(manifest)
 	if err != nil {
 		_ = os.Remove(filename)
 		return "", err
@@ -678,7 +465,10 @@ func (s *mapStore) renameFolder(folder, name string) (string, error) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	manifest := s.loadManifestLocked()
+	manifest, err := s.loadManifestLocked()
+	if err != nil {
+		return "", err
+	}
 	canonical, found := findFolder(manifest, folder)
 	if !found {
 		return "", errFolderNotFound
@@ -727,10 +517,17 @@ func (s *mapStore) renameFolder(folder, name string) (string, error) {
 			entry.Source["folderOverride"] = true
 		}
 	}
-	manifest.Folders, _, err = scanDisk(s.dir)
-	if err == nil {
-		err = s.saveManifestLocked(manifest)
+	for index, current := range manifest.Folders {
+		if !underRoot(current, folder) {
+			continue
+		}
+		if strings.EqualFold(current, folder) {
+			manifest.Folders[index] = target
+		} else {
+			manifest.Folders[index] = path.Join(target, strings.TrimPrefix(current, folder+"/"))
+		}
 	}
+	err = s.saveManifestLocked(manifest)
 	if err != nil {
 		_ = os.Rename(newPath, oldPath)
 		return "", err
@@ -745,7 +542,10 @@ func (s *mapStore) deleteFolder(folder string, recursive bool) ([]string, error)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	manifest := s.loadManifestLocked()
+	manifest, err := s.loadManifestLocked()
+	if err != nil {
+		return nil, err
+	}
 	canonical, found := findFolder(manifest, folder)
 	if !found {
 		return nil, errFolderNotFound
@@ -797,16 +597,108 @@ func (s *mapStore) deleteFolder(folder string, recursive bool) ([]string, error)
 		return nil, errFolderNotFound
 	}
 	manifest.Maps = kept
-	manifest.Folders, _, err = scanDisk(s.dir)
-	if err == nil {
-		err = s.saveManifestLocked(manifest)
+	folders := manifest.Folders[:0]
+	for _, current := range manifest.Folders {
+		if !underRoot(current, folder) {
+			folders = append(folders, current)
+		}
 	}
+	manifest.Folders = folders
+	err = s.saveManifestLocked(manifest)
 	if err != nil {
 		_ = os.Rename(staged, filename)
 		return nil, err
 	}
 	_ = os.RemoveAll(staged)
 	return deleted, nil
+}
+
+func (s *mapStore) exportZIP(filename string) (err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	manifest, err := s.loadManifestLocked()
+	if err != nil {
+		return err
+	}
+	if err = os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
+		return err
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(filename), ".ohneguessr-export-*.tmp")
+	if err != nil {
+		return err
+	}
+	temporaryName := temporary.Name()
+	defer func() {
+		_ = temporary.Close()
+		if err != nil {
+			_ = os.Remove(temporaryName)
+		}
+	}()
+	if err = temporary.Chmod(0o644); err != nil {
+		return err
+	}
+
+	archive := zip.NewWriter(temporary)
+	for _, folder := range manifest.Folders {
+		header := &zip.FileHeader{Name: folder + "/", Method: zip.Store}
+		header.SetMode(os.ModeDir | 0o755)
+		if _, err = archive.CreateHeader(header); err != nil {
+			break
+		}
+	}
+	entries := append([]mapEntry(nil), manifest.Maps...)
+	sort.Slice(entries, func(i, j int) bool {
+		return strings.ToLower(entries[i].File) < strings.ToLower(entries[j].File)
+	})
+	for _, entry := range entries {
+		if err != nil {
+			break
+		}
+		source, openErr := s.root.Open(filepath.FromSlash(entry.File))
+		if openErr != nil {
+			if errors.Is(openErr, os.ErrNotExist) {
+				err = fmt.Errorf("%w for %q", errMapDataMissing, entry.Name)
+			} else {
+				err = fmt.Errorf("read map data for %q: %w", entry.Name, openErr)
+			}
+			break
+		}
+		info, statErr := source.Stat()
+		if statErr != nil || !info.Mode().IsRegular() {
+			_ = source.Close()
+			if statErr != nil {
+				err = fmt.Errorf("read map data for %q: %w", entry.Name, statErr)
+			} else {
+				err = fmt.Errorf("%w for %q", errMapDataMissing, entry.Name)
+			}
+			break
+		}
+		header, headerErr := zip.FileInfoHeader(info)
+		if headerErr == nil {
+			header.Name = entry.File
+			header.Method = zip.Deflate
+			var target io.Writer
+			target, headerErr = archive.CreateHeader(header)
+			if headerErr == nil {
+				_, headerErr = io.Copy(target, source)
+			}
+		}
+		_ = source.Close()
+		err = headerErr
+	}
+	if closeErr := archive.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = temporary.Sync()
+	}
+	if closeErr := temporary.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(temporaryName, filename)
+	}
+	return err
 }
 
 func stageRemoval(filename string) (string, bool, error) {
@@ -1052,6 +944,16 @@ func folderValues(values map[string]string) []string {
 	return result
 }
 
+func foldersOutsideRoot(folders []string, root string) []string {
+	result := make([]string, 0, len(folders))
+	for _, folder := range folders {
+		if !underRoot(folder, root) {
+			result = append(result, folder)
+		}
+	}
+	return result
+}
+
 func sortFold(values []string) {
 	sort.Slice(values, func(i, j int) bool {
 		left, right := strings.ToLower(values[i]), strings.ToLower(values[j])
@@ -1085,19 +987,6 @@ func managedRoot(source map[string]any) string {
 
 func underRoot(rel, root string) bool {
 	return strings.EqualFold(rel, root) || strings.HasPrefix(strings.ToLower(rel), strings.ToLower(root)+"/")
-}
-
-func fileChecksum(filename string) (string, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	digest := sha256.New()
-	if _, err := io.Copy(digest, file); err != nil {
-		return "", err
-	}
-	return "sha256:" + hex.EncodeToString(digest.Sum(nil)), nil
 }
 
 func checksumBytes(value []byte) string {

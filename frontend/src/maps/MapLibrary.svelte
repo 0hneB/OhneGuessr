@@ -5,15 +5,14 @@
     canCreateFolder,
     canStoreLocalMap,
     createFolder,
+    exportMaps,
     importMap,
     isManagedRoot,
     library,
     libraryRows,
     moveMap,
     moveTargets,
-    openMapsFolder,
     playMap,
-    refreshFromDisk,
     removeFolder,
     removeMap,
     renameFolder,
@@ -276,14 +275,12 @@
       <input bind:this={fileInput} type="file" accept=".json,application/json" hidden
              onchange={(event) => acceptFiles(event.currentTarget.files)} />
       <span class="toolbar-separator" aria-hidden="true"></span>
-      <button class="icon-button" type="button" title="Open maps folder"
-              aria-label="Open maps folder" onclick={openMapsFolder}>
-        <span class="svg-icon folder-icon" aria-hidden="true"></span>
-      </button>
-      <button class="icon-button" type="button" title="Refresh maps"
-              aria-label="Refresh maps" disabled={library.refreshing}
-              onclick={refreshFromDisk}>
-        <span class="svg-icon refresh-icon" aria-hidden="true"></span>
+      <button class="icon-button" type="button"
+              title={library.exporting ? 'Exporting maps…' : 'Export all maps'}
+              aria-label="Export all maps"
+              disabled={library.exporting || (!library.maps.length && !library.folders.length)}
+              onclick={exportMaps}>
+        <span class="svg-icon export-icon" aria-hidden="true"></span>
       </button>
     </div>
   </header>

@@ -234,7 +234,11 @@ func TestManagedRootDeleteDisablesSync(t *testing.T) {
 	}
 
 	a.maps.mu.Lock()
-	manifest := a.maps.loadManifestLocked()
+	manifest, err := a.maps.loadManifestLocked()
+	if err != nil {
+		a.maps.mu.Unlock()
+		t.Fatal(err)
+	}
 	manifest.Folders = append(manifest.Folders, mmaRoot)
 	err = a.maps.saveManifestLocked(manifest)
 	a.maps.mu.Unlock()
@@ -254,7 +258,24 @@ func TestManagedRootDeleteDisablesSync(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := a.maps.Rescan(); err != nil {
+	a.maps.mu.Lock()
+	manifest, err = a.maps.loadManifestLocked()
+	if err == nil {
+		manifest.Folders = append(manifest.Folders, learnableRoot)
+		manifest.Maps = append(manifest.Maps,
+			mapEntry{
+				ID: "mma:1", Name: "MMA", File: mmaRoot + "/Map.json", Count: 1,
+				Source: map[string]any{"type": "map-making-app", "mapId": 1},
+			},
+			mapEntry{
+				ID: "learnable:demo", Name: "Learnable", File: learnableRoot + "/Map.json", Count: 1,
+				Source: map[string]any{"type": "learnable-meta", "managed": true, "mapId": "demo"},
+			},
+		)
+		err = a.maps.saveManifestLocked(manifest)
+	}
+	a.maps.mu.Unlock()
+	if err != nil {
 		t.Fatal(err)
 	}
 

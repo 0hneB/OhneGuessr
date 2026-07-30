@@ -326,29 +326,26 @@ type mmaDownload struct {
 }
 
 type mmaSyncResult struct {
-	Total        int
-	Updated      int
-	Unchanged    int
-	Failed       int
-	Removed      int
-	IgnoredFiles int
-	Failures     []map[string]any
+	Total     int
+	Updated   int
+	Unchanged int
+	Failed    int
+	Removed   int
+	Failures  []map[string]any
 }
 
 func (r mmaSyncResult) asMap() map[string]any {
 	return map[string]any{
 		"total": r.Total, "updated": r.Updated, "unchanged": r.Unchanged,
-		"failed": r.Failed, "removed": r.Removed, "ignoredFiles": r.IgnoredFiles,
-		"failures": r.Failures,
+		"failed": r.Failed, "removed": r.Removed, "failures": r.Failures,
 	}
 }
 
 func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncResult, error) {
-	// ponytail: one storage lock keeps publication atomic; split scan/publish snapshots only if sync latency blocks real map edits.
+	// ponytail: one storage lock keeps publication atomic; split snapshots only if sync latency blocks real map edits.
 	s.maps.mu.Lock()
 	defer s.maps.mu.Unlock()
-	s.progress("scanning", 0, 0)
-	scan, err := s.maps.rescanLocked()
+	manifest, err := s.maps.loadManifestLocked()
 	if err != nil {
 		return mmaSyncResult{}, err
 	}
@@ -377,9 +374,9 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 		return leftFolder < rightFolder
 	})
 
-	local := make([]mapEntry, 0, len(scan.Manifest.Maps))
+	local := make([]mapEntry, 0, len(manifest.Maps))
 	synced := map[int64]mapEntry{}
-	for _, entry := range scan.Manifest.Maps {
+	for _, entry := range manifest.Maps {
 		if sourceType(entry.Source) != "map-making-app" {
 			local = append(local, entry)
 			continue
@@ -464,7 +461,7 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 				resolveErr = nil
 			}
 		}
-		info, statErr := os.Stat(targetPath)
+		_, statErr := os.Stat(targetPath)
 		if resolveErr != nil || statErr != nil {
 			if resolveErr == nil {
 				resolveErr = statErr
@@ -487,15 +484,14 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 		}
 		finalSynced = append(finalSynced, mapEntry{
 			ID: "mma:" + strconv.FormatInt(plan.remote.ID, 10), Name: name, File: plan.target,
-			Count: download.count, Checksum: download.checksum, Size: info.Size(),
-			MtimeNS: info.ModTime().UnixNano(), Source: plan.source,
+			Count: download.count, Checksum: download.checksum, Source: plan.source,
 		})
 	}
 
-	finalManifest := mapManifest{Version: manifestVersion, Maps: append(local, finalSynced...)}
-	finalManifest.Folders, _, err = scanDisk(s.maps.dir)
-	if err != nil {
-		return mmaSyncResult{}, err
+	finalManifest := mapManifest{
+		Version: manifestVersion,
+		Folders: foldersOutsideRoot(manifest.Folders, mmaRoot),
+		Maps:    append(local, finalSynced...),
 	}
 	if err := s.maps.saveManifestLocked(finalManifest); err != nil {
 		return mmaSyncResult{}, err
@@ -517,13 +513,6 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 		}
 	}
 	removeEmptyMapDirectories(s.maps.dir, mmaRoot)
-	finalManifest.Folders, _, err = scanDisk(s.maps.dir)
-	if err == nil {
-		err = s.maps.saveManifestLocked(finalManifest)
-	}
-	if err != nil {
-		return mmaSyncResult{}, err
-	}
 	failureList := make([]map[string]any, 0, len(failures))
 	ids := make([]int64, 0, len(failures))
 	for id := range failures {
@@ -535,7 +524,7 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 	}
 	return mmaSyncResult{
 		Total: len(remotes), Updated: updated, Unchanged: unchanged, Failed: len(failures),
-		Removed: removed, IgnoredFiles: len(scan.Ignored), Failures: failureList,
+		Removed: removed, Failures: failureList,
 	}, nil
 }
 

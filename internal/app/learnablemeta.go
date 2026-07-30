@@ -817,11 +817,10 @@ func (s *learnableMetaSync) publishLearnableMap(mapID, name string, locations []
 	checksum := checksumBytes(encoded)
 	s.maps.mu.Lock()
 	defer s.maps.mu.Unlock()
-	scan, err := s.maps.rescanLocked()
+	manifest, err := s.maps.loadManifestLocked()
 	if err != nil {
 		return false, err
 	}
-	manifest := scan.Manifest
 	index := -1
 	for i, entry := range manifest.Maps {
 		if sourceType(entry.Source) == "learnable-meta" && entry.Source["mapId"] == mapID {
@@ -854,24 +853,20 @@ func (s *learnableMetaSync) publishLearnableMap(mapID, name string, locations []
 			return false, err
 		}
 	}
-	info, err := os.Stat(filename)
-	if err != nil {
+	if _, err := os.Stat(filename); err != nil {
 		return false, err
 	}
 	entry := mapEntry{
 		ID: learnableEntryID(mapID), Name: name, File: target, Count: len(locations),
-		Checksum: checksum, Size: info.Size(), MtimeNS: info.ModTime().UnixNano(),
-		Source: map[string]any{"type": "learnable-meta", "managed": true, "mapId": mapID},
+		Checksum: checksum,
+		Source:   map[string]any{"type": "learnable-meta", "managed": true, "mapId": mapID},
 	}
 	if index >= 0 {
 		manifest.Maps[index] = entry
 	} else {
 		manifest.Maps = append(manifest.Maps, entry)
 	}
-	manifest.Folders, _, err = scanDisk(s.maps.dir)
-	if err == nil {
-		err = s.maps.saveManifestLocked(manifest)
-	}
+	err = s.maps.saveManifestLocked(manifest)
 	if err != nil {
 		return false, err
 	}
@@ -886,7 +881,10 @@ func (s *learnableMetaSync) publishLearnableMap(mapID, name string, locations []
 func (s *learnableMetaSync) renamePublishedLearnableMap(mapID, name string) error {
 	s.maps.mu.Lock()
 	defer s.maps.mu.Unlock()
-	manifest := s.maps.loadManifestLocked()
+	manifest, err := s.maps.loadManifestLocked()
+	if err != nil {
+		return err
+	}
 	index := -1
 	for i, entry := range manifest.Maps {
 		if sourceType(entry.Source) == "learnable-meta" && entry.Source["mapId"] == mapID {
@@ -910,34 +908,29 @@ func (s *learnableMetaSync) renamePublishedLearnableMap(mapID, name string) erro
 	if err != nil {
 		return err
 	}
+	if _, err := os.Stat(oldPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("%w for %q", errMapDataMissing, entry.Name)
+		}
+		return err
+	}
 	newPath, err := s.maps.resolve(newFile)
 	if err != nil {
 		return err
 	}
 	moved := false
 	if oldFile != newFile {
-		if _, err := os.Stat(oldPath); err == nil {
-			if err := os.MkdirAll(filepath.Dir(newPath), 0o755); err != nil {
-				return err
-			}
-			if err := os.Rename(oldPath, newPath); err != nil {
-				return err
-			}
-			moved = true
-		} else if !errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(filepath.Dir(newPath), 0o755); err != nil {
 			return err
 		}
+		if err := os.Rename(oldPath, newPath); err != nil {
+			return err
+		}
+		moved = true
 	}
 	entry.Name = name
 	entry.File = newFile
-	if info, err := os.Stat(newPath); err == nil {
-		entry.Size = info.Size()
-		entry.MtimeNS = info.ModTime().UnixNano()
-	}
-	manifest.Folders, _, err = scanDisk(s.maps.dir)
-	if err == nil {
-		err = s.maps.saveManifestLocked(manifest)
-	}
+	err = s.maps.saveManifestLocked(manifest)
 	if err != nil && moved {
 		_ = os.Rename(newPath, oldPath)
 	}
@@ -947,7 +940,10 @@ func (s *learnableMetaSync) renamePublishedLearnableMap(mapID, name string) erro
 func (s *learnableMetaSync) deletePublishedLearnableMap(mapID string) error {
 	s.maps.mu.Lock()
 	defer s.maps.mu.Unlock()
-	manifest := s.maps.loadManifestLocked()
+	manifest, err := s.maps.loadManifestLocked()
+	if err != nil {
+		return err
+	}
 	targets := make([]mapEntry, 0)
 	kept := make([]mapEntry, 0, len(manifest.Maps))
 	for _, entry := range manifest.Maps {
@@ -962,6 +958,7 @@ func (s *learnableMetaSync) deletePublishedLearnableMap(mapID string) error {
 	}
 	previous := manifest
 	manifest.Maps = kept
+	manifest.Folders = foldersOutsideRoot(manifest.Folders, learnableRoot)
 	if err := s.maps.saveManifestLocked(manifest); err != nil {
 		return err
 	}
@@ -976,12 +973,8 @@ func (s *learnableMetaSync) deletePublishedLearnableMap(mapID string) error {
 			return err
 		}
 	}
-	folders, _, err := scanDisk(s.maps.dir)
-	manifest.Folders = folders
-	if err == nil {
-		err = s.maps.saveManifestLocked(manifest)
-	}
-	return err
+	removeEmptyMapDirectories(s.maps.dir, learnableRoot)
+	return nil
 }
 
 func boolInt(value bool) int {

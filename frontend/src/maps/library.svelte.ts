@@ -1,5 +1,5 @@
 import { SvelteSet } from 'svelte/reactivity';
-import { closeGame, launchMap } from '../desktop.js';
+import { closeGame, exportMaps as exportMapsToFile, launchMap } from '../desktop.js';
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
 import {
   getStatus as getLearnableMetaStatus,
@@ -15,10 +15,8 @@ import {
   deleteUserMap,
   loadLibrary,
   moveMap as moveMapAPI,
-  openDataFolder,
   renameFolder as renameFolderAPI,
-  renameUserMap,
-  rescanMaps
+  renameUserMap
 } from './api.js';
 import {
   buildLibraryRows,
@@ -53,7 +51,7 @@ export const library = $state({
   selectedFolder: '',
   search: '',
   loading: true,
-  refreshing: false,
+  exporting: false,
   launchingMapID: '',
   activeMapID: '',
   notice: '',
@@ -265,23 +263,17 @@ export async function removeMap(map: MapItem) {
   }
 }
 
-export async function refreshFromDisk() {
-  library.refreshing = true;
+export async function exportMaps() {
+  library.exporting = true;
   setNotice('');
   try {
-    await rescanMaps();
-    await reloadLibrary();
+    if (await exportMapsToFile()) {
+      const count = library.maps.length;
+      setNotice(`Exported ${count.toLocaleString()} ${count === 1 ? 'map' : 'maps'}.`);
+    }
   } catch (error) {
-    setNotice(errorMessage(error, 'Could not refresh maps.'), true);
+    setNotice(errorMessage(error, 'Could not export maps.'), true);
   } finally {
-    library.refreshing = false;
-  }
-}
-
-export async function openMapsFolder() {
-  try {
-    await openDataFolder();
-  } catch (error) {
-    setNotice(errorMessage(error, 'Could not open the maps folder.'), true);
+    library.exporting = false;
   }
 }

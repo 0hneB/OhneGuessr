@@ -111,6 +111,7 @@ button { font-family: inherit; }
 .timer-icon { --icon-url: url("/icons/timer.svg"); }
 .search-icon { --icon-url: url("/icons/search.svg"); }
 .folder-icon { --icon-url: url("/icons/folder.svg"); }
+.export-icon { --icon-url: url("/icons/export.svg"); }
 .refresh-icon { --icon-url: url("/icons/refresh.svg"); }
 .plus-icon { --icon-url: url("/icons/plus.svg"); }
 .sync-icon { --icon-url: url("/icons/sync.svg"); }

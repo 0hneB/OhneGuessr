@@ -1,14 +1,50 @@
 package app
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func storageTestStore(t *testing.T) *mapStore {
+	t.Helper()
+	store, err := newMapStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.initialize(); err != nil {
+		store.Close()
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	return store
+}
+
+func storageManifest(t *testing.T, store *mapStore) mapManifest {
+	t.Helper()
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	manifest, err := store.loadManifestLocked()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return manifest
+}
+
+func saveStorageManifest(t *testing.T, store *mapStore, manifest mapManifest) {
+	t.Helper()
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if err := store.saveManifestLocked(manifest); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestSafeNamesAndPaths(t *testing.T) {
 	t.Parallel()
@@ -38,66 +74,97 @@ func TestSafeNamesAndPaths(t *testing.T) {
 	}
 }
 
-func TestMapStoreLifecycleAndStableMove(t *testing.T) {
-	t.Parallel()
-	store, err := newMapStore(t.TempDir())
+func TestManifestInitializationAndStrictLoading(t *testing.T) {
+	store := storageTestStore(t)
+	if manifest := storageManifest(t, store); len(manifest.Maps) != 0 || len(manifest.Folders) != 0 {
+		t.Fatalf("fresh manifest = %#v", manifest)
+	}
+	if err := os.WriteFile(filepath.Join(store.dir, "external.json"), []byte(`[{"lat":1,"lng":2}]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if manifest := storageManifest(t, store); len(manifest.Maps) != 0 {
+		t.Fatalf("external file was indexed: %#v", manifest.Maps)
+	}
+	if err := os.WriteFile(store.manifestPath, []byte(`{
+		"version": 2,
+		"folders": [],
+		"maps": [{"id":"old","name":"Old","file":"old.json","count":1,"size":123,"mtimeNs":456}]
+	}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if manifest := storageManifest(t, store); len(manifest.Maps) != 1 || manifest.Maps[0].ID != "old" {
+		t.Fatalf("legacy v2 manifest metadata was not accepted: %#v", manifest)
+	}
+	if err := os.WriteFile(store.manifestPath, []byte(`{"version":2`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	store.mu.Lock()
+	_, err := store.loadManifestLocked()
+	store.mu.Unlock()
+	if err == nil {
+		t.Fatal("corrupt manifest was accepted")
+	}
+
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "orphan.json"), []byte(`[]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	missing, err := newMapStore(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = store.Close() })
-	if _, err := store.Rescan(); err != nil {
-		t.Fatal(err)
+	defer missing.Close()
+	if err := missing.initialize(); err == nil {
+		t.Fatal("missing manifest beside existing data was replaced")
 	}
+	if _, err := os.Stat(filepath.Join(dir, manifestName)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing manifest was written: %v", err)
+	}
+}
+
+func TestMapStoreLifecycleAndUnsupportedExternalMove(t *testing.T) {
+	store := storageTestStore(t)
 	entry, err := store.createLocal("My Map", json.RawMessage(`[{"lat":1,"lng":2}]`), "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if entry.Count != 1 || entry.File != "my-map.json" || entry.ID == "" {
+	if entry.Count != 1 || entry.File != "my-map.json" || entry.ID == "" || entry.Checksum != "" {
 		t.Fatalf("unexpected entry: %#v", entry)
 	}
-	rename, err := store.renameLocal(entry.ID, "Renamed")
+	renamed, err := store.renameLocal(entry.ID, "Renamed")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rename.File != "renamed.json" {
-		t.Fatalf("renamed file = %q", rename.File)
+	if renamed.File != "renamed.json" {
+		t.Fatalf("renamed file = %q", renamed.File)
 	}
-	destination := filepath.Join(store.dir, "Folder", "moved.json")
+	destination := filepath.Join(store.dir, "External", "moved.json")
 	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Rename(filepath.Join(store.dir, filepath.FromSlash(rename.File)), destination); err != nil {
+	if err := os.Rename(filepath.Join(store.dir, renamed.File), destination); err != nil {
 		t.Fatal(err)
 	}
-	result, err := store.Rescan()
-	if err != nil {
-		t.Fatal(err)
+	manifest := storageManifest(t, store)
+	if len(manifest.Maps) != 1 || manifest.Maps[0].File != "renamed.json" || len(manifest.Folders) != 0 {
+		t.Fatalf("external move changed manifest: %#v", manifest)
 	}
-	if len(result.Manifest.Maps) != 1 || result.Manifest.Maps[0].ID != entry.ID || result.Manifest.Maps[0].File != "Folder/moved.json" {
-		t.Fatalf("move did not retain identity: %#v", result.Manifest.Maps)
-	}
-	if len(result.Manifest.Folders) != 1 || result.Manifest.Folders[0] != "Folder" {
-		t.Fatalf("folders = %#v", result.Manifest.Folders)
+	if _, err := store.renameLocal(entry.ID, "Again"); !errors.Is(err, errMapDataMissing) {
+		t.Fatalf("missing-data rename error = %v", err)
 	}
 	if err := store.deleteLocal(entry.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(destination); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("deleted file still exists: %v", err)
+	if manifest := storageManifest(t, store); len(manifest.Maps) != 0 {
+		t.Fatalf("stale entry was not removed: %#v", manifest.Maps)
+	}
+	if _, err := os.Stat(destination); err != nil {
+		t.Fatalf("untracked external file was removed: %v", err)
 	}
 }
 
 func TestFolderAndMapMutations(t *testing.T) {
-	t.Parallel()
-	store, err := newMapStore(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = store.Close() })
-	if _, err := store.Rescan(); err != nil {
-		t.Fatal(err)
-	}
-
+	store := storageTestStore(t)
 	parent, err := store.createFolder("", "Trips")
 	if err != nil {
 		t.Fatal(err)
@@ -147,14 +214,15 @@ func TestFolderAndMapMutations(t *testing.T) {
 	}
 
 	renamed, err := store.renameFolder(parent, "Journeys")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if renamed != "Journeys" {
-		t.Fatalf("renamed folder = %q", renamed)
+	if err != nil || renamed != "Journeys" {
+		t.Fatalf("renamed folder = %q, %v", renamed, err)
 	}
 	if _, err := os.Stat(filepath.Join(store.dir, "Journeys", "Europe")); err != nil {
-		t.Fatalf("descendant folder was not moved: %v", err)
+		t.Fatalf("empty descendant folder was not moved: %v", err)
+	}
+	manifest := storageManifest(t, store)
+	if !hasFolder(manifest, "Journeys/Europe") {
+		t.Fatalf("empty descendant missing from manifest: %#v", manifest.Folders)
 	}
 	if _, err := store.deleteFolder("Journeys/Europe", false); err != nil {
 		t.Fatal(err)
@@ -165,12 +233,7 @@ func TestFolderAndMapMutations(t *testing.T) {
 }
 
 func TestRecursiveFolderDelete(t *testing.T) {
-	t.Parallel()
-	store, err := newMapStore(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = store.Close() })
+	store := storageTestStore(t)
 	parent, err := store.createFolder("", "Delete me")
 	if err != nil {
 		t.Fatal(err)
@@ -187,7 +250,6 @@ func TestRecursiveFolderDelete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	deleted, err := store.deleteFolder(parent, true)
 	if err != nil {
 		t.Fatal(err)
@@ -198,61 +260,41 @@ func TestRecursiveFolderDelete(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(store.dir, "Delete me")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("deleted folder still exists: %v", err)
 	}
-	manifest := store.loadManifestLocked()
+	manifest := storageManifest(t, store)
 	if len(manifest.Maps) != 0 || len(manifest.Folders) != 0 {
 		t.Fatalf("manifest retained deleted content: %#v", manifest)
 	}
 }
 
 func TestManagedMoveRules(t *testing.T) {
-	t.Parallel()
-	store, err := newMapStore(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = store.Close() })
-	for _, folder := range []string{mmaRoot, path.Join(mmaRoot, "Custom"), learnableRoot} {
-		if err := os.MkdirAll(filepath.Join(store.dir, filepath.FromSlash(folder)), 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
+	store := storageTestStore(t)
 	local, err := store.createLocal("Local", json.RawMessage(`[{"lat":1,"lng":2}]`), "")
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, folder := range []string{mmaRoot, path.Join(mmaRoot, "Custom")} {
+		if err := os.MkdirAll(filepath.Join(store.dir, filepath.FromSlash(folder)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	managedFile := path.Join(mmaRoot, "Managed.json")
+	if err := os.WriteFile(filepath.Join(store.dir, filepath.FromSlash(managedFile)), []byte(`[{"lat":1,"lng":2}]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	manifest := storageManifest(t, store)
+	manifest.Folders = append(manifest.Folders, mmaRoot, path.Join(mmaRoot, "Custom"))
+	manifest.Maps = append(manifest.Maps, mapEntry{
+		ID: "mma:1", Name: "Managed", File: managedFile, Count: 1,
+		Source: map[string]any{"type": "map-making-app", "managed": true, "mapId": 1},
+	})
+	saveStorageManifest(t, store, manifest)
+
 	if _, err := store.updateMap(local.ID, nil, pointer(path.Join(mmaRoot, "Custom"))); !errors.Is(err, errMoveRestricted) {
 		t.Fatalf("local managed-root move error = %v", err)
 	}
-
-	filename := filepath.Join(store.dir, mmaRoot, "Managed.json")
-	if err := os.WriteFile(filename, []byte(`[{"lat":1,"lng":2}]`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	scan, err := store.Rescan()
-	if err != nil {
-		t.Fatal(err)
-	}
-	managed := scan.Manifest.Maps[0]
-	for _, entry := range scan.Manifest.Maps {
-		if strings.EqualFold(entry.File, path.Join(mmaRoot, "Managed.json")) {
-			managed = entry
-		}
-	}
-	store.mu.Lock()
-	manifest := store.loadManifestLocked()
-	for index := range manifest.Maps {
-		if manifest.Maps[index].ID == managed.ID {
-			manifest.Maps[index].Source = map[string]any{"type": "map-making-app", "managed": true, "mapId": 1}
-		}
-	}
-	if err := store.saveManifestLocked(manifest); err != nil {
-		store.mu.Unlock()
-		t.Fatal(err)
-	}
-	store.mu.Unlock()
 	name := "My managed map"
 	folder := path.Join(mmaRoot, "Custom")
-	updated, err := store.updateMap(managed.ID, &name, &folder)
+	updated, err := store.updateMap("mma:1", &name, &folder)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,63 +304,77 @@ func TestManagedMoveRules(t *testing.T) {
 	}
 }
 
-func pointer(value string) *string { return &value }
-
-func TestRescanFormatsIgnoresAndManagedProtection(t *testing.T) {
-	t.Parallel()
-	store, err := newMapStore(t.TempDir())
+func TestPortableZIPExport(t *testing.T) {
+	store := storageTestStore(t)
+	trips, err := store.createFolder("", "Trips")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = store.Close() })
-	files := map[string]string{
-		"array.json":                       `[{"lat":1,"lng":2},{"lat":3,"lng":4}]`,
-		"object.json":                      `{"name":"Embedded","customCoordinates":[{"lat":1,"lng":2}]}`,
-		"empty.json":                       `[]`,
-		".private.json":                    `[{"lat":1,"lng":2}]`,
-		filepath.Join(".hidden", "x.json"): `[{"lat":1,"lng":2}]`,
+	if _, err := store.createFolder(trips, "Empty"); err != nil {
+		t.Fatal(err)
 	}
-	for name, body := range files {
-		filename := filepath.Join(store.dir, name)
-		if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
+	rootMap, err := store.createLocal("Root", json.RawMessage(`[{"lat":1,"lng":2}]`), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nestedMap, err := store.createLocal("Nested", json.RawMessage(`[{"lat":3,"lng":4}]`), trips)
+	if err != nil {
+		t.Fatal(err)
+	}
+	filename := filepath.Join(t.TempDir(), "maps.zip")
+	if err := store.exportZIP(filename); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.exportZIP(filename); err != nil {
+		t.Fatalf("overwrite export: %v", err)
+	}
+	archive, err := zip.OpenReader(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer archive.Close()
+	contents := map[string]string{}
+	for _, file := range archive.File {
+		if file.FileInfo().IsDir() {
+			contents[file.Name] = ""
+			continue
+		}
+		reader, err := file.Open()
+		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filename, []byte(body), 0o644); err != nil {
-			t.Fatal(err)
+		body, readErr := io.ReadAll(reader)
+		_ = reader.Close()
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		contents[file.Name] = string(body)
+	}
+	for _, name := range []string{"Trips/", "Trips/Empty/", rootMap.File, nestedMap.File} {
+		if _, ok := contents[name]; !ok {
+			t.Errorf("archive missing %q: %#v", name, contents)
 		}
 	}
-	result, err := store.Rescan()
-	if err != nil {
-		t.Fatal(err)
+	if _, ok := contents[manifestName]; ok {
+		t.Fatal("archive included maps.json")
 	}
-	if len(result.Manifest.Maps) != 2 || len(result.Ignored) != 1 {
-		t.Fatalf("scan = maps %#v, ignored %#v", result.Manifest.Maps, result.Ignored)
-	}
-	if result.Manifest.Maps[1].Name != "Embedded" {
-		t.Fatalf("embedded name was not retained: %#v", result.Manifest.Maps)
+	if !strings.Contains(contents[nestedMap.File], `"lat":3`) {
+		t.Fatalf("nested map contents = %q", contents[nestedMap.File])
 	}
 
-	store.mu.Lock()
-	manifest := store.loadManifestLocked()
-	manifest.Maps[0].Source = map[string]any{"type": "learnable-meta", "managed": true, "mapId": "x"}
-	if err := store.saveManifestLocked(manifest); err != nil {
-		store.mu.Unlock()
+	if err := os.Remove(filepath.Join(store.dir, filepath.FromSlash(nestedMap.File))); err != nil {
 		t.Fatal(err)
 	}
-	managedID := manifest.Maps[0].ID
-	store.mu.Unlock()
-	if _, err := store.renameLocal(managedID, "Nope"); !errors.Is(err, errManagedMap) {
-		t.Fatalf("managed rename error = %v", err)
+	missing := filepath.Join(t.TempDir(), "missing.zip")
+	if err := store.exportZIP(missing); !errors.Is(err, errMapDataMissing) {
+		t.Fatalf("missing-data export error = %v", err)
 	}
-	if err := store.deleteLocal(managedID); !errors.Is(err, errManagedMap) {
-		t.Fatalf("managed delete error = %v", err)
+	if _, err := os.Stat(missing); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("failed export left destination: %v", err)
 	}
-
-	manifestBytes, err := os.ReadFile(store.manifestPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(manifestBytes), `"version": 2`) {
-		t.Fatalf("manifest is not version 2: %s", manifestBytes)
+	if temporary, err := filepath.Glob(filepath.Join(filepath.Dir(missing), ".ohneguessr-export-*.tmp")); err != nil || len(temporary) != 0 {
+		t.Fatalf("failed export left temporary files: %#v, %v", temporary, err)
 	}
 }
+
+func pointer(value string) *string { return &value }

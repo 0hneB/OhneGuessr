@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -118,6 +119,32 @@ func (d *DesktopService) FocusLauncher() {
 		launcher.UnMinimise()
 		launcher.Focus()
 	}
+}
+
+func (d *DesktopService) ExportMaps() (bool, error) {
+	d.mu.RLock()
+	app, launcher := d.wails, d.launcher
+	d.mu.RUnlock()
+	if app == nil {
+		return false, errors.New("desktop runtime is not ready")
+	}
+	dialog := app.Dialog.SaveFile().
+		SetMessage("Export all maps").
+		SetButtonText("Export").
+		SetFilename("ohneguessr-maps-"+time.Now().Format("2006-01-02")+".zip").
+		CanCreateDirectories(true).
+		AddFilter("ZIP archive", "*.zip")
+	if launcher != nil {
+		dialog.AttachToWindow(launcher)
+	}
+	filename, err := dialog.PromptForSingleSelection()
+	if err != nil || filename == "" {
+		return false, err
+	}
+	if !strings.EqualFold(filepath.Ext(filename), ".zip") {
+		filename += ".zip"
+	}
+	return true, d.backend.ExportMaps(filename)
 }
 
 func (d *DesktopService) CloseGame() {

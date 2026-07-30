@@ -39,7 +39,6 @@
     if (running) {
       const phases: Record<string, string> = {
         catalog: 'Loading map catalog…',
-        scanning: 'Refreshing local folders…',
         publishing: 'Saving synchronized maps…'
       };
       return {

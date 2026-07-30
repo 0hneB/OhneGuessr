@@ -32,7 +32,7 @@ Linux:   $XDG_DATA_HOME/ohneguessr/
 
 OhneGuessr/
 |-- maps/
-|   |-- maps.json             generated map index
+|   |-- maps.json             authoritative map index
 |   |-- map-making-app/       synchronized Map Making App maps
 |   |-- Learnable Meta/       synchronized Learnable Meta maps
 |   `-- any folders you add
@@ -45,11 +45,13 @@ OhneGuessr/
 Your data stays in this folder when you update, move, or uninstall the app.
 
 > [!CAUTION]
-> Deleting a local map or folder permanently removes its JSON files. Keep a copy if you may need it again.
+> Deleting a local map or folder permanently removes its JSON files. Use **Export all maps** first if you may need them again.
 
 ## Maps
 
-The app opens on **Maps** in the launcher. Select a folder before importing to place the map there, or use **New folder**, drag-and-drop, and **Move to** to organize maps without leaving the app. The folder button still opens the real `maps/` directory, and **Refresh** indexes changes made there. The generated `maps.json` keeps map IDs stable when uniquely identifiable files are moved.
+The app opens on **Maps** in the launcher. Select a folder before importing to place the map there, or use **New folder**, drag-and-drop, and **Move to** to organize maps without leaving the app. **Export all maps** creates a portable ZIP of every map while preserving that folder structure; extract it before importing its JSON files again.
+
+The launcher owns the `maps/` directory and `maps.json` index. Files added, moved, or renamed there outside the app are not imported or reconciled; use the launcher controls instead. The export excludes sync settings, API keys, and other internal metadata.
 
 Supported formats are a JSON array or an object containing `customCoordinates`:
 
@@ -67,7 +69,7 @@ Every location needs finite `lat` and `lng` values. Panorama ID, heading, pitch,
 2. Open the **Sync** panel beside Maps, enable **Map Making App Sync**, and save the key.
 3. The first sync starts immediately; use **Sync now** for later updates.
 
-Active, non-empty location maps are downloaded with up to ten concurrent requests. Archived maps are skipped. Failed downloads retain the last good local file. Renaming or moving a synchronized file inside `maps/map-making-app/` and refreshing the library creates a local name or folder override.
+Active, non-empty location maps are downloaded with up to ten concurrent requests. Archived maps are skipped. Failed downloads retain the last good local file. Renaming or moving a synchronized map in the launcher creates a local name or folder override.
 
 ### Learnable Meta sync
 

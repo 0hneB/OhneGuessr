@@ -29,6 +29,11 @@ export function focusLauncher() {
   else location.assign('/?view=launcher');
 }
 
+export async function exportMaps() {
+  if (!desktopRuntimeAvailable()) throw new Error('Map export requires the desktop app.');
+  return call<boolean>('ExportMaps');
+}
+
 export function closeGame() {
   if (desktopRuntimeAvailable()) void call<void>('CloseGame');
   else window.close();

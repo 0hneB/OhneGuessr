@@ -19,10 +19,6 @@ interface StoredMap {
   source?: MapSource | null;
 }
 
-interface RescanResult {
-  ignored?: unknown[];
-}
-
 interface DeleteFolderResult {
   deletedMapIds?: string[];
 }
@@ -57,28 +53,24 @@ export const dataFileUrl = (file: string) =>
   '/data/' + cleanPath(file).split('/').map(encodeURIComponent).join('/');
 
 async function loadManifest(): Promise<Manifest> {
-  try {
-    const res = await fetch(MANIFEST_URL, { cache: 'no-store' });
-    const data: unknown = res.ok ? await res.json() : null;
-    if (data && typeof data === 'object' &&
-        (data as { version?: unknown }).version === 2 &&
-        Array.isArray((data as { maps?: unknown }).maps)) {
-      const manifest = data as { version: number; folders?: unknown; maps: StoredMap[] };
-      return {
-        version: 2,
-        folders: Array.isArray(manifest.folders)
-          ? manifest.folders.filter((folder): folder is string => typeof folder === 'string')
-          : [],
-        maps: manifest.maps
-      };
-    }
-    return { version: 2, folders: [], maps: [] };
-  } catch {
-    return { version: 2, folders: [], maps: [] };
+  const res = await fetch(MANIFEST_URL, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Could not load the map library.');
+  const data: unknown = await res.json().catch(() => null);
+  if (!data || typeof data !== 'object' ||
+      (data as { version?: unknown }).version !== 2 ||
+      !Array.isArray((data as { maps?: unknown }).maps)) {
+    throw new Error('The map library index is invalid.');
   }
+  const manifest = data as { version: number; folders?: unknown; maps: StoredMap[] };
+  return {
+    version: 2,
+    folders: Array.isArray(manifest.folders)
+      ? manifest.folders.filter((folder): folder is string => typeof folder === 'string')
+      : [],
+    maps: manifest.maps
+  };
 }
 
-// The stable map id survives filesystem moves through the server-side rescan.
 export async function loadLibrary() {
   const manifest = await loadManifest();
   const maps: MapItem[] = manifest.maps
@@ -102,7 +94,10 @@ export async function loadLibrary() {
 
 export async function getLocations(item: MapItem): Promise<unknown> {
   const res = await fetch(dataFileUrl(item.file), { cache: 'no-store' });
-  if (!res.ok) throw new Error(`${item.file} ${res.status}`);
+  if (res.status === 404) {
+    throw new Error(`Map data for “${item.name}” is missing. Re-import or delete it.`);
+  }
+  if (!res.ok) throw new Error(`Could not load “${item.name}”.`);
   const data = await res.json();
   const arr = Array.isArray(data) ? data : data?.customCoordinates;
   if (!Array.isArray(arr) || !arr.length) throw new Error('map is empty');
@@ -153,5 +148,3 @@ export const deleteFolder = (folder: string, recursive = false) =>
     method: 'DELETE',
     body: JSON.stringify({ path: folder, recursive })
   });
-export const rescanMaps = () => api<RescanResult>('/api/maps/rescan', { method: 'POST' });
-export const openDataFolder = () => api('/api/open-data-folder', { method: 'POST' });
