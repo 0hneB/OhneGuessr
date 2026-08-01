@@ -53,6 +53,10 @@
   border-radius: 4px;
 }
 
+.launcher-shell button:has(> .svg-icon) {
+  border-radius: 50%;
+}
+
 .launcher-shell :where(button, input, select, textarea) {
   font-family: inherit;
 }
