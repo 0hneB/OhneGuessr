@@ -7,6 +7,8 @@ import {
   renameMap as renameLearnableMap
 } from '../plugins/learnable-meta/api.js';
 import { publishLearnableMetaStatus } from '../plugins/learnable-meta/status.js';
+import { openChallengeContents } from '../plugins/challenges/open.js';
+import { MAX_CHALLENGE_BYTES } from '../plugins/challenges/challenge.js';
 import type { MapItem } from '../types.js';
 import {
   addUserMap,
@@ -62,6 +64,7 @@ const setNotice = (message: string, error = false) => {
   library.notice = message;
   library.noticeError = error;
 };
+export const showLibraryNotice = setNotice;
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
 
@@ -166,6 +169,19 @@ export async function importMap(file: File) {
     return true;
   } catch (error) {
     setNotice(errorMessage(error, 'Could not import that map.'), true);
+    return false;
+  }
+}
+
+export async function importFile(file: File) {
+  if (!/\.ohne$/i.test(file.name)) return importMap(file);
+  try {
+    if (file.size > MAX_CHALLENGE_BYTES) throw new Error('Challenge file is too large.');
+    await openChallengeContents(await file.text());
+    setNotice('');
+    return true;
+  } catch (error) {
+    setNotice(errorMessage(error, 'Could not open that challenge.'), true);
     return false;
   }
 }

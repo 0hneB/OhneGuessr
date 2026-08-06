@@ -15,6 +15,7 @@ export function haversineKm(a: Point, b: Point) {
 }
 
 // 5000·e^(-10·d/scale), capped. Full score within max(25 m, scale/1e5).
+// This formula is part of the .ohne v1 contract; add a versioned function if it ever changes.
 export function scoreFor(distKm: number, scaleKm: number) {
   const scale = scaleKm > 0 ? scaleKm : CONFIG.WORLD_SCALE_KM;
   if (distKm <= Math.max(0.025, scale / 1e5)) return CONFIG.SCORE_MAX;

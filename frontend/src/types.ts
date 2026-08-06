@@ -23,14 +23,37 @@ export interface Location extends Point {
   panoid?: string | null;
 }
 
-export interface RoundResult {
+export interface RevealResult {
   guess: Point | null;
   actual: Location;
-  distKm: number | null;
-  points: number;
+  challengerGuess?: Point | null;
 }
 
-export type RevealResult = Pick<RoundResult, 'guess' | 'actual'>;
+export interface RoundResult extends RevealResult {
+  distKm: number | null;
+  points: number;
+  challengerDistKm?: number | null;
+  challengerPoints?: number;
+}
+
+export interface ChallengeRules {
+  movement: MovementMode;
+  timerSeconds: number | null;
+  scoreScaleKm: number;
+}
+
+export interface ChallengeRound extends Location {
+  challengerGuess: Point | null;
+}
+
+export interface Challenge {
+  format: 'ohneguessr.challenge';
+  version: 1;
+  id: string;
+  mapName: string;
+  rules: ChallengeRules;
+  rounds: ChallengeRound[];
+}
 
 export interface MapSource extends Record<string, unknown> {
   type?: string;
@@ -59,6 +82,7 @@ export interface Settings {
   streetViewZoomedOut: boolean;
   movement: MovementMode;
   scoring: ScoringMode;
+  challengesEnabled: boolean;
   keybindings?: Record<string, string[]>;
 }
 
@@ -74,6 +98,7 @@ export interface GameState {
   current: Location | null;
   unlimited: boolean;
   results: RoundResult[];
+  challenge: Challenge | null;
 }
 
 export type Trail = Point[][];

@@ -98,6 +98,11 @@ Section "${PRODUCT_NAME} (required)" SEC_APP
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayVersion" "${INFO_PRODUCTVERSION}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "UninstallString" '"$INSTDIR\uninstall.exe"'
+  WriteRegStr HKCU "Software\Classes\.ohne" "" "OhneGuessr.Challenge"
+  WriteRegStr HKCU "Software\Classes\OhneGuessr.Challenge" "" "OhneGuessr Challenge"
+  WriteRegStr HKCU "Software\Classes\OhneGuessr.Challenge\DefaultIcon" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}",0'
+  WriteRegStr HKCU "Software\Classes\OhneGuessr.Challenge\shell\open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" "%1"'
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   WriteRegDWORD HKCU "${UNINSTALL_KEY}" "EstimatedSize" $0
 
@@ -116,5 +121,11 @@ Section "uninstall"
   Delete "$SMPROGRAMS\${PRODUCT_NAME}.lnk"
   Delete "$DESKTOP\${PRODUCT_NAME}.lnk"
   DeleteRegKey HKCU "${UNINSTALL_KEY}"
+  ReadRegStr $0 HKCU "Software\Classes\.ohne" ""
+  ${If} $0 == "OhneGuessr.Challenge"
+    DeleteRegKey HKCU "Software\Classes\.ohne"
+  ${EndIf}
+  DeleteRegKey HKCU "Software\Classes\OhneGuessr.Challenge"
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
   RMDir /r $INSTDIR
 SectionEnd

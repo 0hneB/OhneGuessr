@@ -26,5 +26,6 @@ export const state = $state<GameState>({
   total: 0,
   current: null,    // current location
   unlimited: false, // endless mode
-  results: []       // per-round {guess, actual, distKm, points}
+  results: [],      // per-round {guess, actual, distKm, points}
+  challenge: null
 });

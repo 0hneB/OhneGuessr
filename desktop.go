@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -20,13 +23,19 @@ type GameWindowState struct {
 	Fullscreen bool   `json:"fullscreen"`
 }
 
+const maxChallengeSize = 5 << 20
+
 type DesktopService struct {
-	backend  *app.App
-	wails    *application.App
-	mu       sync.RWMutex
-	launcher *application.WebviewWindow
-	game     *application.WebviewWindow
-	gameMap  string
+	backend          *app.App
+	wails            *application.App
+	mu               sync.RWMutex
+	launcher         *application.WebviewWindow
+	game             *application.WebviewWindow
+	gameMap          string
+	gameTarget       string
+	challengeID      string
+	challengeData    string
+	pendingChallenge string
 }
 
 func (d *DesktopService) shutdown() {
@@ -35,7 +44,17 @@ func (d *DesktopService) shutdown() {
 	_ = d.backend.Shutdown(ctx)
 }
 
-func (d *DesktopService) secondInstance(application.SecondInstanceData) {
+func (d *DesktopService) secondInstance(data application.SecondInstanceData) {
+	for _, argument := range data.Args[1:] {
+		filename := argument
+		if !filepath.IsAbs(filename) && data.WorkingDir != "" {
+			filename = filepath.Join(data.WorkingDir, filename)
+		}
+		if strings.EqualFold(filepath.Ext(filename), ".ohne") {
+			d.queueChallenge(filename)
+			return
+		}
+	}
 	d.FocusLauncher()
 }
 
@@ -44,18 +63,22 @@ func (d *DesktopService) LaunchMap(mapID string) error {
 	if mapID == "" || !d.backend.HasMap(mapID) {
 		return errors.New("map not found")
 	}
+	return d.launchGame(gameURL(mapID), mapID)
+}
 
+func (d *DesktopService) launchGame(targetURL, mapID string) error {
 	d.mu.Lock()
 	game := d.game
 	if game != nil {
-		sameMap := d.gameMap == mapID
-		if !sameMap {
+		sameTarget := d.gameTarget == targetURL
+		if !sameTarget {
 			d.gameMap = mapID
+			d.gameTarget = targetURL
 		}
 		d.mu.Unlock()
-		if !sameMap {
+		if !sameTarget {
 			game.Hide()
-			game.SetURL(gameURL(mapID))
+			game.SetURL(targetURL)
 		} else {
 			game.Show()
 			game.UnMinimise()
@@ -79,7 +102,7 @@ func (d *DesktopService) LaunchMap(mapID string) error {
 		Hidden:                     true,
 		BackgroundColour:           application.NewRGB(11, 11, 11),
 		DefaultContextMenuDisabled: true,
-		URL:                        gameURL(mapID),
+		URL:                        targetURL,
 		Windows: application.WindowsWindow{
 			Theme: application.Dark,
 		},
@@ -89,6 +112,7 @@ func (d *DesktopService) LaunchMap(mapID string) error {
 	})
 	d.game = game
 	d.gameMap = mapID
+	d.gameTarget = targetURL
 	d.mu.Unlock()
 
 	game.OnWindowEvent(events.Common.WindowClosing, func(*application.WindowEvent) {
@@ -96,6 +120,7 @@ func (d *DesktopService) LaunchMap(mapID string) error {
 		if d.game == game {
 			d.game = nil
 			d.gameMap = ""
+			d.gameTarget = ""
 		}
 		d.mu.Unlock()
 		d.emitGameState()
@@ -107,6 +132,142 @@ func (d *DesktopService) LaunchMap(mapID string) error {
 		d.emitGameState()
 	})
 	d.emitGameState()
+	return nil
+}
+
+func (d *DesktopService) LaunchChallenge(id, contents string) error {
+	id = strings.TrimSpace(id)
+	if id == "" || len(contents) > maxChallengeSize || !json.Valid([]byte(contents)) {
+		return errors.New("invalid challenge")
+	}
+	var header struct {
+		Format  string `json:"format"`
+		Version int    `json:"version"`
+		ID      string `json:"id"`
+	}
+	if json.Unmarshal([]byte(contents), &header) != nil || header.Format != "ohneguessr.challenge" ||
+		header.Version != 1 || header.ID != id {
+		return errors.New("invalid challenge")
+	}
+	d.mu.Lock()
+	d.challengeID = id
+	d.challengeData = contents
+	d.mu.Unlock()
+	return d.launchGame(challengeURL(id), "")
+}
+
+func (d *DesktopService) GetActiveChallenge(id string) (string, error) {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	if id == "" || id != d.challengeID || d.challengeData == "" {
+		return "", errors.New("challenge is no longer available")
+	}
+	return d.challengeData, nil
+}
+
+func (d *DesktopService) TakePendingChallenge() (string, error) {
+	d.mu.Lock()
+	filename := d.pendingChallenge
+	d.pendingChallenge = ""
+	d.mu.Unlock()
+	if filename == "" {
+		return "", nil
+	}
+	return readChallengeFile(filename)
+}
+
+func (d *DesktopService) SaveChallenge(suggestedName, contents string) (bool, error) {
+	if len(contents) > maxChallengeSize || !json.Valid([]byte(contents)) {
+		return false, errors.New("invalid challenge")
+	}
+	d.mu.RLock()
+	wails, game := d.wails, d.game
+	d.mu.RUnlock()
+	if wails == nil {
+		return false, errors.New("desktop runtime is not ready")
+	}
+	suggestedName = filepath.Base(strings.TrimSpace(suggestedName))
+	if suggestedName == "." || suggestedName == "" {
+		suggestedName = "challenge.ohne"
+	}
+	dialog := wails.Dialog.SaveFile().
+		SetMessage("Save challenge").
+		SetButtonText("Save").
+		SetFilename(suggestedName).
+		CanCreateDirectories(true).
+		AddFilter("OhneGuessr challenge", "*.ohne")
+	if game != nil {
+		dialog.AttachToWindow(game)
+	}
+	filename, err := dialog.PromptForSingleSelection()
+	if err != nil || filename == "" {
+		return false, err
+	}
+	if !strings.EqualFold(filepath.Ext(filename), ".ohne") {
+		filename += ".ohne"
+	}
+	return true, atomicWriteFile(filename, []byte(contents))
+}
+
+func (d *DesktopService) queueChallenge(filename string) {
+	d.mu.Lock()
+	d.pendingChallenge = filename
+	wails := d.wails
+	d.mu.Unlock()
+	d.FocusLauncher()
+	if wails != nil {
+		wails.Event.Emit("challenge:file-opened")
+	}
+}
+
+func readChallengeFile(filename string) (string, error) {
+	if !strings.EqualFold(filepath.Ext(filename), ".ohne") {
+		return "", errors.New("only .ohne challenge files can be opened")
+	}
+	info, err := os.Stat(filename)
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() || info.Size() > maxChallengeSize {
+		return "", errors.New("challenge file is invalid or too large")
+	}
+	contents, err := os.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
+	return string(contents), nil
+}
+
+func atomicWriteFile(filename string, contents []byte) (err error) {
+	if err = os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
+		return err
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(filename), ".ohneguessr-challenge-*.tmp")
+	if err != nil {
+		return err
+	}
+	name := temporary.Name()
+	defer func() {
+		_ = temporary.Close()
+		if err != nil {
+			_ = os.Remove(name)
+		}
+	}()
+	if err = temporary.Chmod(0o644); err == nil {
+		_, err = temporary.Write(contents)
+	}
+	if err == nil {
+		err = temporary.Sync()
+	}
+	if closeErr := temporary.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(name, filename)
+	}
+	if err != nil {
+		return fmt.Errorf("save challenge: %w", err)
+	}
 	return nil
 }
 
@@ -207,4 +368,8 @@ func (d *DesktopService) emitGameState() {
 
 func gameURL(mapID string) string {
 	return "/?view=game&map=" + url.QueryEscape(mapID)
+}
+
+func challengeURL(id string) string {
+	return "/?view=game&challenge=" + url.QueryEscape(id)
 }

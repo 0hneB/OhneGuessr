@@ -344,8 +344,9 @@ function openStreetView(actual: Location) {
 
 function resultPoints(results: readonly RevealResult[]) {
   const points: Point[] = [];
-  for (const { guess, actual } of results) {
+  for (const { guess, actual, challengerGuess } of results) {
     if (isPoint(guess)) points.push(guess);
+    if (isPoint(challengerGuess)) points.push(challengerGuess);
     if (isPoint(actual)) points.push(actual);
   }
   return points;
@@ -533,10 +534,10 @@ class ResultMap {
     this.obstruction = obstruction;
   }
 
-  show(guess: Point | null, actual: Location, trail: Trail | null = null) {
+  show(result: RevealResult, trail: Trail | null = null) {
     this.engine.show(
       this.slotId,
-      [{ guess, actual }],
+      [result],
       trail,
       { obstruction: this.obstruction, singlePointZoom: 4 }
     );

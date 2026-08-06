@@ -6,7 +6,6 @@
     getStatus,
     runSync,
     saveKey,
-    setEnabled,
     type MapMakingAppStatus
   } from './api.js';
 
@@ -90,23 +89,6 @@
     }
   }
 
-  async function changeEnabled(checked: boolean) {
-    busy = true;
-    actionMessage = null;
-    try {
-      await accept(await setEnabled(checked));
-      replacingKey = false;
-      if (checked && !status?.hasKey) {
-        await tick();
-        keyInput.focus();
-      }
-    } catch (error) {
-      actionMessage = { text: errorMessage(error, 'Could not change sync settings.'), error: true };
-    } finally {
-      busy = false;
-    }
-  }
-
   async function submitKey() {
     const key = apiKey.trim();
     if (!key) {
@@ -175,12 +157,7 @@
 </script>
 
 <section class="sync-section">
-  <label class="setting-toggle sync-toggle" class:disabled={!available}>
-    <span>Map Making App Sync</span>
-    <input type="checkbox" checked={enabled} disabled={!available || busy}
-           onchange={(event) => changeEnabled(event.currentTarget.checked)} />
-    <span class="switch" aria-hidden="true"></span>
-  </label>
+  <h2>Map Making App Sync</h2>
   <div class="sync-details" class:hidden={!enabled || !available}>
     <div class="sync-account-row" class:hidden={!hasKey}>
       <div class="sync-account">{status?.user?.username ? `Connected as ${status.user.username}` : ''}</div>

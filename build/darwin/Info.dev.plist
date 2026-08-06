@@ -23,6 +23,17 @@
     <true/>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright (c) 2026 OhneB</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>OhneGuessr Challenge</string>
+            <key>CFBundleTypeExtensions</key>
+            <array><string>ohne</string></array>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+        </dict>
+    </array>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsLocalNetworking</key>

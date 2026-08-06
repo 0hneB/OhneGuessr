@@ -12,6 +12,7 @@
   import { settings, state as gameState } from './game/state.svelte.js';
   import {
     endUnlimitedGame,
+    exportChallenge as createChallengeFile,
     init,
     nextRound,
     selectFinalRound,
@@ -21,6 +22,14 @@
   import { ui } from './ui.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);
+  const challengerTotal = $derived(gameState.results.reduce(
+    (total, result) => total + (result.challengerPoints || 0), 0
+  ));
+  const challengeOutcome = $derived(
+    gameState.total === challengerTotal ? 'Tie' : gameState.total > challengerTotal ? 'You win' : 'Challenger wins'
+  );
+  let challengeExporting = $state(false);
+  let challengeExportMessage = $state('');
   const timerText = $derived(
     `${Math.floor(ui.timerRemaining / 60)}:${String(ui.timerRemaining % 60).padStart(2, '0')}`
   );
@@ -39,6 +48,18 @@
     if (event.key !== 'Escape' || event.repeat || event.defaultPrevented) return;
     event.preventDefault();
     focusLauncher();
+  }
+
+  async function exportCurrentChallenge() {
+    challengeExporting = true;
+    challengeExportMessage = '';
+    try {
+      await createChallengeFile();
+    } catch (error) {
+      challengeExportMessage = error instanceof Error ? error.message : 'Could not save the challenge.';
+    } finally {
+      challengeExporting = false;
+    }
   }
 
   onMount(async () => {
@@ -124,7 +145,7 @@
 <div id="final" class:hidden={!ui.finalVisible}>
   <div id="finalMap"></div>
   <div class="final-card">
-    <h1>Game over</h1>
+    <h1>{gameState.challenge ? challengeOutcome : 'Game over'}</h1>
     <p id="finalScore" class="final-score">{gameState.total} / {gameState.results.length * CONFIG.SCORE_MAX}</p>
     <div id="finalRounds" class="final-rounds">
       {#each gameState.results as result, index}
@@ -143,7 +164,15 @@
         </button>
       {/each}
     </div>
-    <button id="playAgain" onclick={startGame}>Play again</button>
+    <div class="final-actions">
+      <button id="playAgain" onclick={startGame}>Play again</button>
+      {#if settings.challengesEnabled}
+        <button type="button" disabled={challengeExporting} onclick={exportCurrentChallenge}>
+          {challengeExporting ? 'Saving…' : 'Create challenge'}
+        </button>
+      {/if}
+    </div>
+    {#if challengeExportMessage}<p class="challenge-export-error" role="alert">{challengeExportMessage}</p>{/if}
   </div>
 </div>
 

@@ -6,7 +6,7 @@
     canStoreLocalMap,
     createFolder,
     exportMaps,
-    importMap,
+    importFile,
     isManagedRoot,
     library,
     libraryRows,
@@ -218,14 +218,13 @@
 
   async function acceptFiles(files?: FileList | null) {
     for (const file of Array.from(files || [])) {
-      if (!await importMap(file)) break;
+      if (!await importFile(file) || /\.ohne$/i.test(file.name)) break;
     }
     if (fileInput) fileInput.value = '';
   }
 
   async function handleFileDrop(event: DragEvent) {
     event.preventDefault();
-    if (!importAllowed) return;
     await acceptFiles(event.dataTransfer?.files);
   }
 
@@ -267,12 +266,12 @@
               onclick={createNamedFolder}>
         <span class="svg-icon folder-icon" aria-hidden="true"></span>
       </button>
-      <button class="icon-button" type="button" disabled={!importAllowed}
-              title={importAllowed ? `Import into ${library.selectedFolder || 'Maps'}` : 'Managed folder'}
-              aria-label="Import map" onclick={() => fileInput.click()}>
+      <button class="icon-button" type="button"
+              title={importAllowed ? `Import a map or open a challenge` : 'Open a challenge or select a local folder to import a map'}
+              aria-label="Import map or open challenge" onclick={() => fileInput.click()}>
         <span class="svg-icon plus-icon" aria-hidden="true"></span>
       </button>
-      <input bind:this={fileInput} type="file" accept=".json,application/json" hidden
+      <input bind:this={fileInput} type="file" accept=".json,.ohne,application/json" hidden
              onchange={(event) => acceptFiles(event.currentTarget.files)} />
       <span class="toolbar-separator" aria-hidden="true"></span>
       <button class="icon-button" type="button"
@@ -287,7 +286,7 @@
 
   <div class="library-tree" class:loading={library.loading}
        bind:this={libraryTree} data-drop-folder=""
-       data-file-drop-target={importAllowed ? '' : undefined}
+       data-file-drop-target=""
        role="region" aria-label="Map library"
        ondrop={handleFileDrop}>
     {#if library.loading}

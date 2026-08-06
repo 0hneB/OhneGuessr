@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/0hneB/OhneGuessr/internal/app"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -22,7 +23,32 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	dataDir, err := app.ResolveDataDir(os.Args[1:])
+	var startupChallenge string
+	configArgs := make([]string, 0, len(os.Args)-1)
+	arguments := os.Args[1:]
+	for index := 0; index < len(arguments); index++ {
+		argument := arguments[index]
+		if argument == "-data-dir" || argument == "--data-dir" {
+			configArgs = append(configArgs, argument)
+			if index+1 < len(arguments) {
+				index++
+				configArgs = append(configArgs, arguments[index])
+			}
+			continue
+		}
+		if strings.HasPrefix(argument, "-data-dir=") || strings.HasPrefix(argument, "--data-dir=") {
+			configArgs = append(configArgs, argument)
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(argument), ".ohne") {
+			if startupChallenge == "" {
+				startupChallenge, _ = filepath.Abs(argument)
+			}
+			continue
+		}
+		configArgs = append(configArgs, argument)
+	}
+	dataDir, err := app.ResolveDataDir(configArgs)
 	if err != nil {
 		return err
 	}
@@ -50,6 +76,7 @@ func run() error {
 			UniqueID:               "5ac23bb7-9f87-48bc-a73f-e4fe65ce85c1",
 			OnSecondInstanceLaunch: desktop.secondInstance,
 		},
+		FileAssociations: []string{".ohne"},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
@@ -61,6 +88,9 @@ func run() error {
 		},
 	})
 	desktop.wails = wailsApp
+	wailsApp.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
+		desktop.queueChallenge(event.Context().Filename())
+	})
 	wailsApp.RegisterService(application.NewService(desktop))
 	launcher := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:                       "launcher",
@@ -83,6 +113,9 @@ func run() error {
 		},
 	})
 	desktop.launcher = launcher
+	if startupChallenge != "" {
+		desktop.pendingChallenge = startupChallenge
+	}
 	launcher.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
 		go wailsApp.Quit()
 	})

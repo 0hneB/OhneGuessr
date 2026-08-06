@@ -8,6 +8,12 @@ info:
   copyright: Copyright (c) 2026 OhneB
   version: 0.0.0
 
+fileAssociations:
+  - ext: ohne
+    name: OhneGuessr Challenge
+    description: OhneGuessr challenge file
+    iconName: icon
+
 dev_mode:
   root_path: .
   log_level: warn

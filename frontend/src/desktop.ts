@@ -1,4 +1,5 @@
 import { Application, Browser, Call, Events, System } from '@wailsio/runtime';
+import type { Challenge } from './types.js';
 
 const SERVICE = 'main.DesktopService.';
 
@@ -22,6 +23,44 @@ export async function launchMap(mapID: string) {
   } else {
     location.assign(`/?view=game&map=${encodeURIComponent(mapID)}`);
   }
+}
+
+export async function launchChallenge(challenge: Challenge, contents: string) {
+  if (desktopRuntimeAvailable()) {
+    await call<void>('LaunchChallenge', challenge.id, contents);
+  } else {
+    sessionStorage.setItem(`ohneguessr.challenge.${challenge.id}`, contents);
+    location.assign(`/?view=game&challenge=${encodeURIComponent(challenge.id)}`);
+  }
+}
+
+export function getActiveChallenge(id: string) {
+  if (desktopRuntimeAvailable()) return call<string>('GetActiveChallenge', id);
+  const contents = sessionStorage.getItem(`ohneguessr.challenge.${id}`);
+  return contents
+    ? Promise.resolve(contents)
+    : Promise.reject(new Error('Challenge is no longer available.'));
+}
+
+export function takePendingChallenge() {
+  return desktopRuntimeAvailable()
+    ? call<string>('TakePendingChallenge')
+    : Promise.resolve('');
+}
+
+export function onChallengeFileOpened(listener: () => void) {
+  return desktopRuntimeAvailable() ? Events.On('challenge:file-opened', listener) : () => {};
+}
+
+export async function saveChallenge(name: string, contents: string) {
+  if (desktopRuntimeAvailable()) return call<boolean>('SaveChallenge', name, contents);
+  const href = URL.createObjectURL(new Blob([contents], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(href);
+  return true;
 }
 
 export function focusLauncher() {

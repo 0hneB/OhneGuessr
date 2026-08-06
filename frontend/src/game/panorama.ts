@@ -386,10 +386,14 @@ export class OpenSvViewer {
         if (!location?.pano) { wait.cancel(); return; }
 
         targetPano = location.pano;
+        loc.panoid = targetPano;
         targetPosition = location.latLng || null;
         wait.start();
-        this.pano.setPov({ heading: loc.heading ?? 0, pitch: loc.pitch ?? 0 });
-        this.pano.setZoom(resolveStartZoom(loc.zoom, this._forceStartZoomedOut));
+        loc.heading ??= 0;
+        loc.pitch ??= 0;
+        loc.zoom = resolveStartZoom(loc.zoom, this._forceStartZoomedOut);
+        this.pano.setPov({ heading: loc.heading, pitch: loc.pitch });
+        this.pano.setZoom(loc.zoom);
         this.pano.setPano(targetPano);
         this.pano.setVisible(true);
         wait.check();

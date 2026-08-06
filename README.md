@@ -18,6 +18,7 @@ Download the latest version from [GitHub Releases](https://github.com/0hneB/Ohne
 
 - Moving, No Moving, and NMPZ games with configurable rounds and timers.
 - World- or map-scaled scoring, result maps, and a final summary.
+- Shareable `.ohne` challenges with exact rounds and challenger comparisons.
 - Rebindable controls, configurable compass, map size, zoom speed, and accent color.
 - Optional Map Making App and Learnable Meta synchronization.
 
@@ -63,10 +64,43 @@ Supported formats are a JSON array or an object containing `customCoordinates`:
 
 Every location needs finite `lat` and `lng` values. Panorama ID, heading, pitch, and zoom are optional.
 
+## Plugins
+
+The **Plugins** launcher tab enables or disables the built-in Challenges, Map Making App Sync, and Learnable Meta plugins. Sync configuration stays beside Maps and is shown only while its plugin is enabled. There is no plugin marketplace or third-party loader.
+
+## Challenges
+
+Enable **Challenges** under Plugins, finish a game, and select **Create challenge**. The resulting `.ohne` file contains the exact ordered rounds, locked movement/timer/scoring rules, and the creator's guesses. Open one with the Maps `+` button, drop it onto the map library, or double-click it after installing OhneGuessr. Challenge files are played directly and are not added to the map library.
+
+`.ohne` v1 is plain UTF-8 JSON. Scores and distances are recalculated rather than stored:
+
+```json
+{
+  "format": "ohneguessr.challenge",
+  "version": 1,
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "mapName": "A Community World",
+  "rules": { "movement": "moving", "timerSeconds": null, "scoreScaleKm": 14916.862 },
+  "rounds": [{
+    "lat": 48.8584,
+    "lng": 2.2945,
+    "panoId": "...",
+    "heading": 120,
+    "pitch": 0,
+    "zoom": 1,
+    "challengerGuess": { "lat": 48.86, "lng": 2.31 }
+  }]
+}
+```
+
+`challengerGuess` is `null` for a timeout. Version 1 uses Google Street View by definition; panorama IDs are preferred and coordinates are the fallback.
+
+## Map synchronization
+
 ### Map Making App sync
 
 1. Create an API key at [map-making.app/keys](https://map-making.app/keys).
-2. Open the **Sync** panel beside Maps, enable **Map Making App Sync**, and save the key.
+2. Enable **Map Making App Sync** under Plugins, then save the key beside Maps.
 3. The first sync starts immediately; use **Sync now** for later updates.
 
 Active, non-empty location maps are downloaded with up to ten concurrent requests. Archived maps are skipped. Failed downloads retain the last good local file. Renaming or moving a synchronized map in the launcher creates a local name or folder override.
@@ -75,7 +109,7 @@ Active, non-empty location maps are downloaded with up to ten concurrent request
 
 1. Give a personal map a unique **GeoGuessr ID** in [Learnable Meta](https://learnablemeta.com/personal).
 2. Create a key at [Learnable Meta profile -> API token](https://learnablemeta.com/profile/token).
-3. Open the **Sync** panel beside Maps, enable **Learnable Meta Sync**, and save the key.
+3. Enable **Learnable Meta** under Plugins, then save the key beside Maps.
 4. Add a local name and the same map ID.
 
 Each configured map is validated and downloaded immediately. **Sync now** fetches later changes. Learnable Meta clues appear after each round, and their layout is saved in the native WebView.

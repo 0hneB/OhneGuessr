@@ -11,10 +11,12 @@ import type { Location, Point, RevealResult, Trail } from '../types.js';
 const GUESS_ASSET = publicAsset('icons/pin-guess.svg');
 const CORRECT_ASSET = publicAsset('images/correct-location.webp');
 const GUESS_IMAGE_ID = 'result-guess-marker';
+const CHALLENGER_IMAGE_ID = 'result-challenger-marker';
 const CORRECT_IMAGE_ID = 'result-correct-marker';
 const RESULT_SOURCE = 'result-data';
 const ACTUAL_LAYER = 'result-actual-markers';
 const GUESS_LAYER = 'result-guess-markers';
+const CHALLENGER_COLOR = '#f59e0b';
 const LIGHT_MAP_LINK_COLOR = '#000000';
 const SPRITE_SCALE = 2;
 const SPRITE_PADDING = 12;
@@ -27,6 +29,7 @@ interface ResultProperties {
 type ResultCollection = FeatureCollection<Geometry, ResultProperties>;
 interface MarkerSprites {
   guess: ImageData;
+  challenger: ImageData;
   correct: ImageData;
 }
 
@@ -160,8 +163,10 @@ function markerSprites(accent: string): Promise<MarkerSprites> {
   const promise = Promise.all([
     markerAssets.then(([guess]) =>
       createSprite(guess, { width: 44, height: 56 }, filter, accent)),
+    markerAssets.then(([guess]) =>
+      createSprite(guess, { width: 32, height: 41 }, filter, CHALLENGER_COLOR)),
     correctSpritePromise
-  ]).then(([guess, correct]) => ({ guess, correct }));
+  ]).then(([guess, challenger, correct]) => ({ guess, challenger, correct }));
   spriteCache = { key: cacheKey, promise };
   return promise;
 }
@@ -230,6 +235,18 @@ export class ResultLayers {
       }
     });
     addLayer(this.map, {
+      id: 'challenger-links',
+      type: 'line',
+      source: RESULT_SOURCE,
+      filter: ['==', ['get', 'kind'], 'challenger-link'],
+      paint: {
+        'line-color': CHALLENGER_COLOR,
+        'line-width': 2,
+        'line-opacity': 1,
+        'line-dasharray': [1.5, 2.25]
+      }
+    });
+    addLayer(this.map, {
       id: 'movement-trail',
       type: 'line',
       source: RESULT_SOURCE,
@@ -258,6 +275,7 @@ export class ResultLayers {
       if (revision !== this.installRevision || !this.map.getSource(RESULT_SOURCE)) return;
       this.putImage(CORRECT_IMAGE_ID, sprites.correct);
       this.putImage(GUESS_IMAGE_ID, sprites.guess);
+      this.putImage(CHALLENGER_IMAGE_ID, sprites.challenger);
       addLayer(this.map, {
         id: ACTUAL_LAYER,
         type: 'symbol',
@@ -277,6 +295,18 @@ export class ResultLayers {
         layout: {
           'icon-image': GUESS_IMAGE_ID,
           'icon-offset': [0, -20],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true
+        }
+      });
+      addLayer(this.map, {
+        id: 'result-challenger-markers',
+        type: 'symbol',
+        source: RESULT_SOURCE,
+        filter: ['==', ['get', 'kind'], 'challenger-guess'],
+        layout: {
+          'icon-image': CHALLENGER_IMAGE_ID,
+          'icon-offset': [0, -14],
           'icon-allow-overlap': true,
           'icon-ignore-placement': true
         }
@@ -303,25 +333,40 @@ export class ResultLayers {
     this.results = results.filter((result) => isPoint(result?.actual));
     const features: Feature<Geometry, ResultProperties>[] = [];
 
-    this.results.forEach(({ actual, guess }, index) => {
+    this.results.forEach(({ actual, guess, challengerGuess }, index) => {
       features.push(feature(
         'actual',
         { type: 'Point', coordinates: coordinates(actual) },
         { index }
       ));
-      if (!isPoint(guess)) return;
-      features.push(feature(
-        'guess',
-        { type: 'Point', coordinates: coordinates(guess) },
-        { index }
-      ));
-      features.push(feature(
-        'link',
-        {
-          type: 'LineString',
-          coordinates: unwrapLine([guess, actual])
-        }
-      ));
+      if (isPoint(guess)) {
+        features.push(feature(
+          'guess',
+          { type: 'Point', coordinates: coordinates(guess) },
+          { index }
+        ));
+        features.push(feature(
+          'link',
+          {
+            type: 'LineString',
+            coordinates: unwrapLine([guess, actual])
+          }
+        ));
+      }
+      if (isPoint(challengerGuess)) {
+        features.push(feature(
+          'challenger-guess',
+          { type: 'Point', coordinates: coordinates(challengerGuess) },
+          { index }
+        ));
+        features.push(feature(
+          'challenger-link',
+          {
+            type: 'LineString',
+            coordinates: unwrapLine([challengerGuess, actual])
+          }
+        ));
+      }
     });
 
     const trailLines: Position[][] = (trail || [])
