@@ -1,5 +1,5 @@
 import { SvelteSet } from 'svelte/reactivity';
-import { closeGame, exportMaps as exportMapsToFile, launchMap } from '../desktop.js';
+import { closeGame, exportMaps as exportMapsToFile, launchMap, launchParty } from '../desktop.js';
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
 import {
   getStatus as getLearnableMetaStatus,
@@ -55,6 +55,7 @@ export const library = $state({
   loading: true,
   exporting: false,
   launchingMapID: '',
+  hostingMapID: '',
   activeMapID: '',
   notice: '',
   noticeError: false
@@ -138,6 +139,18 @@ export async function playMap(map: MapItem) {
     setNotice(errorMessage(error, 'Could not launch that map.'), true);
   } finally {
     library.launchingMapID = '';
+  }
+}
+
+export async function hostParty(map: MapItem) {
+  library.hostingMapID = map.id;
+  setNotice('');
+  try {
+    await launchParty(map.id);
+  } catch (error) {
+    setNotice(errorMessage(error, 'Could not host a local party.'), true);
+  } finally {
+    library.hostingMapID = '';
   }
 }
 

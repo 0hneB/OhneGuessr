@@ -24,6 +24,8 @@ const SPRITE_PADDING = 12;
 interface ResultProperties {
   kind: string;
   index?: number;
+  color?: string;
+  image?: string;
 }
 
 type ResultCollection = FeatureCollection<Geometry, ResultProperties>;
@@ -78,6 +80,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 const markerAssets = Promise.all([loadImage(GUESS_ASSET), loadImage(CORRECT_ASSET)]);
 let spriteCache: { key: string; promise: Promise<MarkerSprites> } | null = null;
 let correctSpritePromise: Promise<ImageData> | null = null;
+const partySpriteCache = new Map<string, Promise<ImageData>>();
 
 function colorize(image: CanvasImageSource, width: number, height: number, color: string) {
   const canvas = document.createElement('canvas');
@@ -171,6 +174,21 @@ function markerSprites(accent: string): Promise<MarkerSprites> {
   return promise;
 }
 
+const partyImageID = (color: string) => `result-party-${color.replace(/[^a-z0-9]/gi, '')}`;
+
+function partyMarkerSprite(color: string) {
+  const filter = getComputedStyle(document.documentElement)
+    .getPropertyValue('--result-marker-filter').trim();
+  const key = `${color}:${filter}`;
+  let sprite = partySpriteCache.get(key);
+  if (!sprite) {
+    sprite = markerAssets.then(([guess]) =>
+      createSprite(guess, { width: 38, height: 49 }, filter, color));
+    partySpriteCache.set(key, sprite);
+  }
+  return sprite;
+}
+
 function addSource(map: MapLibreMap, id: string, data: ResultCollection) {
   if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data });
 }
@@ -247,6 +265,18 @@ export class ResultLayers {
       }
     });
     addLayer(this.map, {
+      id: 'party-links',
+      type: 'line',
+      source: RESULT_SOURCE,
+      filter: ['==', ['get', 'kind'], 'party-link'],
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-width': 2,
+        'line-opacity': 0.9,
+        'line-dasharray': [1.5, 2.25]
+      }
+    });
+    addLayer(this.map, {
       id: 'movement-trail',
       type: 'line',
       source: RESULT_SOURCE,
@@ -311,6 +341,19 @@ export class ResultLayers {
           'icon-ignore-placement': true
         }
       });
+      addLayer(this.map, {
+        id: 'result-party-markers',
+        type: 'symbol',
+        source: RESULT_SOURCE,
+        filter: ['==', ['get', 'kind'], 'party-guess'],
+        layout: {
+          'icon-image': ['get', 'image'],
+          'icon-offset': [0, -17],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true
+        }
+      });
+      void this.installPartySprites();
     }).catch(() => { /* keep results usable if marker artwork cannot load */ });
   }
 
@@ -332,25 +375,32 @@ export class ResultLayers {
   setResults(results: RevealResult[], trail: Trail | null = null) {
     this.results = results.filter((result) => isPoint(result?.actual));
     const features: Feature<Geometry, ResultProperties>[] = [];
+    const actuals = new Set<string>();
 
-    this.results.forEach(({ actual, guess, challengerGuess }, index) => {
-      features.push(feature(
-        'actual',
-        { type: 'Point', coordinates: coordinates(actual) },
-        { index }
-      ));
-      if (isPoint(guess)) {
+    this.results.forEach(({ actual, guess, challengerGuess, color }, index) => {
+      const actualKey = `${actual.lat}:${actual.lng}`;
+      if (!actuals.has(actualKey)) {
+        actuals.add(actualKey);
         features.push(feature(
-          'guess',
-          { type: 'Point', coordinates: coordinates(guess) },
+          'actual',
+          { type: 'Point', coordinates: coordinates(actual) },
           { index }
         ));
+      }
+      if (isPoint(guess)) {
+        const party = typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color);
         features.push(feature(
-          'link',
+          party ? 'party-guess' : 'guess',
+          { type: 'Point', coordinates: coordinates(guess) },
+          party ? { index, color, image: partyImageID(color) } : { index }
+        ));
+        features.push(feature(
+          party ? 'party-link' : 'link',
           {
             type: 'LineString',
             coordinates: unwrapLine([guess, actual])
-          }
+          },
+          party ? { color } : {}
         ));
       }
       if (isPoint(challengerGuess)) {
@@ -383,6 +433,18 @@ export class ResultLayers {
     }
 
     this.data = { type: 'FeatureCollection', features };
+    (this.map.getSource(RESULT_SOURCE) as GeoJSONSource | undefined)?.setData(this.data);
+    void this.installPartySprites();
+  }
+
+  async installPartySprites() {
+    const colors = [...new Set(this.results.map((result) => result.color).filter(
+      (color): color is string => typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)
+    ))];
+    await Promise.all(colors.map(async (color) => {
+      const sprite = await partyMarkerSprite(color);
+      if (this.map.getSource(RESULT_SOURCE)) this.putImage(partyImageID(color), sprite);
+    }));
     (this.map.getSource(RESULT_SOURCE) as GeoJSONSource | undefined)?.setData(this.data);
   }
 

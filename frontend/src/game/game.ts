@@ -17,7 +17,19 @@ import {
   updateSettings
 } from '../settings/store.svelte.js';
 import { getLocations, loadLibrary } from '../maps/api.js';
-import { getActiveChallenge, saveChallenge } from '../desktop.js';
+import {
+  beginPartyRound,
+  closeGame,
+  closePartyRound,
+  finishParty,
+  getActiveChallenge,
+  getPartyHostState,
+  lockPartyRoster,
+  onPartyChanged,
+  publishPartyReveal,
+  resetParty,
+  saveChallenge
+} from '../desktop.js';
 import { emitPluginEvent, PLUGIN_EVENTS } from '../plugins/events.js';
 import {
   challengeFilename,
@@ -32,12 +44,16 @@ import type {
   GuessMapSize,
   Location,
   MapItem,
+  PartyPlayerRound,
+  PartyRoundReveal,
   Point,
+  RevealResult,
   RoundResult,
   Settings,
   Trail
 } from '../types.js';
 import { ui } from '../ui.svelte.js';
+import { isPartyHost, partyHost } from '../party/host.svelte.js';
 
 // World: fixed scale. Country: the loaded map's bbox diagonal.
 const effectiveScaleKm = () =>
@@ -50,6 +66,7 @@ const effectiveScaleKm = () =>
 const roundsPerGame = () =>
   settings.rounds === 'unlimited' ? Infinity : (parseInt(settings.rounds, 10) || CONFIG.ROUNDS);
 const activeMovement = () => state.challenge?.rules.movement ?? settings.movement;
+const movementForGame = () => isPartyHost() ? 'nmpz' : activeMovement();
 const activeTimerSeconds = () => state.challenge
   ? (state.challenge.rules.timerSeconds ?? 0)
   : (settings.timer === 'unlimited' ? 0 : (parseInt(settings.timer, 10) || 0));
@@ -58,6 +75,8 @@ const ACTIVE_GAME_PHASES = new Set<GamePhase>([
   GAME_PHASE.GUESSING,
   GAME_PHASE.RESULT
 ]);
+
+let partyRevealPending = false;
 
 let viewer: OpenSvViewer;
 let gmap: GuessMap;
@@ -90,7 +109,7 @@ const currentMapItem = (): MapItem | null => {
 const roundTimer = new RoundTimer({
   getSeconds: activeTimerSeconds,
   isActive: () => state.phase === GAME_PHASE.GUESSING,
-  onExpire: () => finishRound(), // forfeit
+  onExpire: () => { void finishRound(); }, // forfeit / party reveal
   onTick: ({ visible, remaining, low }) => {
     ui.timerVisible = visible;
     ui.timerRemaining = remaining;
@@ -237,13 +256,52 @@ export async function startGame() {
   state.round = 0;
   state.total = 0;
   state.results = [];
-  viewer.setMode(activeMovement());
+  viewer.setMode(movementForGame());
   viewer.setStartZoomedOut(state.challenge ? false : settings.streetViewZoomedOut);
   await loadRound();
 }
 
+export async function startPartyGame() {
+  if (!isPartyHost() || partyHost.busy || !partyHost.state?.players.length) return;
+  partyHost.busy = true;
+  partyHost.error = '';
+  try {
+    if (!partyHost.state.rosterLocked) {
+      partyHost.state = await lockPartyRoster(partyHost.id);
+    }
+    partyHost.rounds = [];
+    await startGame();
+  } catch (error) {
+    partyHost.error = error instanceof Error ? error.message : 'Could not start the party.';
+  } finally {
+    partyHost.busy = false;
+  }
+}
+
+export async function rematchPartyGame() {
+  if (!isPartyHost() || partyHost.busy) return;
+  partyHost.busy = true;
+  partyHost.error = '';
+  try {
+    await resetParty(partyHost.id);
+    partyHost.state = await getPartyHostState(partyHost.id);
+    partyHost.rounds = [];
+    state.phase = GAME_PHASE.EMPTY;
+    setHidden('final', true);
+  } catch (error) {
+    partyHost.error = error instanceof Error ? error.message : 'Could not reset the party.';
+  } finally {
+    partyHost.busy = false;
+  }
+}
+
+export function endPartyGame() {
+  if (isPartyHost()) closeGame();
+}
+
 // Snapshot the game so a refresh restores its active or completed screen.
 function saveProgress({ resultTrail }: { resultTrail?: Trail } = {}) {
+  if (isPartyHost()) return;
   if (!state.map || !state.deck.length) return;
   const snapshot: GameSnapshot = {
     map: state.map.id,
@@ -411,7 +469,27 @@ async function loadRound(preparation: RoundPreparation | null = null) {
   if (!prepared.location) return;
   state.current = prepared.location;
   viewer.beginRound(prepared.location);
-  state.phase = GAME_PHASE.GUESSING;
+  if (isPartyHost()) {
+    try {
+      const seconds = activeTimerSeconds();
+      await beginPartyRound(
+        partyHost.id,
+        state.round,
+        state.unlimited ? 0 : state.rounds,
+        seconds ? Date.now() + seconds * 1000 : 0,
+        settings.mapStyle
+      );
+      state.phase = GAME_PHASE.GUESSING;
+      partyHost.state = await getPartyHostState(partyHost.id);
+    } catch (error) {
+      state.phase = GAME_PHASE.ERROR;
+      partyHost.error = error instanceof Error ? error.message : 'Could not start the party round.';
+      setLoading(true, partyHost.error);
+      return;
+    }
+  } else {
+    state.phase = GAME_PHASE.GUESSING;
+  }
   setLoading(false);
   saveProgress(); // persist the (resolved) round so a refresh resumes here
   roundTimer.start(); // start after load so loading time isn't counted
@@ -420,6 +498,7 @@ async function loadRound(preparation: RoundPreparation | null = null) {
     location: { ...state.current },
     roundIndex: state.round
   });
+  if (isPartyHost() && partyHost.state?.allLocked) void revealPartyRound();
 }
 
 function onPlaceGuess(_guess: Point, { submit = false }: { submit?: boolean } = {}) {
@@ -429,7 +508,7 @@ function onPlaceGuess(_guess: Point, { submit = false }: { submit?: boolean } = 
 }
 
 const canInteractWithGuess = () =>
-  state.phase === GAME_PHASE.GUESSING;
+  state.phase === GAME_PHASE.GUESSING && !isPartyHost();
 
 function setGuessMapSize(size: unknown, { persist = true }: { persist?: boolean } = {}) {
   const next = guessPanel.setSize(size);
@@ -446,21 +525,27 @@ function setGuessMapSizeFromShortcut(size: GuessMapSize, event: KeyboardEvent) {
 // What each shortcut does; names match keybindings.js.
 const KEY_ACTIONS: Record<string, (event: KeyboardEvent) => void> = {
   submitOrNext: () => {
-    if (state.phase === GAME_PHASE.FINAL) startGame();
+    if (state.phase === GAME_PHASE.FINAL) {
+      if (isPartyHost()) void rematchPartyGame();
+      else void startGame();
+    }
     else if (state.phase === GAME_PHASE.RESULT) nextRound();
-    else if (state.phase === GAME_PHASE.GUESSING && gmap.guess) submitGuess();
+    else if (state.phase === GAME_PHASE.GUESSING) {
+      if (isPartyHost()) void finishRound();
+      else if (gmap.guess) submitGuess();
+    }
   },
   zoomIn: () => { if (canInteractWithGuess()) viewer.zoomFull(1); },
   zoomOut: () => { if (canInteractWithGuess()) viewer.zoomFull(-1); },
   resetView: () => { if (canInteractWithGuess()) viewer.resetView(); },
   checkpoint: (event) => {
-    if (!event.repeat && state.phase === GAME_PHASE.GUESSING) viewer.toggleCheckpoint();
+    if (!event.repeat && canInteractWithGuess()) viewer.toggleCheckpoint();
   },
   checkpointPeek: (event) => {
-    if (!event.repeat && state.phase === GAME_PHASE.GUESSING) viewer.startCheckpointPeek();
+    if (!event.repeat && canInteractWithGuess()) viewer.startCheckpointPeek();
   },
   lookBehind: (event) => {
-    if (!event.repeat && state.phase === GAME_PHASE.GUESSING) viewer.startLookBehind();
+    if (!event.repeat && canInteractWithGuess()) viewer.startLookBehind();
   },
   faceNorth: () => {
     if (!canInteractWithGuess()) return;
@@ -499,7 +584,7 @@ export function submitGuess() {
   if (state.phase === GAME_PHASE.RESULT) { nextRound(); return; }
   if (state.phase !== GAME_PHASE.GUESSING) return;
   if (!gmap.guess) return;
-  finishRound();
+  void finishRound();
 }
 
 function challengerComparison(index: number, actual: Location) {
@@ -515,8 +600,12 @@ function challengerComparison(index: number, actual: Location) {
 }
 
 // Score and reveal the round. A null guess (timeout) is a forfeit, 0 points.
-function finishRound() {
+async function finishRound() {
   if (state.phase !== GAME_PHASE.GUESSING) return;
+  if (isPartyHost()) {
+    await revealPartyRound();
+    return;
+  }
   state.phase = GAME_PHASE.RESULT;
   guessPanel.setFullscreen(false);
   guessPanel.setPinned(false);
@@ -544,6 +633,66 @@ function finishRound() {
   showRoundResult(result, trail);
 }
 
+function partyResults(reveal: PartyRoundReveal): RevealResult[] {
+  const colors = new Map(partyHost.state?.players.map((player) => [player.id, player.color]));
+  return reveal.results.map((result) => ({
+    guess: result.guess ? { ...result.guess } : null,
+    actual: { ...reveal.actual },
+    color: colors.get(result.playerId)
+  }));
+}
+
+export async function revealPartyRound() {
+  if (!isPartyHost() || partyRevealPending || state.phase !== GAME_PHASE.GUESSING) return;
+  partyRevealPending = true;
+  partyHost.busy = true;
+  partyHost.error = '';
+  roundTimer.stop();
+  try {
+    const current = state.current;
+    if (!current) throw new Error('The current location is unavailable.');
+    const players = await closePartyRound(partyHost.id, state.round);
+    const results: PartyPlayerRound[] = players.map((player) => {
+      const guess = player.guess ? { ...player.guess } : undefined;
+      const distanceKm = guess ? haversineKm(guess, current) : undefined;
+      return {
+        playerId: player.id,
+        guess,
+        distanceKm,
+        points: distanceKm == null ? 0 : scoreFor(distanceKm, effectiveScaleKm())
+      };
+    });
+    const reveal: PartyRoundReveal = {
+      round: state.round,
+      actual: { lat: current.lat, lng: current.lng },
+      results
+    };
+    await publishPartyReveal(partyHost.id, reveal);
+    partyHost.rounds[state.round] = reveal;
+    partyHost.state = await getPartyHostState(partyHost.id);
+    const result: RoundResult = {
+      guess: null,
+      actual: { lat: current.lat, lng: current.lng, panoid: current.panoid || null },
+      distKm: null,
+      points: 0
+    };
+    state.results.push(result);
+    state.phase = GAME_PHASE.RESULT;
+    updateResultActions();
+    setLoading(false);
+    setHidden('resultScreen', false);
+    resultMap.showMany(partyResults(reveal));
+    scheduleNextRoundPreload();
+  } catch (error) {
+    state.phase = GAME_PHASE.ERROR;
+    partyHost.error = error instanceof Error ? error.message : 'Could not reveal the round.';
+    setLoading(true, partyHost.error);
+  } finally {
+    partyHost.busy = false;
+    partyRevealPending = false;
+  }
+}
+
 function showRoundResult(result: RoundResult, trail: Trail | null = null) {
   const { actual } = result;
   updateResultActions();
@@ -561,8 +710,9 @@ function showRoundResult(result: RoundResult, trail: Trail | null = null) {
 }
 
 export async function nextRound() {
-  if (state.phase !== GAME_PHASE.RESULT) return;
+  if (state.phase !== GAME_PHASE.RESULT || (isPartyHost() && partyHost.busy)) return;
   if (!hasNextRound()) {
+    if (isPartyHost() && !await finishPartySession()) return;
     showFinal();
     return;
   }
@@ -573,12 +723,34 @@ export async function nextRound() {
   await loadRound(preload);
 }
 
-export function endUnlimitedGame() {
-  if (state.phase !== GAME_PHASE.RESULT || !state.unlimited) return;
+export async function endUnlimitedGame() {
+  if (state.phase !== GAME_PHASE.RESULT || !state.unlimited || (isPartyHost() && partyHost.busy)) return;
+  if (isPartyHost() && !await finishPartySession()) return;
   showFinal();
 }
 
+async function finishPartySession() {
+  partyHost.busy = true;
+  partyHost.error = '';
+  try {
+    partyHost.state = await finishParty(partyHost.id);
+    return true;
+  } catch (error) {
+    partyHost.error = error instanceof Error ? error.message : 'Could not finish the party.';
+    return false;
+  } finally {
+    partyHost.busy = false;
+  }
+}
+
 function applyFinalRoundSelection() {
+  if (isPartyHost()) {
+    const round = ui.selectedFinalRound == null
+      ? partyHost.rounds.at(-1)
+      : partyHost.rounds[ui.selectedFinalRound];
+    if (round) summaryMap.show(partyResults(round));
+    return;
+  }
   const results = ui.selectedFinalRound == null
     ? state.results
     : [state.results[ui.selectedFinalRound]];
@@ -595,7 +767,9 @@ function applyFinalRoundSelection() {
 }
 
 export function selectFinalRound(index: number) {
-  ui.selectedFinalRound = ui.selectedFinalRound === index ? null : index;
+  ui.selectedFinalRound = isPartyHost()
+    ? index
+    : (ui.selectedFinalRound === index ? null : index);
   applyFinalRoundSelection();
 }
 
@@ -603,12 +777,15 @@ function showFinal() {
   cancelRoundPreload();
   roundTimer.stop();
   state.phase = GAME_PHASE.FINAL;
-  ui.selectedFinalRound = null;
+  ui.selectedFinalRound = isPartyHost() ? Math.max(0, partyHost.rounds.length - 1) : null;
   saveProgress();
   setLoading(false);
   setHidden('resultScreen', true);
   setHidden('final', false);
-  applyFinalRoundSelection(); // after un-hiding so the shared map has a real size
+  // The party leaderboard is inserted reactively with the final phase, so fit
+  // after that DOM update. Regular results already have their final card.
+  if (isPartyHost()) requestAnimationFrame(applyFinalRoundSelection);
+  else applyFinalRoundSelection();
 }
 
 export async function exportChallenge() {
@@ -650,12 +827,12 @@ function applyLiveSettings(next: Settings, previous: Settings) {
     gmap.setAccent(next.accentColor);
     resultMap.setAccent(next.accentColor);
   }
-  if (!state.challenge && next.movement !== previous.movement) viewer.setMode(next.movement);
-  if (!state.challenge && next.streetViewZoomedOut !== previous.streetViewZoomedOut) {
+  if (!state.challenge && !isPartyHost() && next.movement !== previous.movement) viewer.setMode(next.movement);
+  if (!state.challenge && !isPartyHost() && next.streetViewZoomedOut !== previous.streetViewZoomedOut) {
     viewer.setStartZoomedOut(next.streetViewZoomedOut);
   }
-  if (!state.challenge && next.rounds !== previous.rounds) applyRoundLimitChange();
-  if (!state.challenge && next.timer !== previous.timer) {
+  if (!state.challenge && !isPartyHost() && next.rounds !== previous.rounds) applyRoundLimitChange();
+  if (!state.challenge && !isPartyHost() && next.timer !== previous.timer) {
     if (state.phase === GAME_PHASE.GUESSING) roundTimer.start();
     else roundTimer.stop();
   }
@@ -702,7 +879,31 @@ async function loadRequestedGame() {
   const locations = normalizeLocations(await getLocations(map));
   if (!locations.length) throw new Error(`"${map.name}" has no playable locations`);
   state.all = locations;
+  if (isPartyHost()) {
+    const host = await getPartyHostState(partyHost.id);
+    if (host.mapId !== map.id) throw new Error('Party map does not match the opened game');
+    partyHost.state = host;
+    partyHost.rounds = [];
+    state.phase = GAME_PHASE.EMPTY;
+    viewer.setMode('nmpz');
+    viewer.setStartZoomedOut(settings.streetViewZoomedOut);
+    setLoading(false);
+    return;
+  }
   if (!await tryResume()) await startGame();
+}
+
+async function refreshPartyHost(id: string) {
+  if (!isPartyHost() || id !== partyHost.id) return;
+  try {
+    partyHost.state = await getPartyHostState(id);
+    if (partyHost.state.allLocked && partyHost.state.phase === 'guessing' &&
+        state.phase === GAME_PHASE.GUESSING) {
+      await revealPartyRound();
+    }
+  } catch (error) {
+    partyHost.error = error instanceof Error ? error.message : 'Party connection was lost.';
+  }
 }
 
 export async function init() {
@@ -720,7 +921,7 @@ export async function init() {
     if (event.code === 'Space' || event.code === 'Enter') event.stopPropagation();
   });
   viewer.onChange = (heading) => compass.setHeading(heading);
-  viewer.setMode(settings.movement);
+  viewer.setMode(movementForGame());
   gmap = new GuessMap('map', onPlaceGuess, settings.mapStyle);
   ({ resultMap, summaryMap } = createRevealMaps(
     'resultMap', 'finalMap', settings.mapStyle
@@ -735,6 +936,7 @@ export async function init() {
   resultMap.setAccent(settings.accentColor);
   onSettingsChanged(applyLiveSettings);
   initSettingsSync();
+  onPartyChanged((id) => { void refreshPartyHost(id); });
   try {
     const { setupLearnableMeta } = await import('../plugins/learnable-meta/index.js');
     await setupLearnableMeta();

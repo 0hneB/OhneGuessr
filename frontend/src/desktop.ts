@@ -1,5 +1,10 @@
 import { Application, Browser, Call, Events, System } from '@wailsio/runtime';
-import type { Challenge } from './types.js';
+import type {
+  Challenge,
+  PartyHostPlayer,
+  PartyHostState,
+  PartyRoundReveal
+} from './types.js';
 
 const SERVICE = 'main.DesktopService.';
 
@@ -23,6 +28,61 @@ export async function launchMap(mapID: string) {
   } else {
     location.assign(`/?view=game&map=${encodeURIComponent(mapID)}`);
   }
+}
+
+export function launchParty(mapID: string) {
+  if (!desktopRuntimeAvailable()) {
+    return Promise.reject(new Error('Local Party requires the desktop app.'));
+  }
+  return call<PartyHostState>('LaunchParty', mapID);
+}
+
+export function getPartyHostState(id: string) {
+  return call<PartyHostState>('GetPartyHostState', id);
+}
+
+export function lockPartyRoster(id: string) {
+  return call<PartyHostState>('LockPartyRoster', id);
+}
+
+export function beginPartyRound(
+  id: string,
+  round: number,
+  rounds: number,
+  deadline: number,
+  mapStyle: string
+) {
+  return call<void>('BeginPartyRound', id, round, rounds, deadline, mapStyle);
+}
+
+export function closePartyRound(id: string, round: number) {
+  return call<PartyHostPlayer[]>('ClosePartyRound', id, round);
+}
+
+export function publishPartyReveal(id: string, reveal: PartyRoundReveal) {
+  return call<void>('PublishPartyReveal', id, reveal);
+}
+
+export function finishParty(id: string) {
+  return call<PartyHostState>('FinishParty', id);
+}
+
+export function resetParty(id: string) {
+  return call<void>('ResetParty', id);
+}
+
+export function getPartyRound(id: string, round: number) {
+  return call<PartyRoundReveal>('GetPartyRound', id, round);
+}
+
+export function stopParty(id: string) {
+  return call<void>('StopParty', id);
+}
+
+export function onPartyChanged(listener: (id: string) => void) {
+  return desktopRuntimeAvailable()
+    ? Events.On('party:changed', ({ data }) => listener(String(data || '')))
+    : () => {};
 }
 
 export async function launchChallenge(challenge: Challenge, contents: string) {

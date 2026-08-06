@@ -38,6 +38,12 @@
              onchange={(event) => updateSettings({ challengesEnabled: event.currentTarget.checked })} />
       <span class="switch" aria-hidden="true"></span>
     </label>
+    <label class="plugin-row">
+      <span><b>Local Party</b><small>Host a no-account phone game on Wi-Fi with a shared NMPZ view.</small></span>
+      <input type="checkbox" checked={settings.localPartyEnabled}
+             onchange={(event) => updateSettings({ localPartyEnabled: event.currentTarget.checked })} />
+      <span class="switch" aria-hidden="true"></span>
+    </label>
     <label class="plugin-row" class:disabled={pluginStatus.mma?.available === false}>
       <span><b>Map Making App Sync</b><small>Keep Map Making App maps available locally.</small></span>
       <input type="checkbox" checked={Boolean(pluginStatus.mma?.enabled)}

@@ -56,7 +56,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	desktop := &DesktopService{backend: backend}
+	desktop := &DesktopService{backend: backend, frontend: frontend}
 
 	backendHandler := backend.Handler()
 	handler := http.NewServeMux()

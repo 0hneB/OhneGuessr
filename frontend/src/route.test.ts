@@ -11,4 +11,9 @@ describe('parseRoute', () => {
   it('opens a challenge without a map id', () => {
     expect(parseRoute('?view=game&challenge=abc')).toEqual({ view: 'game', challenge: 'abc' });
   });
+
+  it('opens a party guest link only with its secret', () => {
+    expect(parseRoute('?view=party&join=secret')).toEqual({ view: 'party', join: 'secret' });
+    expect(parseRoute('?view=party')).toEqual({ view: 'launcher' });
+  });
 });

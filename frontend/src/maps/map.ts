@@ -19,7 +19,7 @@ import {
 } from '../settings/settings.js';
 import { buildMapStyle } from './map-style.js';
 import { ResultLayers } from './result-layers.js';
-import type { Location, Point, RevealResult, RoundResult, Trail } from '../types.js';
+import type { Location, Point, RevealResult, Trail } from '../types.js';
 
 const INITIAL_CENTER: [number, number] = [0, 20];
 const INITIAL_ZOOM = 1;
@@ -543,6 +543,15 @@ class ResultMap {
     );
   }
 
+  showMany(results: RevealResult[]) {
+    this.engine.show(
+      this.slotId,
+      results,
+      null,
+      { obstruction: this.obstruction, singlePointZoom: 4 }
+    );
+  }
+
   setStyle(key: string) { this.engine.setStyle(key); }
   setAccent(accent: string) { this.engine.setAccent(accent); }
   setZoomSpeed(value: unknown) { return this.engine.setZoomSpeed(value); }
@@ -559,7 +568,7 @@ class SummaryMap {
     this.obstruction = obstruction;
   }
 
-  show(results: RoundResult[]) {
+  show(results: RevealResult[]) {
     if (!results.length) return;
     this.engine.show(this.slotId, results, null, {
       obstruction: this.obstruction

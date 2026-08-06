@@ -2,7 +2,10 @@ module github.com/0hneB/OhneGuessr
 
 go 1.26.0
 
-require github.com/wailsapp/wails/v3 v3.0.0-alpha2.117
+require (
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	github.com/wailsapp/wails/v3 v3.0.0-alpha2.117
+)
 
 require (
 	github.com/adrg/xdg v0.5.3 // indirect

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
+  import { desktopRuntimeAvailable } from '../desktop.js';
+  import { settings } from '../settings/store.svelte.js';
   import type { MapItem } from '../types.js';
   import {
     canCreateFolder,
@@ -10,6 +12,7 @@
     isManagedRoot,
     library,
     libraryRows,
+    hostParty,
     moveMap,
     moveTargets,
     playMap,
@@ -415,6 +418,14 @@
               </div>
             {:else}
               <div class="row-actions">
+                {#if settings.localPartyEnabled && desktopRuntimeAvailable()}
+                  <button class="row-action" type="button" title="Host local party"
+                          aria-label={`Host ${row.map.name} as a local party`}
+                          disabled={Boolean(library.hostingMapID)}
+                          onclick={() => hostParty(row.map)}>
+                    <span class="svg-icon link-icon" aria-hidden="true"></span>
+                  </button>
+                {/if}
                 {#if row.canRename}
                   <button class="row-action" type="button" title="Rename map"
                           aria-label={`Rename ${row.map.name}`}

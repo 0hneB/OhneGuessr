@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -27,6 +28,7 @@ const maxChallengeSize = 5 << 20
 
 type DesktopService struct {
 	backend          *app.App
+	frontend         fs.FS
 	wails            *application.App
 	mu               sync.RWMutex
 	launcher         *application.WebviewWindow
@@ -36,11 +38,13 @@ type DesktopService struct {
 	challengeID      string
 	challengeData    string
 	pendingChallenge string
+	party            *partyServer
 }
 
 func (d *DesktopService) shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	_ = d.StopParty("")
 	_ = d.backend.Shutdown(ctx)
 }
 
@@ -59,6 +63,9 @@ func (d *DesktopService) secondInstance(data application.SecondInstanceData) {
 }
 
 func (d *DesktopService) LaunchMap(mapID string) error {
+	if _, err := d.activeParty(""); err == nil {
+		return errors.New("end the current party first")
+	}
 	mapID = strings.TrimSpace(mapID)
 	if mapID == "" || !d.backend.HasMap(mapID) {
 		return errors.New("map not found")
@@ -123,6 +130,7 @@ func (d *DesktopService) launchGame(targetURL, mapID string) error {
 			d.gameTarget = ""
 		}
 		d.mu.Unlock()
+		_ = d.StopParty("")
 		d.emitGameState()
 	})
 	game.OnWindowEvent(events.Common.WindowFullscreen, func(*application.WindowEvent) {
@@ -136,6 +144,9 @@ func (d *DesktopService) launchGame(targetURL, mapID string) error {
 }
 
 func (d *DesktopService) LaunchChallenge(id, contents string) error {
+	if _, err := d.activeParty(""); err == nil {
+		return errors.New("end the current party first")
+	}
 	id = strings.TrimSpace(id)
 	if id == "" || len(contents) > maxChallengeSize || !json.Valid([]byte(contents)) {
 		return errors.New("invalid challenge")
