@@ -17,35 +17,37 @@ import {
   updateSettings
 } from '../settings/store.svelte.js';
 import { getLocations, loadLibrary } from '../maps/api.js';
-import {
-  beginPartyRound,
-  closeGame,
-  closePartyRound,
-  finishParty,
-  getActiveChallenge,
-  getPartyHostState,
-  lockPartyRoster,
-  onPartyChanged,
-  publishPartyReveal,
-  resetParty,
-  saveChallenge
-} from '../desktop.js';
+import { closeGame } from '../desktop.js';
 import { emitPluginEvent, PLUGIN_EVENTS } from '../plugins/events.js';
+import { getActiveChallenge, saveChallenge } from '../plugins/challenges/api.js';
 import {
   challengeFilename,
   createChallenge,
   parseChallenge,
   serializeChallenge
 } from '../plugins/challenges/challenge.js';
+import type { ChallengeRules } from '../plugins/challenges/types.js';
+import {
+  beginPartyRound,
+  closePartyRound,
+  finishParty,
+  getPartyHostState,
+  lockPartyRoster,
+  onPartyChanged,
+  publishPartyReveal,
+  resetParty
+} from '../plugins/local-party/api.js';
+import { isPartyHost, partyHost } from '../plugins/local-party/host.svelte.js';
 import type {
-  ChallengeRules,
+  PartyPlayerRound,
+  PartyRoundReveal
+} from '../plugins/local-party/types.js';
+import type {
   GamePhase,
   GameSnapshot,
   GuessMapSize,
   Location,
   MapItem,
-  PartyPlayerRound,
-  PartyRoundReveal,
   Point,
   RevealResult,
   RoundResult,
@@ -53,7 +55,6 @@ import type {
   Trail
 } from '../types.js';
 import { ui } from '../ui.svelte.js';
-import { isPartyHost, partyHost } from '../party/host.svelte.js';
 
 // World: fixed scale. Country: the loaded map's bbox diagonal.
 const effectiveScaleKm = () =>

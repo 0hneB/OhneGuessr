@@ -1,5 +1,5 @@
 import { SvelteSet } from 'svelte/reactivity';
-import { closeGame, exportMaps as exportMapsToFile, launchMap, launchParty } from '../desktop.js';
+import { closeGame, exportMaps as exportMapsToFile, launchMap } from '../desktop.js';
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
 import {
   getStatus as getLearnableMetaStatus,
@@ -9,6 +9,7 @@ import {
 import { publishLearnableMetaStatus } from '../plugins/learnable-meta/status.js';
 import { openChallengeContents } from '../plugins/challenges/open.js';
 import { MAX_CHALLENGE_BYTES } from '../plugins/challenges/challenge.js';
+import { launchParty } from '../plugins/local-party/api.js';
 import type { MapItem } from '../types.js';
 import {
   addUserMap,

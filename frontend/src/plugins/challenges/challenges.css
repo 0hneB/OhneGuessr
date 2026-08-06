@@ -1,0 +1,21 @@
+.final-score small {
+  display: block;
+  margin-top: 2px;
+  color: #f59e0b;
+  font-size: inherit;
+}
+
+.final-round:has(.fr-challenger) {
+  grid-template-columns: 20px 1fr auto auto;
+}
+
+.fr-challenger {
+  color: #f59e0b;
+  font-weight: 800;
+}
+
+.challenge-export-error {
+  margin-top: 8px;
+  color: #fb7185;
+  font-size: 12px;
+}

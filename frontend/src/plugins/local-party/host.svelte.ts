@@ -1,4 +1,4 @@
-import type { PartyHostState, PartyRoundReveal } from '../types.js';
+import type { PartyHostState, PartyRoundReveal } from './types.js';
 
 export const partyHost = $state({
   id: new URLSearchParams(location.search).get('party')?.trim() || '',

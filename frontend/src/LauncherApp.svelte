@@ -2,10 +2,8 @@
   import { onMount } from 'svelte';
   import {
     getGameWindowState,
-    onChallengeFileOpened,
     onGameWindowState,
     setGameFullscreen,
-    takePendingChallenge,
     type GameWindowState
   } from './desktop.js';
   import MapLibrary from './maps/MapLibrary.svelte';
@@ -23,6 +21,7 @@
     refreshPluginStatus
   } from './plugins/status.svelte.js';
   import { openChallengeContents } from './plugins/challenges/open.js';
+  import { onChallengeFileOpened, takePendingChallenge } from './plugins/challenges/api.js';
   import KeybindingsPanel from './settings/KeybindingsPanel.svelte';
   import {
     initSettingsSync,

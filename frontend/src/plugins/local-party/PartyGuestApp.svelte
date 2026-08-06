@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { formatDistance } from '../game/scoring.js';
-  import { GuessMap, createRevealMaps } from '../maps/map.js';
-  import type { PartyGuestState, Point } from '../types.js';
+  import { formatDistance } from '../../game/scoring.js';
+  import { GuessMap, createRevealMaps } from '../../maps/map.js';
+  import type { Point } from '../../types.js';
+  import type { PartyGuestState } from './types.js';
+  import './local-party.css';
 
   let { join }: { join: string } = $props();
   let party = $state<PartyGuestState | null>(null);
@@ -218,7 +220,6 @@
     </section>
   {:else if party.phase === 'final'}
     <section class="party-guest-card party-phone-final party-guest-center">
-      <p class="party-eyebrow">Final result</p>
       <strong>#{party.place}</strong>
       <h1>{party.total} points</h1>
       <p>Look at the shared screen for the leaderboard.</p>

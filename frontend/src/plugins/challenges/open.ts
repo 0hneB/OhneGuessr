@@ -1,5 +1,5 @@
-import { launchChallenge } from '../../desktop.js';
 import { settings } from '../../settings/store.svelte.js';
+import { launchChallenge } from './api.js';
 import { parseChallenge } from './challenge.js';
 
 export async function openChallengeContents(contents: string) {

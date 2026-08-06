@@ -1,5 +1,6 @@
 <script lang="ts">
   import { settings, updateSettings } from '../settings/store.svelte.js';
+  import './plugins.css';
   import {
     pluginStatus,
     setLearnablePluginEnabled,
@@ -39,7 +40,7 @@
       <span class="switch" aria-hidden="true"></span>
     </label>
     <label class="plugin-row">
-      <span><b>Local Party</b><small>Host a no-account phone game on Wi-Fi with a shared NMPZ view.</small></span>
+      <span><b>Local Party</b><small>Host a no-account phone game on the same network.</small></span>
       <input type="checkbox" checked={settings.localPartyEnabled}
              onchange={(event) => updateSettings({ localPartyEnabled: event.currentTarget.checked })} />
       <span class="switch" aria-hidden="true"></span>

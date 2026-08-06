@@ -1,11 +1,9 @@
 import type {
-  Challenge,
-  ChallengeRound,
-  ChallengeRules,
   Location,
   Point,
   RoundResult
 } from '../../types.js';
+import type { Challenge, ChallengeRound, ChallengeRules } from './types.js';
 
 export const CHALLENGE_FORMAT = 'ohneguessr.challenge';
 export const CHALLENGE_VERSION = 1;
