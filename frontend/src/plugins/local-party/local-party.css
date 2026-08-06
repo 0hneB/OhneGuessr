@@ -3,9 +3,11 @@
   position: fixed;
   inset: 0;
   z-index: 700;
-  display: grid;
-  grid-template-columns: none;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
   padding: clamp(28px, 5vw, 48px);
   background: var(--launcher-main);
 }
@@ -92,21 +94,37 @@
   font-weight: 700;
 }
 .party-roster-count b { color: var(--launcher-text); font-size: 22px; }
-.party-color-dots {
+.party-player-cards {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  max-width: 124px;
-  gap: 3px;
-  margin-left: auto;
+  gap: 8px;
+  width: min(820px, 100%);
+  list-style: none;
 }
-.party-color-dots i,
+.party-player-cards li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 190px;
+  min-width: 0;
+  padding: 6px 10px 6px 6px;
+  border-radius: 4px;
+  background: var(--launcher-element);
+  color: var(--launcher-text-soft);
+}
+.party-player-cards span {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.party-player-cards i,
 .party-leaderboard i {
-  width: 12px;
-  height: 12px;
+  width: 28px;
+  height: 28px;
   flex: none;
-  border: 2px solid #fff;
-  border-radius: 50%;
+  border-radius: 4px;
   background: var(--player-color);
 }
 
@@ -136,7 +154,6 @@
 .party-primary:disabled { opacity: 0.45; cursor: default; }
 .party-error { margin-top: 10px; color: #fb7185; font-size: 13px; }
 .party-lobby .party-error { color: var(--launcher-error); }
-.party-lobby .party-color-dots i { border-color: var(--launcher-text); }
 
 .party-round-status { right: 14px; padding-right: 6px; }
 .party-round-status button { height: 26px; padding-block: 3px; font-size: 11px; }
@@ -157,7 +174,7 @@ body.party-host .final-card { width: min(88vw, 370px); }
 }
 .party-leaderboard li {
   display: grid;
-  grid-template-columns: 24px 12px minmax(0, 1fr) auto;
+  grid-template-columns: 24px 28px minmax(0, 1fr) auto;
   gap: 9px;
   align-items: center;
   padding: 8px 10px;
@@ -171,6 +188,14 @@ body.party-host .final-card { width: min(88vw, 370px); }
 .party-final-rounds { flex-flow: row wrap; justify-content: center; overflow-y: visible; }
 .party-final-rounds .final-round { display: grid; width: 38px; grid-template-columns: 1fr; padding: 8px; }
 .party-final-rounds .fr-no { text-align: center; }
+.final-actions .party-final-end {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  padding: 0;
+}
+.party-final-end .svg-icon { width: 16px; height: 16px; }
 
 /* Phone guest */
 .party-guest {

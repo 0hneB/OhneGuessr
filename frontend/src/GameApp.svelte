@@ -119,11 +119,6 @@
         <div class="party-lobby-actions">
           <div class="party-roster-count" aria-label={`${partyPlayers.length} players joined`}>
             <span><b>{partyPlayers.length}</b> / 16 joined</span>
-            {#if partyPlayers.length}
-              <span class="party-color-dots" aria-hidden="true">
-                {#each partyPlayers as player}<i style={`--player-color:${player.color}`}></i>{/each}
-              </span>
-            {/if}
           </div>
           <button class="party-start" type="button"
                   disabled={!partyPlayers.length || partyHost.busy}
@@ -141,6 +136,16 @@
         <img class="party-qr" src={partyHost.state.qrCode} alt="QR code for the local party link" />
       {/if}
     </section>
+    {#if partyPlayers.length}
+      <ul class="party-player-cards" aria-label="Joined players">
+        {#each partyPlayers as player}
+          <li>
+            <i style={`--player-color:${player.color}`} aria-hidden="true"></i>
+            <span>{player.name}</span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   </div>
 {/if}
 
@@ -292,7 +297,12 @@
       <button id="playAgain" onclick={partyMode ? rematchPartyGame : startGame}>
         {partyMode ? 'Rematch' : 'Play again'}
       </button>
-      {#if partyMode}<button type="button" onclick={endPartyGame}>End party</button>{/if}
+      {#if partyMode}
+        <button class="party-final-end" type="button" aria-label="End party" title="End party"
+                onclick={endPartyGame}>
+          <span class="svg-icon close-icon" aria-hidden="true"></span>
+        </button>
+      {/if}
       {#if !partyMode && settings.challengesEnabled}
         <button type="button" disabled={challengeExporting} onclick={exportCurrentChallenge}>
           {challengeExporting ? 'Saving…' : 'Create challenge'}
