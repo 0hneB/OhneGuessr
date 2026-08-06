@@ -146,7 +146,10 @@
   <div id="finalMap"></div>
   <div class="final-card">
     <h1>{gameState.challenge ? challengeOutcome : 'Game over'}</h1>
-    <p id="finalScore" class="final-score">{gameState.total} / {gameState.results.length * CONFIG.SCORE_MAX}</p>
+    <p id="finalScore" class="final-score">
+      {gameState.total} / {gameState.results.length * CONFIG.SCORE_MAX}
+      {#if gameState.challenge}<small aria-label={`Challenger score ${challengerTotal}`}>{challengerTotal}</small>{/if}
+    </p>
     <div id="finalRounds" class="final-rounds">
       {#each gameState.results as result, index}
         <button type="button" class="final-round"
@@ -161,6 +164,11 @@
           <span class="fr-no">{index + 1}</span>
           <span class="fr-dist">{result.distKm == null ? '—' : formatDistance(result.distKm)}</span>
           <span class="fr-pts">{result.points}</span>
+          {#if gameState.challenge}
+            <span class="fr-challenger" aria-label={`Challenger score ${result.challengerPoints ?? 0}`}>
+              {result.challengerPoints ?? 0}
+            </span>
+          {/if}
         </button>
       {/each}
     </div>

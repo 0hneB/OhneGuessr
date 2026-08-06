@@ -912,6 +912,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 .final-card h1 { font-size: 24px; margin-bottom: 8px; }
 .final-score { font-size: 30px; font-weight: 800; color: var(--accent); margin-bottom: 14px; }
+.final-score small { display: block; margin-top: 2px; color: #f59e0b; font-size: inherit; }
 .final-rounds {
   display: flex;
   flex-direction: column;
@@ -941,11 +942,13 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   background: rgba(255, 255, 255, 0.09);
   border-color: rgba(255, 255, 255, 0.28);
 }
+.final-round:has(.fr-challenger) { grid-template-columns: 20px 1fr auto auto; }
 .final-round:focus-visible { outline: none; }
 .final-round.selected .fr-no { color: #fff; }
 .fr-no { color: #9aa3ad; font-weight: 700; text-align: left; }
 .fr-dist { color: #cbd2dd; text-align: left; }
 .fr-pts { color: var(--accent); font-weight: 800; }
+.fr-challenger { color: #f59e0b; font-weight: 800; }
 .final-actions {
   display: flex;
   justify-content: center;
