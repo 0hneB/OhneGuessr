@@ -120,14 +120,16 @@
   async function lockGuess() {
     const guess = guessMap?.guess;
     if (!guess || !party || party.locked || busy) return;
+    const round = party.round;
     busy = true;
     error = '';
     try {
-      await applyState(await request<PartyGuestState>('/api/guess', {
+      const next = await request<PartyGuestState>('/api/guess', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ round: party.round, lat: guess.lat, lng: guess.lng })
-      }));
+        body: JSON.stringify({ round, lat: guess.lat, lng: guess.lng })
+      });
+      if (party?.phase === 'guessing' && party.round === round) await applyState(next);
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Could not lock that guess.';
     } finally {
