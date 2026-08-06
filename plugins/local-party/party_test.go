@@ -1,14 +1,45 @@
-package main
+package localparty
 
 import (
 	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
 )
+
+func TestLocalPartyBindingName(t *testing.T) {
+	typeOf := reflect.TypeOf(&LocalParty{})
+	method, ok := typeOf.MethodByName("LaunchParty")
+	if !ok {
+		t.Fatal("LaunchParty is not exported")
+	}
+	got := typeOf.Elem().PkgPath() + "." + typeOf.Elem().Name() + "." + method.Name
+	want := "github.com/0hneB/OhneGuessr/plugins/local-party.LocalParty.LaunchParty"
+	if got != want {
+		t.Fatalf("Wails binding = %q, want %q", got, want)
+	}
+}
+
+func TestLocalPartyService(t *testing.T) {
+	var target string
+	party := New(
+		fstest.MapFS{"index.html": {Data: []byte("party")}},
+		func(mapID string) bool { return mapID == "map-one" },
+		func(url, _ string) error { target = url; return nil },
+		nil,
+	)
+	state, err := party.LaunchParty("map-one")
+	if err != nil || state.ID == "" || target == "" || !party.Active() {
+		t.Fatalf("launch = %#v, %q, %v", state, target, err)
+	}
+	if err := party.StopParty(state.ID); err != nil || party.Active() {
+		t.Fatalf("stop = %v, active = %v", err, party.Active())
+	}
+}
 
 func TestPartyLifecycle(t *testing.T) {
 	party, err := newPartyServer(fstest.MapFS{

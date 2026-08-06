@@ -1,4 +1,4 @@
-import type { Challenge } from './plugins/challenges/types.js';
+import type { Challenge } from '../../plugins/challenges/types.js';
 
 export type GamePhase = 'booting' | 'loading' | 'guessing' | 'result' | 'final' | 'empty' | 'error';
 export type MovementMode = 'moving' | 'nm' | 'nmpz';

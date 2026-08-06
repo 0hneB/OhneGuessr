@@ -1,6 +1,6 @@
 import { ApiError, getClue, type LearnableMetaClue } from './api.js';
 import { safeImageUrls, sanitizeHtml } from './sanitizer.js';
-import type { Location, MapItem } from '../../types.js';
+import type { Location, MapItem } from '../../frontend/src/types.js';
 
 const LAYOUT_KEY = 'ohneguessr.learnableMeta.clue.layout';
 const DEFAULT_WIDTH = 450;

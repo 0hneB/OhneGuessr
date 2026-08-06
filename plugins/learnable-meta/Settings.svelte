@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { reloadLibrary } from '../../maps/library.svelte.js';
+  import { reloadLibrary } from '../../frontend/src/maps/library.svelte.js';
   import {
     addMap,
     forgetKey,

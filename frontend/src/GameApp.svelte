@@ -23,9 +23,9 @@
     startGame,
     submitGuess
   } from './game/game.js';
-  import { isPartyHost, partyHost } from './plugins/local-party/host.svelte.js';
-  import './plugins/challenges/challenges.css';
-  import './plugins/local-party/local-party.css';
+  import { isPartyHost, partyHost } from '../../plugins/local-party/host.svelte.js';
+  import '../../plugins/challenges/challenges.css';
+  import '../../plugins/local-party/local-party.css';
   import { ui } from './ui.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);

@@ -13,7 +13,7 @@ if (route.view === 'game') {
   await import('./app.css');
   document.title = '';
   document.querySelector('link[rel~="icon"]')?.remove();
-  const { default: PartyGuestApp } = await import('./plugins/local-party/PartyGuestApp.svelte');
+  const { default: PartyGuestApp } = await import('../../plugins/local-party/PartyGuestApp.svelte');
   mount(PartyGuestApp, { target, props: { join: route.join } });
 } else {
   await Promise.all([import('./app.css'), import('./launcher.css')]);

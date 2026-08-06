@@ -1,6 +1,6 @@
 // Narrow lifecycle surface for optional built-in plugins. Core owns game state;
 // plugins receive immutable snapshots and cannot steer the round lifecycle.
-import type { Location, MapItem, RoundResult } from '../types.js';
+import type { Location, MapItem, RoundResult } from '../frontend/src/types.js';
 
 export const PLUGIN_EVENTS = {
   MAP_SELECTED: 'map-selected',

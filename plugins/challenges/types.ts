@@ -1,4 +1,4 @@
-import type { Location, MovementMode, Point } from '../../types.js';
+import type { Location, MovementMode, Point } from '../../frontend/src/types.js';
 
 export interface ChallengeRules {
   movement: MovementMode;

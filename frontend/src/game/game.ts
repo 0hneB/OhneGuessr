@@ -18,15 +18,15 @@ import {
 } from '../settings/store.svelte.js';
 import { getLocations, loadLibrary } from '../maps/api.js';
 import { closeGame } from '../desktop.js';
-import { emitPluginEvent, PLUGIN_EVENTS } from '../plugins/events.js';
-import { getActiveChallenge, saveChallenge } from '../plugins/challenges/api.js';
+import { emitPluginEvent, PLUGIN_EVENTS } from '../../../plugins/events.js';
+import { getActiveChallenge, saveChallenge } from '../../../plugins/challenges/api.js';
 import {
   challengeFilename,
   createChallenge,
   parseChallenge,
   serializeChallenge
-} from '../plugins/challenges/challenge.js';
-import type { ChallengeRules } from '../plugins/challenges/types.js';
+} from '../../../plugins/challenges/challenge.js';
+import type { ChallengeRules } from '../../../plugins/challenges/types.js';
 import {
   beginPartyRound,
   closePartyRound,
@@ -36,12 +36,12 @@ import {
   onPartyChanged,
   publishPartyReveal,
   resetParty
-} from '../plugins/local-party/api.js';
-import { isPartyHost, partyHost } from '../plugins/local-party/host.svelte.js';
+} from '../../../plugins/local-party/api.js';
+import { isPartyHost, partyHost } from '../../../plugins/local-party/host.svelte.js';
 import type {
   PartyPlayerRound,
   PartyRoundReveal
-} from '../plugins/local-party/types.js';
+} from '../../../plugins/local-party/types.js';
 import type {
   GamePhase,
   GameSnapshot,
@@ -939,7 +939,7 @@ export async function init() {
   initSettingsSync();
   onPartyChanged((id) => { void refreshPartyHost(id); });
   try {
-    const { setupLearnableMeta } = await import('../plugins/learnable-meta/index.js');
+    const { setupLearnableMeta } = await import('../../../plugins/learnable-meta/index.js');
     await setupLearnableMeta();
   } catch (error) {
     console.warn('Learnable Meta plugin unavailable:', error);

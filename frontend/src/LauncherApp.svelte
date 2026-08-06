@@ -12,16 +12,16 @@
     setActiveMap,
     showLibraryNotice
   } from './maps/library.svelte.js';
-  import LearnableMetaSettings from './plugins/learnable-meta/Settings.svelte';
-  import MapMakingAppSettings from './plugins/map-making-app/Settings.svelte';
-  import PluginsPanel from './plugins/PluginsPanel.svelte';
+  import LearnableMetaSettings from '../../plugins/learnable-meta/Settings.svelte';
+  import MapMakingAppSettings from '../../plugins/map-making-app/Settings.svelte';
+  import PluginsPanel from '../../plugins/PluginsPanel.svelte';
   import {
     initPluginStatusSync,
     pluginStatus,
     refreshPluginStatus
-  } from './plugins/status.svelte.js';
-  import { openChallengeContents } from './plugins/challenges/open.js';
-  import { onChallengeFileOpened, takePendingChallenge } from './plugins/challenges/api.js';
+  } from '../../plugins/status.svelte.js';
+  import { openChallengeContents } from '../../plugins/challenges/open.js';
+  import { onChallengeFileOpened, takePendingChallenge } from '../../plugins/challenges/api.js';
   import KeybindingsPanel from './settings/KeybindingsPanel.svelte';
   import {
     initSettingsSync,

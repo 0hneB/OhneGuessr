@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/0hneB/OhneGuessr/internal/app"
+	"github.com/0hneB/OhneGuessr/plugins/local-party"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -56,7 +57,16 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	desktop := &DesktopService{backend: backend, frontend: frontend}
+	desktop := &DesktopService{backend: backend}
+	party := localparty.New(frontend, backend.HasMap, desktop.launchGame, func(id string) {
+		desktop.mu.RLock()
+		wails := desktop.wails
+		desktop.mu.RUnlock()
+		if wails != nil {
+			wails.Event.Emit("party:changed", id)
+		}
+	})
+	desktop.party = party
 
 	backendHandler := backend.Handler()
 	handler := http.NewServeMux()
@@ -92,6 +102,7 @@ func run() error {
 		desktop.queueChallenge(event.Context().Filename())
 	})
 	wailsApp.RegisterService(application.NewService(desktop))
+	wailsApp.RegisterService(application.NewService(party))
 	launcher := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:                       "launcher",
 		Title:                      "OhneGuessr",

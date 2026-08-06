@@ -1,4 +1,4 @@
-import { settings } from '../../settings/store.svelte.js';
+import { settings } from '../../frontend/src/settings/store.svelte.js';
 import { launchChallenge } from './api.js';
 import { parseChallenge } from './challenge.js';
 

@@ -1,4 +1,4 @@
-import type { Point } from '../../types.js';
+import type { Point } from '../../frontend/src/types.js';
 
 export type PartyPhase = 'lobby' | 'guessing' | 'scoring' | 'result' | 'final' | 'closed';
 

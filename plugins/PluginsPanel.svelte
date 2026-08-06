@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { settings, updateSettings } from '../settings/store.svelte.js';
+  import { settings, updateSettings } from '../frontend/src/settings/store.svelte.js';
   import './plugins.css';
   import {
     pluginStatus,

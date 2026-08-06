@@ -5,11 +5,11 @@ import {
   getStatus as getLearnableMetaStatus,
   removeMap as removeLearnableMap,
   renameMap as renameLearnableMap
-} from '../plugins/learnable-meta/api.js';
-import { publishLearnableMetaStatus } from '../plugins/learnable-meta/status.js';
-import { openChallengeContents } from '../plugins/challenges/open.js';
-import { MAX_CHALLENGE_BYTES } from '../plugins/challenges/challenge.js';
-import { launchParty } from '../plugins/local-party/api.js';
+} from '../../../plugins/learnable-meta/api.js';
+import { publishLearnableMetaStatus } from '../../../plugins/learnable-meta/status.js';
+import { openChallengeContents } from '../../../plugins/challenges/open.js';
+import { MAX_CHALLENGE_BYTES } from '../../../plugins/challenges/challenge.js';
+import { launchParty } from '../../../plugins/local-party/api.js';
 import type { MapItem } from '../types.js';
 import {
   addUserMap,

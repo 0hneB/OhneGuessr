@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/0hneB/OhneGuessr/internal/app"
+	"github.com/0hneB/OhneGuessr/plugins/local-party"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -28,7 +28,7 @@ const maxChallengeSize = 5 << 20
 
 type DesktopService struct {
 	backend          *app.App
-	frontend         fs.FS
+	party            *localparty.LocalParty
 	wails            *application.App
 	mu               sync.RWMutex
 	launcher         *application.WebviewWindow
@@ -38,13 +38,12 @@ type DesktopService struct {
 	challengeID      string
 	challengeData    string
 	pendingChallenge string
-	party            *partyServer
 }
 
 func (d *DesktopService) shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_ = d.StopParty("")
+	_ = d.party.StopParty("")
 	_ = d.backend.Shutdown(ctx)
 }
 
@@ -63,7 +62,7 @@ func (d *DesktopService) secondInstance(data application.SecondInstanceData) {
 }
 
 func (d *DesktopService) LaunchMap(mapID string) error {
-	if _, err := d.activeParty(""); err == nil {
+	if d.party.Active() {
 		return errors.New("end the current party first")
 	}
 	mapID = strings.TrimSpace(mapID)
@@ -130,7 +129,7 @@ func (d *DesktopService) launchGame(targetURL, mapID string) error {
 			d.gameTarget = ""
 		}
 		d.mu.Unlock()
-		_ = d.StopParty("")
+		_ = d.party.StopParty("")
 		d.emitGameState()
 	})
 	game.OnWindowEvent(events.Common.WindowFullscreen, func(*application.WindowEvent) {
@@ -144,7 +143,7 @@ func (d *DesktopService) launchGame(targetURL, mapID string) error {
 }
 
 func (d *DesktopService) LaunchChallenge(id, contents string) error {
-	if _, err := d.activeParty(""); err == nil {
+	if d.party.Active() {
 		return errors.New("end the current party first")
 	}
 	id = strings.TrimSpace(id)

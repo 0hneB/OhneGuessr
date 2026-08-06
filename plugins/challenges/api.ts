@@ -1,5 +1,4 @@
-import { Events } from '@wailsio/runtime';
-import { desktopCall, desktopRuntimeAvailable } from '../../desktop.js';
+import { desktopCall, desktopRuntimeAvailable, onDesktopEvent } from '../../frontend/src/desktop.js';
 import type { Challenge } from './types.js';
 
 export async function launchChallenge(challenge: Challenge, contents: string) {
@@ -26,7 +25,7 @@ export function takePendingChallenge() {
 }
 
 export function onChallengeFileOpened(listener: () => void) {
-  return desktopRuntimeAvailable() ? Events.On('challenge:file-opened', listener) : () => {};
+  return onDesktopEvent('challenge:file-opened', listener);
 }
 
 export async function saveChallenge(name: string, contents: string) {

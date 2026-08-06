@@ -1,4 +1,4 @@
-package main
+package localparty
 
 import (
 	"context"
@@ -149,6 +149,26 @@ type partyServer struct {
 	subscribers  map[chan struct{}]struct{}
 	changed      func(string)
 	closed       bool
+}
+
+type LocalParty struct {
+	mu         sync.RWMutex
+	frontend   fs.FS
+	mapExists  func(string) bool
+	launchGame func(string, string) error
+	changed    func(string)
+	party      *partyServer
+}
+
+func New(
+	frontend fs.FS,
+	mapExists func(string) bool,
+	launchGame func(string, string) error,
+	changed func(string),
+) *LocalParty {
+	return &LocalParty{
+		frontend: frontend, mapExists: mapExists, launchGame: launchGame, changed: changed,
+	}
 }
 
 func newPartyServer(frontend fs.FS, mapID string, changed func(string)) (*partyServer, error) {
@@ -861,124 +881,129 @@ func partyError(w http.ResponseWriter, status int, message string) {
 	partyJSON(w, status, map[string]string{"error": message})
 }
 
-func (d *DesktopService) activeParty(id string) (*partyServer, error) {
-	d.mu.RLock()
-	party := d.party
-	d.mu.RUnlock()
+func (p *LocalParty) activeParty(id string) (*partyServer, error) {
+	p.mu.RLock()
+	party := p.party
+	p.mu.RUnlock()
 	if party == nil || (id != "" && party.id != id) {
 		return nil, errors.New("party is no longer available")
 	}
 	return party, nil
 }
 
-func (d *DesktopService) partyChanged(id string) {
-	d.mu.RLock()
-	wails := d.wails
-	d.mu.RUnlock()
-	if wails != nil {
-		wails.Event.Emit("party:changed", id)
+func (p *LocalParty) Active() bool {
+	if p == nil {
+		return false
 	}
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.party != nil
 }
 
-func (d *DesktopService) LaunchParty(mapID string) (PartyHostState, error) {
+func (p *LocalParty) LaunchParty(mapID string) (PartyHostState, error) {
 	mapID = strings.TrimSpace(mapID)
-	if mapID == "" || !d.backend.HasMap(mapID) {
+	if mapID == "" || p.mapExists == nil || !p.mapExists(mapID) {
 		return PartyHostState{}, errors.New("map not found")
 	}
-	d.mu.RLock()
-	existing := d.party
-	frontend := d.frontend
-	d.mu.RUnlock()
-	if existing != nil {
+	p.mu.Lock()
+	if p.party != nil {
+		p.mu.Unlock()
 		return PartyHostState{}, errors.New("end the current party first")
 	}
-	party, err := newPartyServer(frontend, mapID, d.partyChanged)
+	party, err := newPartyServer(p.frontend, mapID, p.changed)
 	if err != nil {
+		p.mu.Unlock()
 		return PartyHostState{}, err
 	}
-	d.mu.Lock()
-	d.party = party
-	d.mu.Unlock()
-	if err := d.launchGame(partyGameURL(mapID, party.id), mapID); err != nil {
-		_ = d.StopParty(party.id)
+	p.party = party
+	p.mu.Unlock()
+	if p.launchGame == nil {
+		_ = p.StopParty(party.id)
+		return PartyHostState{}, errors.New("desktop runtime is not ready")
+	}
+	if err := p.launchGame(partyGameURL(mapID, party.id), mapID); err != nil {
+		_ = p.StopParty(party.id)
 		return PartyHostState{}, err
 	}
 	return party.hostState(), nil
 }
 
-func (d *DesktopService) GetPartyHostState(id string) (PartyHostState, error) {
-	party, err := d.activeParty(id)
+func (p *LocalParty) GetPartyHostState(id string) (PartyHostState, error) {
+	party, err := p.activeParty(id)
 	if err != nil {
 		return PartyHostState{}, err
 	}
 	return party.hostState(), nil
 }
 
-func (d *DesktopService) LockPartyRoster(id string) (PartyHostState, error) {
-	party, err := d.activeParty(id)
+func (p *LocalParty) LockPartyRoster(id string) (PartyHostState, error) {
+	party, err := p.activeParty(id)
 	if err != nil {
 		return PartyHostState{}, err
 	}
 	return party.lockRoster()
 }
 
-func (d *DesktopService) BeginPartyRound(id string, round, rounds int, deadline int64, mapStyle string) error {
-	party, err := d.activeParty(id)
+func (p *LocalParty) BeginPartyRound(id string, round, rounds int, deadline int64, mapStyle string) error {
+	party, err := p.activeParty(id)
 	if err != nil {
 		return err
 	}
 	return party.beginRound(round, rounds, deadline, mapStyle)
 }
 
-func (d *DesktopService) ClosePartyRound(id string, round int) ([]PartyHostPlayer, error) {
-	party, err := d.activeParty(id)
+func (p *LocalParty) ClosePartyRound(id string, round int) ([]PartyHostPlayer, error) {
+	party, err := p.activeParty(id)
 	if err != nil {
 		return nil, err
 	}
 	return party.closeRound(round)
 }
 
-func (d *DesktopService) PublishPartyReveal(id string, reveal PartyRoundReveal) error {
-	party, err := d.activeParty(id)
+func (p *LocalParty) PublishPartyReveal(id string, reveal PartyRoundReveal) error {
+	party, err := p.activeParty(id)
 	if err != nil {
 		return err
 	}
 	return party.publishReveal(reveal)
 }
 
-func (d *DesktopService) FinishParty(id string) (PartyHostState, error) {
-	party, err := d.activeParty(id)
+func (p *LocalParty) FinishParty(id string) (PartyHostState, error) {
+	party, err := p.activeParty(id)
 	if err != nil {
 		return PartyHostState{}, err
 	}
 	return party.finish()
 }
 
-func (d *DesktopService) ResetParty(id string) error {
-	party, err := d.activeParty(id)
+func (p *LocalParty) ResetParty(id string) error {
+	party, err := p.activeParty(id)
 	if err != nil {
 		return err
 	}
 	return party.reset()
 }
 
-func (d *DesktopService) GetPartyRound(id string, round int) (PartyRoundReveal, error) {
-	party, err := d.activeParty(id)
+func (p *LocalParty) GetPartyRound(id string, round int) (PartyRoundReveal, error) {
+	party, err := p.activeParty(id)
 	if err != nil {
 		return PartyRoundReveal{}, err
 	}
 	return party.reveal(round)
 }
 
-func (d *DesktopService) StopParty(id string) error {
-	d.mu.Lock()
-	party := d.party
-	if party == nil || (id != "" && party.id != id) {
-		d.mu.Unlock()
+func (p *LocalParty) StopParty(id string) error {
+	if p == nil {
 		return nil
 	}
-	d.party = nil
-	d.mu.Unlock()
+	p.mu.Lock()
+	party := p.party
+	if party == nil || (id != "" && party.id != id) {
+		p.mu.Unlock()
+		return nil
+	}
+	p.party = nil
+	p.mu.Unlock()
 	return party.close()
 }
 

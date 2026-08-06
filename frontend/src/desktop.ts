@@ -1,6 +1,6 @@
 import { Application, Browser, Call, Events, System } from '@wailsio/runtime';
 
-const SERVICE = 'main.DesktopService.';
+const DESKTOP_SERVICE = 'main.DesktopService.';
 
 export interface GameWindowState {
   open: boolean;
@@ -12,8 +12,17 @@ const emptyGameState = (): GameWindowState => ({ open: false, fullscreen: false 
 
 export const desktopRuntimeAvailable = () => System.IsDesktop();
 
+export async function callService<T>(service: string, method: string, ...args: unknown[]): Promise<T> {
+  return Call.ByName(service + method, ...args) as Promise<T>;
+}
+
 export async function desktopCall<T>(method: string, ...args: unknown[]): Promise<T> {
-  return Call.ByName(SERVICE + method, ...args) as Promise<T>;
+  return callService(DESKTOP_SERVICE, method, ...args);
+}
+
+export function onDesktopEvent<T>(name: string, listener: (data: T) => void) {
+  if (!desktopRuntimeAvailable()) return () => {};
+  return Events.On(name, ({ data }) => listener(data as T));
 }
 
 export async function launchMap(mapID: string) {
@@ -56,8 +65,7 @@ export async function getGameWindowState() {
 }
 
 export function onGameWindowState(listener: (state: GameWindowState) => void) {
-  if (!desktopRuntimeAvailable()) return () => {};
-  return Events.On('desktop:game-state', ({ data }) => listener(data as GameWindowState));
+  return onDesktopEvent('desktop:game-state', listener);
 }
 
 export function quitApplication() {

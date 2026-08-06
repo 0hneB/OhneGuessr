@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { formatDistance } from '../../game/scoring.js';
-  import { GuessMap, createRevealMaps } from '../../maps/map.js';
-  import type { Point } from '../../types.js';
+  import { formatDistance } from '../../frontend/src/game/scoring.js';
+  import { GuessMap, createRevealMaps } from '../../frontend/src/maps/map.js';
+  import type { Point } from '../../frontend/src/types.js';
   import type { PartyGuestState } from './types.js';
   import './local-party.css';
 

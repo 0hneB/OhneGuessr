@@ -2,7 +2,7 @@ import type {
   Location,
   Point,
   RoundResult
-} from '../../types.js';
+} from '../../frontend/src/types.js';
 import type { Challenge, ChallengeRound, ChallengeRules } from './types.js';
 
 export const CHALLENGE_FORMAT = 'ohneguessr.challenge';
