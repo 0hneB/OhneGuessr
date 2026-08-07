@@ -1,5 +1,9 @@
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
+  import {
+    acceptedFileTypes,
+    fileHandlerFor
+  } from '../../../plugins/file-handlers.svelte.js';
   import { mapActions } from '../../../plugins/map-actions.svelte.js';
   import type { MapItem } from '../types.js';
   import {
@@ -27,6 +31,7 @@
   const folderName = $derived(library.search.trim());
   const folderCreationAllowed = $derived(canCreateFolder(library.selectedFolder));
   const importAllowed = $derived(canStoreLocalMap(library.selectedFolder));
+  const fileTypes = $derived(acceptedFileTypes());
 
   let fileInput: HTMLInputElement;
   let searchInput: HTMLInputElement;
@@ -220,7 +225,8 @@
 
   async function acceptFiles(files?: FileList | null) {
     for (const file of Array.from(files || [])) {
-      if (!await importFile(file) || /\.ohne$/i.test(file.name)) break;
+      const handler = fileHandlerFor(file);
+      if (!await importFile(file) || handler?.single) break;
     }
     if (fileInput) fileInput.value = '';
   }
@@ -269,11 +275,11 @@
         <span class="svg-icon folder-icon" aria-hidden="true"></span>
       </button>
       <button class="icon-button" type="button"
-              title={importAllowed ? `Import a map or open a challenge` : 'Open a challenge or select a local folder to import a map'}
-              aria-label="Import map or open challenge" onclick={() => fileInput.click()}>
+              title={importAllowed ? 'Import or open a file' : 'Open a plugin file or select a local folder to import a map'}
+              aria-label="Import or open file" onclick={() => fileInput.click()}>
         <span class="svg-icon plus-icon" aria-hidden="true"></span>
       </button>
-      <input bind:this={fileInput} type="file" accept=".json,.ohne,application/json" hidden
+      <input bind:this={fileInput} type="file" accept={fileTypes} hidden
              onchange={(event) => acceptFiles(event.currentTarget.files)} />
       <span class="toolbar-separator" aria-hidden="true"></span>
       <button class="icon-button" type="button"

@@ -7,8 +7,7 @@ import {
   renameMap as renameLearnableMap
 } from '../../../plugins/learnable-meta/api.js';
 import { publishLearnableMetaStatus } from '../../../plugins/learnable-meta/status.js';
-import { openChallengeContents } from '../../../plugins/challenges/open.js';
-import { MAX_CHALLENGE_BYTES } from '../../../plugins/challenges/challenge.js';
+import { fileHandlerFor } from '../../../plugins/file-handlers.svelte.js';
 import type { MapAction } from '../../../plugins/map-actions.svelte.js';
 import type { MapItem } from '../types.js';
 import {
@@ -188,14 +187,14 @@ export async function importMap(file: File) {
 }
 
 export async function importFile(file: File) {
-  if (!/\.ohne$/i.test(file.name)) return importMap(file);
+  const handler = fileHandlerFor(file);
+  if (!handler) return importMap(file);
   try {
-    if (file.size > MAX_CHALLENGE_BYTES) throw new Error('Challenge file is too large.');
-    await openChallengeContents(await file.text());
+    await handler.open(file);
     setNotice('');
     return true;
   } catch (error) {
-    setNotice(errorMessage(error, 'Could not open that challenge.'), true);
+    setNotice(errorMessage(error, handler.error), true);
     return false;
   }
 }

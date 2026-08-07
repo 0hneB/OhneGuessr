@@ -1,5 +1,3 @@
-import type { Challenge } from '../../plugins/challenges/types.js';
-
 export type GamePhase = 'booting' | 'loading' | 'guessing' | 'result' | 'final' | 'empty' | 'error';
 export type MovementMode = 'moving' | 'nm' | 'nmpz';
 export type ScoringMode = 'world' | 'country';
@@ -28,15 +26,12 @@ export interface Location extends Point {
 export interface RevealResult {
   guess: Point | null;
   actual: Location;
-  challengerGuess?: Point | null;
   color?: string;
 }
 
 export interface RoundResult extends RevealResult {
   distKm: number | null;
   points: number;
-  challengerDistKm?: number | null;
-  challengerPoints?: number;
 }
 
 export interface MapSource extends Record<string, unknown> {
@@ -66,7 +61,6 @@ export interface Settings {
   streetViewZoomedOut: boolean;
   movement: MovementMode;
   scoring: ScoringMode;
-  challengesEnabled: boolean;
   keybindings?: Record<string, string[]>;
 }
 
@@ -82,7 +76,6 @@ export interface GameState {
   current: Location | null;
   unlimited: boolean;
   results: RoundResult[];
-  challenge: Challenge | null;
 }
 
 export type Trail = Point[][];

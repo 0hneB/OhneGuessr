@@ -42,6 +42,8 @@ function createLocalPartyMode(id: string): GameMode {
     movement: 'nmpz',
     allowsGuess: false,
     persist: false,
+    restartLabel: 'Rematch',
+    closeLabel: 'End party',
     components: {
       Lobby: PartyLobby,
       RoundStatus: PartyRoundStatus,
@@ -60,7 +62,7 @@ function createLocalPartyMode(id: string): GameMode {
       partyHost.rounds = [];
       await startGame();
     },
-    async rematch(showLobby) {
+    async rematch(_startGame, showLobby) {
       await resetParty(id);
       partyHost.state = await getPartyHostState(id);
       partyHost.rounds = [];
@@ -92,6 +94,9 @@ function createLocalPartyMode(id: string): GameMode {
     finalResults(round) {
       const reveal = round == null ? partyHost.rounds.at(-1) : partyHost.rounds[round];
       return reveal ? partyRevealResults(reveal) : [];
+    },
+    selectFinalRound(_current, selected) {
+      return selected;
     },
     async refresh() {
       partyHost.state = await getPartyHostState(id);

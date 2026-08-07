@@ -12,6 +12,7 @@
     setActiveMap,
     showLibraryNotice
   } from './maps/library.svelte.js';
+  import { onLauncherPageRequested } from './launcher-events.js';
   import LearnableMetaSettings from '../../plugins/learnable-meta/Settings.svelte';
   import MapMakingAppSettings from '../../plugins/map-making-app/Settings.svelte';
   import PluginsPanel from '../../plugins/PluginsPanel.svelte';
@@ -20,8 +21,6 @@
     pluginStatus,
     refreshPluginStatus
   } from '../../plugins/status.svelte.js';
-  import { openChallengeContents } from '../../plugins/challenges/open.js';
-  import { onChallengeFileOpened, takePendingChallenge } from '../../plugins/challenges/api.js';
   import KeybindingsPanel from './settings/KeybindingsPanel.svelte';
   import {
     initSettingsSync,
@@ -56,7 +55,7 @@
   const timerPreset = $derived(timerPresets.includes(settings.timer) ? settings.timer : 'custom');
   let page = $state<Page>('maps');
   let gameWindow = $state<GameWindowState>({ open: false, fullscreen: false });
-  let challengeMessage = $state('');
+  let pluginMessage = $state('');
   let roundsDraft = $state(roundPresets.includes(settings.rounds) ? '7' : settings.rounds);
   let timerDraft = $state(timerPresets.includes(settings.timer)
     ? '3'
@@ -91,42 +90,23 @@
     updateSettings({ theme, accentColor: LAUNCHER_THEMES[theme].accent });
   }
 
-  async function consumePendingChallenge() {
-    try {
-      const contents = await takePendingChallenge();
-      if (contents) await openChallengeContents(contents);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not open that challenge.';
-      if (message.startsWith('Enable Challenges')) {
-        challengeMessage = message;
-        page = 'plugins';
-      } else {
-        showLibraryNotice(message, true);
-        page = 'maps';
-      }
-    }
-  }
-
   onMount(() => {
     const stopSettings = initSettingsSync();
     const stopPluginStatus = initPluginStatusSync();
     const stopGameState = onGameWindowState(receiveGameState);
-    const stopChallengeOpen = onChallengeFileOpened(() => { void consumePendingChallenge(); });
-    const showChallengePlugin = () => {
-      challengeMessage = 'Enable Challenges to open .ohne files.';
-      page = 'plugins';
-    };
-    window.addEventListener('ohneguessr:challenge-disabled', showChallengePlugin);
+    const stopLauncherRequests = onLauncherPageRequested((request) => {
+      if (request.page === 'plugins') pluginMessage = request.message || '';
+      else if (request.message) showLibraryNotice(request.message, true);
+      page = request.page;
+    });
     void getGameWindowState().then(receiveGameState);
     void initLibrary();
     void refreshPluginStatus();
-    void consumePendingChallenge();
     return () => {
       stopSettings();
       stopPluginStatus();
       stopGameState();
-      stopChallengeOpen();
-      window.removeEventListener('ohneguessr:challenge-disabled', showChallengePlugin);
+      stopLauncherRequests();
     };
   });
 </script>
@@ -176,7 +156,7 @@
         {/if}
       </div>
     {:else if page === 'plugins'}
-      <PluginsPanel message={challengeMessage} />
+      <PluginsPanel message={pluginMessage} />
     {:else if page === 'game'}
       <section class="launcher-settings-page split-settings" aria-label="Game settings">
         <div class="settings-group">

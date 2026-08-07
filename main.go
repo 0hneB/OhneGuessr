@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/0hneB/OhneGuessr/internal/app"
+	"github.com/0hneB/OhneGuessr/plugins/challenges"
 	"github.com/0hneB/OhneGuessr/plugins/local-party"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -41,7 +42,7 @@ func run() error {
 			configArgs = append(configArgs, argument)
 			continue
 		}
-		if strings.EqualFold(filepath.Ext(argument), ".ohne") {
+		if challenges.IsFile(argument) {
 			if startupChallenge == "" {
 				startupChallenge, _ = filepath.Abs(argument)
 			}
@@ -68,6 +69,19 @@ func run() error {
 	})
 	desktop.exclusiveActive = party.Active
 	desktop.stopExclusive = func() { _ = party.StopParty("") }
+	challengeService := challenges.NewService(
+		desktop.exclusiveSessionActive,
+		func(target string) error { return desktop.launchGame(target, "") },
+		desktop.FocusLauncher,
+		func() (*application.App, *application.WebviewWindow) {
+			desktop.mu.RLock()
+			defer desktop.mu.RUnlock()
+			return desktop.wails, desktop.game
+		},
+	)
+	desktop.secondInstanceHandler = func(data application.SecondInstanceData) bool {
+		return challenges.HandleSecondInstance(challengeService, data)
+	}
 
 	backendHandler := backend.Handler()
 	handler := http.NewServeMux()
@@ -100,10 +114,11 @@ func run() error {
 	})
 	desktop.wails = wailsApp
 	wailsApp.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
-		desktop.queueChallenge(event.Context().Filename())
+		challenges.QueueFile(challengeService, event.Context().Filename())
 	})
 	wailsApp.RegisterService(application.NewService(desktop))
 	wailsApp.RegisterService(application.NewService(party))
+	wailsApp.RegisterService(application.NewService(challengeService))
 	launcher := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:                       "launcher",
 		Title:                      "OhneGuessr",
@@ -126,7 +141,7 @@ func run() error {
 	})
 	desktop.launcher = launcher
 	if startupChallenge != "" {
-		desktop.pendingChallenge = startupChallenge
+		challenges.QueueFile(challengeService, startupChallenge)
 	}
 	launcher.RegisterHook(events.Common.WindowClosing, func(*application.WindowEvent) {
 		go wailsApp.Quit()

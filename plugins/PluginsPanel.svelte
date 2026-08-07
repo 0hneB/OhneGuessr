@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { settings, updateSettings } from '../frontend/src/settings/store.svelte.js';
+  import ChallengeSettings from './challenges/SettingsRow.svelte';
   import LocalPartySettings from './local-party/SettingsRow.svelte';
   import './plugins.css';
   import {
@@ -34,12 +34,7 @@
 
 <section class="launcher-settings-page plugins-page" aria-label="Plugins">
   <div class="plugin-list">
-    <label class="plugin-row">
-      <span><b>Challenges</b><small>Create and play shareable .ohne challenges.</small></span>
-      <input type="checkbox" checked={settings.challengesEnabled}
-             onchange={(event) => updateSettings({ challengesEnabled: event.currentTarget.checked })} />
-      <span class="switch" aria-hidden="true"></span>
-    </label>
+    <ChallengeSettings />
     <LocalPartySettings />
     <label class="plugin-row" class:disabled={pluginStatus.mma?.available === false}>
       <span><b>Map Making App Sync</b><small>Keep Map Making App maps available locally.</small></span>
@@ -56,7 +51,7 @@
       <span class="switch" aria-hidden="true"></span>
     </label>
   </div>
-  {#if error || (message && !settings.challengesEnabled)}
+  {#if error || message}
     <p class="settings-note plugin-error" role="alert">{error || message}</p>
   {/if}
 </section>

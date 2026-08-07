@@ -14,7 +14,6 @@
     completeModeRound,
     endUnlimitedGame,
     endModeGame,
-    exportChallenge as createChallengeFile,
     init,
     nextRound,
     rematchModeGame,
@@ -23,27 +22,26 @@
     startGame,
     submitGuess
   } from './game/game.js';
+  import {
+    finalActions,
+    runFinalAction
+  } from '../../plugins/final-actions.svelte.js';
   import { gameMode } from '../../plugins/game-mode.svelte.js';
-  import '../../plugins/challenges/challenges.css';
   import { ui } from './ui.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);
-  const challengerTotal = $derived(gameState.results.reduce(
-    (total, result) => total + (result.challengerPoints || 0), 0
-  ));
-  const challengeOutcome = $derived(
-    gameState.total === challengerTotal ? 'Tie' : gameState.total > challengerTotal ? 'You win' : 'Challenger wins'
-  );
-  let challengeExporting = $state(false);
-  let challengeExportMessage = $state('');
   const modeActive = $derived(Boolean(gameMode.current));
   const modeComponents = $derived(gameMode.current?.components);
+  const visibleFinalActions = $derived(finalActions.items.filter((action) => action.visible()));
   const timerText = $derived(
     `${Math.floor(ui.timerRemaining / 60)}:${String(ui.timerRemaining % 60).padStart(2, '0')}`
   );
   const timerProgress = $derived(
-    ui.timerVisible && settings.timer !== 'unlimited'
-      ? Math.max(0, Math.min(100, ui.timerRemaining / Number(settings.timer) * 100))
+    ui.timerVisible && (gameMode.current?.timerSeconds?.() || settings.timer !== 'unlimited')
+      ? Math.max(0, Math.min(
+          100,
+          ui.timerRemaining / (gameMode.current?.timerSeconds?.() || Number(settings.timer)) * 100
+        ))
       : 100
   );
   function handleWindowKeydown(event: KeyboardEvent) {
@@ -56,18 +54,6 @@
     if (event.key !== 'Escape' || event.repeat || event.defaultPrevented) return;
     event.preventDefault();
     focusLauncher();
-  }
-
-  async function exportCurrentChallenge() {
-    challengeExporting = true;
-    challengeExportMessage = '';
-    try {
-      await createChallengeFile();
-    } catch (error) {
-      challengeExportMessage = error instanceof Error ? error.message : 'Could not save the challenge.';
-    } finally {
-      challengeExporting = false;
-    }
   }
 
   onMount(async () => {
@@ -174,14 +160,11 @@
   <div class="final-card">
     {#if modeActive && modeComponents?.Final}
       {@const Final = modeComponents.Final}
-      <Final busy={gameMode.busy} error={gameMode.error}
-             selectedRound={ui.selectedFinalRound}
-             onselect={selectFinalRound} onrematch={rematchModeGame} onclose={endModeGame} />
+      <Final selectedRound={ui.selectedFinalRound} onselect={selectFinalRound} />
     {:else}
-      <h1>{gameState.challenge ? challengeOutcome : 'Game over'}</h1>
+      <h1>Game over</h1>
       <p id="finalScore" class="final-score">
         {gameState.total} / {gameState.results.length * CONFIG.SCORE_MAX}
-        {#if gameState.challenge}<small aria-label={`Challenger score ${challengerTotal}`}>{challengerTotal}</small>{/if}
       </p>
       <div id="finalRounds" class="final-rounds">
         {#each gameState.results as result, index}
@@ -197,25 +180,32 @@
             <span class="fr-no">{index + 1}</span>
             <span class="fr-dist">{result.distKm == null ? '—' : formatDistance(result.distKm)}</span>
             <span class="fr-pts">{result.points}</span>
-            {#if gameState.challenge}
-              <span class="fr-challenger" aria-label={`Challenger score ${result.challengerPoints ?? 0}`}>
-                {result.challengerPoints ?? 0}
-              </span>
-            {/if}
           </button>
         {/each}
       </div>
-      <div class="final-actions">
-        <button id="playAgain" onclick={startGame}>Play again</button>
-        {#if settings.challengesEnabled}
-          <button type="button" disabled={challengeExporting} onclick={exportCurrentChallenge}>
-            {challengeExporting ? 'Saving…' : 'Create challenge'}
-          </button>
-        {/if}
-      </div>
-      {#if challengeExportMessage}
-        <p class="challenge-export-error" role="alert">{challengeExportMessage}</p>
+    {/if}
+    <div class="final-actions">
+      <button id="playAgain" disabled={gameMode.busy || Boolean(finalActions.busy)}
+              onclick={modeActive ? rematchModeGame : startGame}>
+        {gameMode.current?.restartLabel || 'Play again'}
+      </button>
+      {#each visibleFinalActions as action (action.id)}
+        <button type="button" disabled={Boolean(finalActions.busy)}
+                onclick={() => runFinalAction(action)}>
+          {finalActions.busy === action.id ? action.runningLabel : action.label}
+        </button>
+      {/each}
+      {#if gameMode.current?.closeLabel}
+        <button class="game-mode-final-close" type="button"
+                disabled={gameMode.busy || Boolean(finalActions.busy)}
+                aria-label={gameMode.current.closeLabel} title={gameMode.current.closeLabel}
+                onclick={endModeGame}>
+          <span class="svg-icon close-icon" aria-hidden="true"></span>
+        </button>
       {/if}
+    </div>
+    {#if gameMode.error || finalActions.error}
+      <p class="final-action-error" role="alert">{gameMode.error || finalActions.error}</p>
     {/if}
   </div>
 </div>

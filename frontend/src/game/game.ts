@@ -18,14 +18,7 @@ import {
 } from '../settings/store.svelte.js';
 import { getLocations, loadLibrary } from '../maps/api.js';
 import { emitPluginEvent, PLUGIN_EVENTS } from '../../../plugins/events.js';
-import { getActiveChallenge, saveChallenge } from '../../../plugins/challenges/api.js';
-import {
-  challengeFilename,
-  createChallenge,
-  parseChallenge,
-  serializeChallenge
-} from '../../../plugins/challenges/challenge.js';
-import type { ChallengeRules } from '../../../plugins/challenges/types.js';
+import { finalActions } from '../../../plugins/final-actions.svelte.js';
 import { gameMode } from '../../../plugins/game-mode.svelte.js';
 import type {
   GamePhase,
@@ -42,7 +35,7 @@ import { ui } from '../ui.svelte.js';
 
 // World: fixed scale. Country: the loaded map's bbox diagonal.
 const effectiveScaleKm = () =>
-  state.challenge?.rules.scoreScaleKm ?? (
+  gameMode.current?.scoreScaleKm?.() ?? (
     settings.scoring === 'country' && state.mapDiagonalKm > 0
     ? state.mapDiagonalKm
     : CONFIG.WORLD_SCALE_KM
@@ -50,11 +43,10 @@ const effectiveScaleKm = () =>
 // 'unlimited' -> Infinity (the game never ends on its own).
 const roundsPerGame = () =>
   settings.rounds === 'unlimited' ? Infinity : (parseInt(settings.rounds, 10) || CONFIG.ROUNDS);
-const activeMovement = () => state.challenge?.rules.movement ?? settings.movement;
-const movementForGame = () => gameMode.current?.movement ?? activeMovement();
-const activeTimerSeconds = () => state.challenge
-  ? (state.challenge.rules.timerSeconds ?? 0)
-  : (settings.timer === 'unlimited' ? 0 : (parseInt(settings.timer, 10) || 0));
+const movementForGame = () => gameMode.current?.movement ?? settings.movement;
+const activeTimerSeconds = () => gameMode.current?.timerSeconds?.() ?? (
+  settings.timer === 'unlimited' ? 0 : (parseInt(settings.timer, 10) || 0)
+);
 const ACTIVE_GAME_PHASES = new Set<GamePhase>([
   GAME_PHASE.LOADING,
   GAME_PHASE.GUESSING,
@@ -163,12 +155,12 @@ function prepareRound(index: number): RoundPreparation {
     let loc = firstLocation;
     let tries = 0;
     let ok = await viewer.showLocation(loc, load.signal);
-    if (state.challenge && isPanoLoadActive(load) && !ok && loc.panoid) {
+    if (gameMode.current?.fixedDeck && isPanoLoadActive(load) && !ok && loc.panoid) {
       loc = { ...loc, panoid: null };
       preparation.deck[index] = loc;
       ok = await viewer.showLocation(loc, load.signal);
     }
-    while (!state.challenge && isPanoLoadActive(load) && !ok && tries < 8) {
+    while (!gameMode.current?.fixedDeck && isPanoLoadActive(load) && !ok && tries < 8) {
       tries++;
       loc = randomLocation(preparation.locations);
       preparation.deck[index] = loc;
@@ -221,6 +213,8 @@ function takeRoundPreload(index: number) {
 }
 
 export async function startGame() {
+  finalActions.error = '';
+  gameMode.current?.reset?.();
   cancelRoundPreload();
   roundTimer.stop();
   emitPluginEvent(PLUGIN_EVENTS.GAME_RESET, { map: currentMapItem() });
@@ -228,9 +222,10 @@ export async function startGame() {
   setHidden('resultScreen', true);
   setHidden('final', true);
   state.mapDiagonalKm = mapDiagonalKm(state.all);
-  if (state.challenge) {
+  const modeDeck = gameMode.current?.deck?.();
+  if (modeDeck) {
     state.unlimited = false;
-    state.deck = state.challenge.rounds.map(({ challengerGuess: _guess, ...location }) => ({ ...location }));
+    state.deck = modeDeck;
     state.rounds = state.deck.length;
   } else {
     const n = roundsPerGame();
@@ -242,7 +237,7 @@ export async function startGame() {
   state.total = 0;
   state.results = [];
   viewer.setMode(movementForGame());
-  viewer.setStartZoomedOut(state.challenge ? false : settings.streetViewZoomedOut);
+  viewer.setStartZoomedOut(gameMode.current?.startZoomedOut ?? settings.streetViewZoomedOut);
   await loadRound();
 }
 
@@ -269,7 +264,7 @@ export async function rematchModeGame() {
   gameMode.busy = true;
   gameMode.error = '';
   try {
-    await mode.rematch(() => {
+    await mode.rematch(startGame, () => {
       state.phase = GAME_PHASE.EMPTY;
       setHidden('final', true);
     });
@@ -281,7 +276,7 @@ export async function rematchModeGame() {
 }
 
 export function endModeGame() {
-  gameMode.current?.close();
+  gameMode.current?.close?.();
 }
 
 // Snapshot the game so a refresh restores its active or completed screen.
@@ -355,11 +350,11 @@ async function tryResume() {
   state.round = round;
   state.total = Number(snap.total) || 0;
   state.results = Array.isArray(snap.results)
-    ? snap.results.map((result, index) => isSavedResult(result) ? ({
-        ...result,
-        ...challengerComparison(index, result.actual)
-      }) : result)
+    ? snap.results.map((result) => isSavedResult(result) ? { ...result } : result)
     : [];
+  state.results.forEach((result, index) => {
+    if (isSavedResult(result)) recordModeResult(index, result);
+  });
   state.phase = GAME_PHASE.LOADING;
   setHidden('final', true);
 
@@ -456,7 +451,7 @@ async function loadRound(preparation: RoundPreparation | null = null) {
   viewer.beginRound(prepared.location);
   const mode = gameMode.current;
   let completeImmediately = false;
-  if (mode) {
+  if (mode?.beginRound) {
     try {
       const seconds = activeTimerSeconds();
       completeImmediately = await mode.beginRound({
@@ -516,7 +511,7 @@ const KEY_ACTIONS: Record<string, (event: KeyboardEvent) => void> = {
     }
     else if (state.phase === GAME_PHASE.RESULT) nextRound();
     else if (state.phase === GAME_PHASE.GUESSING) {
-      if (gameMode.current) void finishRound();
+      if (gameMode.current?.completeRound) void finishRound();
       else if (gmap.guess) submitGuess();
     }
   },
@@ -572,22 +567,24 @@ export function submitGuess() {
   void finishRound();
 }
 
-function challengerComparison(index: number, actual: Location) {
-  if (!state.challenge) return {};
-  const source = state.challenge.rounds[index]?.challengerGuess || null;
-  const guess = source ? { ...source } : null;
-  const distKm = guess ? haversineKm(guess, actual) : null;
-  return {
-    challengerGuess: guess,
-    challengerDistKm: distKm,
-    challengerPoints: distKm == null ? 0 : scoreFor(distKm, effectiveScaleKm())
-  };
+function scoreGuess(actual: Location, guess: Point) {
+  const distanceKm = haversineKm(guess, actual);
+  return { distanceKm, points: scoreFor(distanceKm, effectiveScaleKm()) };
+}
+
+function recordModeResult(round: number, result: RoundResult) {
+  gameMode.current?.recordResult?.({
+    round,
+    actual: result.actual,
+    result,
+    score: (guess) => scoreGuess(result.actual, guess)
+  });
 }
 
 // Score and reveal the round. A null guess (timeout) is a forfeit, 0 points.
 async function finishRound() {
   if (state.phase !== GAME_PHASE.GUESSING) return;
-  if (gameMode.current) {
+  if (gameMode.current?.completeRound) {
     await completeModeRound();
     return;
   }
@@ -603,16 +600,16 @@ async function finishRound() {
   const distKm = guess ? haversineKm(guess, current) : null;
   const points = distKm == null ? 0 : scoreFor(distKm, effectiveScaleKm());
   state.total += points;
-  const result = {
+  const result: RoundResult = {
     guess: guess ? { lat: guess.lat, lng: guess.lng } : null,
     actual: {
       lat: current.lat,
       lng: current.lng,
       panoid: current.panoid || null
     },
-    distKm, points,
-    ...challengerComparison(state.round, current)
+    distKm, points
   };
+  recordModeResult(state.round, result);
   state.results.push(result);
   saveProgress({ resultTrail: trail });
   showRoundResult(result, trail);
@@ -620,7 +617,7 @@ async function finishRound() {
 
 export async function completeModeRound() {
   const mode = gameMode.current;
-  if (!mode || modeRoundPending || state.phase !== GAME_PHASE.GUESSING) return;
+  if (!mode?.completeRound || modeRoundPending || state.phase !== GAME_PHASE.GUESSING) return;
   modeRoundPending = true;
   gameMode.busy = true;
   gameMode.error = '';
@@ -631,10 +628,7 @@ export async function completeModeRound() {
     const reveals = await mode.completeRound({
       round: state.round,
       actual: { ...current },
-      score: (guess) => {
-        const distanceKm = haversineKm(guess, current);
-        return { distanceKm, points: scoreFor(distanceKm, effectiveScaleKm()) };
-      }
+      score: (guess) => scoreGuess(current, guess)
     });
     const result: RoundResult = {
       guess: null,
@@ -665,7 +659,9 @@ function showRoundResult(result: RoundResult, trail: Trail | null = null) {
 
   setLoading(false);
   setHidden('resultScreen', false);
-  resultMap.show(result, trail);
+  const modeResults = gameMode.current?.roundResults?.(state.round, result);
+  if (modeResults?.length) resultMap.showMany(modeResults, trail);
+  else resultMap.show(result, trail);
   emitPluginEvent(PLUGIN_EVENTS.ROUND_RESULT, {
     map: currentMapItem(),
     location: { ...actual },
@@ -697,7 +693,7 @@ export async function endUnlimitedGame() {
 
 async function finishModeSession() {
   const mode = gameMode.current;
-  if (!mode) return true;
+  if (!mode?.finish) return true;
   gameMode.busy = true;
   gameMode.error = '';
   try {
@@ -733,9 +729,10 @@ function applyFinalRoundSelection() {
 }
 
 export function selectFinalRound(index: number) {
-  ui.selectedFinalRound = gameMode.current
-    ? index
-    : (ui.selectedFinalRound === index ? null : index);
+  const mode = gameMode.current;
+  ui.selectedFinalRound = mode?.selectFinalRound
+    ? mode.selectFinalRound(ui.selectedFinalRound, index)
+    : (mode ? index : (ui.selectedFinalRound === index ? null : index));
   applyFinalRoundSelection();
 }
 
@@ -751,27 +748,6 @@ function showFinal() {
   // Mode-specific final UI is inserted reactively, so fit after that DOM update.
   if (gameMode.current) requestAnimationFrame(applyFinalRoundSelection);
   else applyFinalRoundSelection();
-}
-
-export async function exportChallenge() {
-  if (!settings.challengesEnabled) throw new Error('Enable Challenges in the launcher first.');
-  if (state.phase !== GAME_PHASE.FINAL || !state.map) {
-    throw new Error('Finish the game before creating a challenge.');
-  }
-  const rules: ChallengeRules = state.challenge
-    ? { ...state.challenge.rules }
-    : {
-        movement: settings.movement,
-        timerSeconds: settings.timer === 'unlimited' ? null : Number(settings.timer),
-        scoreScaleKm: effectiveScaleKm()
-      };
-  const challenge = createChallenge(
-    state.map.name,
-    rules,
-    state.deck.slice(0, state.results.length),
-    state.results
-  );
-  return saveChallenge(challengeFilename(challenge.mapName), serializeChallenge(challenge));
 }
 
 function applyLiveSettings(next: Settings, previous: Settings) {
@@ -792,12 +768,12 @@ function applyLiveSettings(next: Settings, previous: Settings) {
     gmap.setAccent(next.accentColor);
     resultMap.setAccent(next.accentColor);
   }
-  if (!state.challenge && !gameMode.current && next.movement !== previous.movement) viewer.setMode(next.movement);
-  if (!state.challenge && !gameMode.current && next.streetViewZoomedOut !== previous.streetViewZoomedOut) {
+  if (!gameMode.current && next.movement !== previous.movement) viewer.setMode(next.movement);
+  if (!gameMode.current && next.streetViewZoomedOut !== previous.streetViewZoomedOut) {
     viewer.setStartZoomedOut(next.streetViewZoomedOut);
   }
-  if (!state.challenge && !gameMode.current && next.rounds !== previous.rounds) applyRoundLimitChange();
-  if (!state.challenge && !gameMode.current && next.timer !== previous.timer) {
+  if (!gameMode.current && next.rounds !== previous.rounds) applyRoundLimitChange();
+  if (!gameMode.current && next.timer !== previous.timer) {
     if (state.phase === GAME_PHASE.GUESSING) roundTimer.start();
     else roundTimer.stop();
   }
@@ -805,50 +781,38 @@ function applyLiveSettings(next: Settings, previous: Settings) {
 }
 
 async function loadRequestedGame() {
-  const params = new URLSearchParams(location.search);
-  const challengeID = params.get('challenge')?.trim();
-  if (challengeID) {
-    const challenge = parseChallenge(await getActiveChallenge(challengeID));
-    if (challenge.id !== challengeID) throw new Error('Challenge ID does not match the opened file');
-    state.challenge = challenge;
-    state.map = {
-      id: `challenge:${challenge.id}`,
-      name: challenge.mapName,
-      count: challenge.rounds.length,
-      file: '',
-      folder: '',
-      source: { type: 'challenge' },
-      managed: true
-    };
-    emitPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, { map: currentMapItem() });
-    setLoading(true, `Loading ${challenge.mapName} challenge…`);
-    state.all = challenge.rounds.map(({ challengerGuess: _guess, ...round }) => ({ ...round }));
-    viewer.setMode(activeMovement());
-    viewer.setStartZoomedOut(false);
-    if (!await tryResume()) await startGame();
-    return;
+  const mode = gameMode.current;
+  const loaded = await mode?.load?.();
+  let map: MapItem;
+  let locations: Location[];
+  if (loaded) {
+    ({ map, locations } = loaded);
+  } else {
+    const mapID = new URLSearchParams(location.search).get('map')?.trim();
+    if (!mapID) throw new Error('No map was selected');
+    const { maps } = await loadLibrary();
+    const selected = maps.find((item) => item.id === mapID);
+    if (!selected) throw new Error('That map no longer exists');
+    map = selected;
+    locations = normalizeLocations(await getLocations(map));
   }
 
-  const mapID = params.get('map')?.trim();
-  if (!mapID) throw new Error('No map was selected');
-  const { maps } = await loadLibrary();
-  const map = maps.find((item) => item.id === mapID);
-  if (!map) throw new Error('That map no longer exists');
-
-  state.challenge = null;
   state.map = map;
   emitPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, {
     map: { ...map, source: map.source ? { ...map.source } : null }
   });
   setLoading(true, `Loading ${map.name}…`);
-  const locations = normalizeLocations(await getLocations(map));
   if (!locations.length) throw new Error(`"${map.name}" has no playable locations`);
   state.all = locations;
-  if (gameMode.current) {
-    await gameMode.current.initialize(map);
-    state.phase = GAME_PHASE.EMPTY;
+  if (mode) {
+    await mode.initialize(map);
     viewer.setMode(movementForGame());
-    viewer.setStartZoomedOut(settings.streetViewZoomedOut);
+    viewer.setStartZoomedOut(mode.startZoomedOut ?? settings.streetViewZoomedOut);
+    if (mode.autoStart) {
+      if (!await tryResume()) await startGame();
+      return;
+    }
+    state.phase = GAME_PHASE.EMPTY;
     setLoading(false);
     return;
   }
@@ -857,7 +821,7 @@ async function loadRequestedGame() {
 
 async function refreshGameMode() {
   const mode = gameMode.current;
-  if (!mode) return;
+  if (!mode?.refresh) return;
   try {
     if (await mode.refresh() && state.phase === GAME_PHASE.GUESSING) await completeModeRound();
   } catch (error) {
@@ -895,7 +859,7 @@ export async function init() {
   resultMap.setAccent(settings.accentColor);
   onSettingsChanged(applyLiveSettings);
   initSettingsSync();
-  gameMode.current?.subscribe(() => { void refreshGameMode(); });
+  gameMode.current?.subscribe?.(() => { void refreshGameMode(); });
   try {
     const { setupLearnableMeta } = await import('../../../plugins/learnable-meta/index.js');
     await setupLearnableMeta();
@@ -915,6 +879,6 @@ export async function init() {
   } catch (err) {
     state.phase = GAME_PHASE.ERROR;
     const message = err instanceof Error ? err.message : String(err);
-    setLoading(true, `Could not load game: ${message}. Return to the launcher and choose another map or challenge.`);
+    setLoading(true, `Could not load game: ${message}. Return to the launcher and choose another map or file.`);
   }
 }

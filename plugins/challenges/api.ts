@@ -1,9 +1,17 @@
-import { desktopCall, desktopRuntimeAvailable, onDesktopEvent } from '../../frontend/src/desktop.js';
+import {
+  callService,
+  desktopRuntimeAvailable,
+  onDesktopEvent
+} from '../../frontend/src/desktop.js';
 import type { Challenge } from './types.js';
+
+const SERVICE = 'github.com/0hneB/OhneGuessr/plugins/challenges.Service.';
+const challengeCall = <T>(method: string, ...args: unknown[]) =>
+  callService<T>(SERVICE, method, ...args);
 
 export async function launchChallenge(challenge: Challenge, contents: string) {
   if (desktopRuntimeAvailable()) {
-    await desktopCall<void>('LaunchChallenge', challenge.id, contents);
+    await challengeCall<void>('LaunchChallenge', challenge.id, contents);
   } else {
     sessionStorage.setItem(`ohneguessr.challenge.${challenge.id}`, contents);
     location.assign(`/?view=game&challenge=${encodeURIComponent(challenge.id)}`);
@@ -11,7 +19,7 @@ export async function launchChallenge(challenge: Challenge, contents: string) {
 }
 
 export function getActiveChallenge(id: string) {
-  if (desktopRuntimeAvailable()) return desktopCall<string>('GetActiveChallenge', id);
+  if (desktopRuntimeAvailable()) return challengeCall<string>('GetActiveChallenge', id);
   const contents = sessionStorage.getItem(`ohneguessr.challenge.${id}`);
   return contents
     ? Promise.resolve(contents)
@@ -20,7 +28,7 @@ export function getActiveChallenge(id: string) {
 
 export function takePendingChallenge() {
   return desktopRuntimeAvailable()
-    ? desktopCall<string>('TakePendingChallenge')
+    ? challengeCall<string>('TakePendingChallenge')
     : Promise.resolve('');
 }
 
@@ -29,7 +37,7 @@ export function onChallengeFileOpened(listener: () => void) {
 }
 
 export async function saveChallenge(name: string, contents: string) {
-  if (desktopRuntimeAvailable()) return desktopCall<boolean>('SaveChallenge', name, contents);
+  if (desktopRuntimeAvailable()) return challengeCall<boolean>('SaveChallenge', name, contents);
   const href = URL.createObjectURL(new Blob([contents], { type: 'application/json' }));
   const link = document.createElement('a');
   link.href = href;

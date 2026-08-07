@@ -188,14 +188,14 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
 .party-final-rounds { flex-flow: row wrap; justify-content: center; overflow-y: visible; }
 .party-final-rounds .final-round { display: grid; width: 38px; grid-template-columns: 1fr; padding: 8px; }
 .party-final-rounds .fr-no { text-align: center; }
-.final-actions .party-final-end {
+.final-actions .game-mode-final-close {
   display: grid;
   width: 42px;
   height: 42px;
   place-items: center;
   padding: 0;
 }
-.party-final-end .svg-icon { width: 16px; height: 16px; }
+.game-mode-final-close .svg-icon { width: 16px; height: 16px; }
 
 /* Phone guest */
 .party-guest {

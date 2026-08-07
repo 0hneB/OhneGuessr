@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createChallenge, parseChallenge, serializeChallenge } from './challenge.js';
+import {
+  challengeGame,
+  challengeRevealResults,
+  recordChallengeResult
+} from './state.svelte.js';
 
 const valid = {
   format: 'ohneguessr.challenge',
@@ -19,6 +24,11 @@ const valid = {
 };
 
 describe('.ohne challenges', () => {
+  afterEach(() => {
+    challengeGame.challenge = null;
+    challengeGame.results = [];
+  });
+
   it('parses v1 and ignores additive fields', () => {
     const challenge = parseChallenge(JSON.stringify(valid));
     expect(challenge.rounds[0]).toEqual({
@@ -52,5 +62,29 @@ describe('.ohne challenges', () => {
     const encoded = JSON.parse(serializeChallenge(challenge));
     expect(encoded.rounds.map((item: { panoId: string }) => item.panoId)).toEqual(['first', 'second']);
     expect(encoded.rounds[1].challengerGuess).toBeNull();
+  });
+
+  it('keeps opponent scoring and reveal rendering inside the plugin', () => {
+    const challenge = parseChallenge(JSON.stringify(valid));
+    recordChallengeResult(challenge, {
+      round: 0,
+      actual: { lat: 48.8584, lng: 2.2945 },
+      result: {
+        guess: { lat: 48.85, lng: 2.3 },
+        actual: { lat: 48.8584, lng: 2.2945 },
+        distKm: 1,
+        points: 4900
+      },
+      score: () => ({ distanceKm: 2, points: 4800 })
+    });
+    expect(challengeGame.results[0].opponent).toEqual({
+      guess: { lat: 48.86, lng: 2.31 },
+      distanceKm: 2,
+      points: 4800
+    });
+    expect(challengeRevealResults(challengeGame.results[0])[1]).toMatchObject({
+      guess: { lat: 48.86, lng: 2.31 },
+      color: '#f59e0b'
+    });
   });
 });

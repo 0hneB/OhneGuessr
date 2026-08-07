@@ -2,19 +2,11 @@
   import { partyHost } from './host.svelte.js';
 
   let {
-    busy,
-    error,
     selectedRound,
-    onselect,
-    onrematch,
-    onclose
+    onselect
   }: {
-    busy: boolean;
-    error: string;
     selectedRound: number | null;
     onselect: (round: number) => void;
-    onrematch: () => void;
-    onclose: () => void;
   } = $props();
 
   const rankedPlayers = $derived([...(partyHost.state?.players || [])].sort(
@@ -46,11 +38,3 @@
     </button>
   {/each}
 </div>
-<div class="final-actions">
-  <button id="playAgain" disabled={busy} onclick={onrematch}>Rematch</button>
-  <button class="party-final-end" type="button" disabled={busy}
-          aria-label="End party" title="End party" onclick={onclose}>
-    <span class="svg-icon close-icon" aria-hidden="true"></span>
-  </button>
-</div>
-{#if error}<p class="party-error" role="alert">{error}</p>{/if}

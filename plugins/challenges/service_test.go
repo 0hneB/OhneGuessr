@@ -1,4 +1,4 @@
-package main
+package challenges
 
 import (
 	"os"
@@ -33,5 +33,27 @@ func TestChallengeFileBoundary(t *testing.T) {
 	}
 	if _, err := readChallengeFile(large); err == nil {
 		t.Fatal("expected oversized challenge to fail")
+	}
+}
+
+func TestServiceLaunchesValidatedChallenge(t *testing.T) {
+	launched := ""
+	service := NewService(nil, func(target string) error {
+		launched = target
+		return nil
+	}, nil, nil)
+	id := "550e8400-e29b-41d4-a716-446655440000"
+	contents := `{"format":"ohneguessr.challenge","version":1,"id":"` + id + `"}`
+	if err := service.LaunchChallenge(id, contents); err != nil {
+		t.Fatal(err)
+	}
+	if launched != "/?view=game&challenge="+id {
+		t.Fatalf("launched %q", launched)
+	}
+	if active, err := service.GetActiveChallenge(id); err != nil || active != contents {
+		t.Fatalf("active challenge = %q, %v", active, err)
+	}
+	if err := service.LaunchChallenge("wrong", contents); err == nil {
+		t.Fatal("expected mismatched challenge ID to fail")
 	}
 }

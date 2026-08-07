@@ -1,11 +1,13 @@
-import { settings } from '../../frontend/src/settings/store.svelte.js';
+import { requestLauncherPage } from '../../frontend/src/launcher-events.js';
 import { launchChallenge } from './api.js';
 import { parseChallenge } from './challenge.js';
+import { challengeSettings } from './settings.svelte.js';
 
 export async function openChallengeContents(contents: string) {
-  if (!settings.challengesEnabled) {
-    window.dispatchEvent(new Event('ohneguessr:challenge-disabled'));
-    throw new Error('Enable Challenges in Plugins to open .ohne files.');
+  if (!challengeSettings.enabled) {
+    const message = 'Enable Challenges in Plugins to open .ohne files.';
+    requestLauncherPage({ page: 'plugins', message });
+    throw new Error(message);
   }
   const challenge = parseChallenge(contents);
   await launchChallenge(challenge, contents);

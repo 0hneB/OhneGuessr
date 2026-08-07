@@ -966,6 +966,11 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 .final-actions #playAgain { padding-inline: 14px; }
 .final-actions button:disabled { opacity: 0.55; cursor: wait; }
+.final-action-error {
+  margin-top: 8px;
+  color: #fb7185;
+  font-size: 12px;
+}
 #playAgain {
   align-self: center;
   padding: 12px 28px;

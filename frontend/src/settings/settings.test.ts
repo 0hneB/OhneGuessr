@@ -24,7 +24,7 @@ describe('normalizeSettings', () => {
       movement: 'moving'
     });
     expect(normalizeSettings({})).not.toHaveProperty('currentMap');
-    expect(normalizeSettings({ challengesEnabled: 'yes' }).challengesEnabled).toBe(false);
+    expect(normalizeSettings({ challengesEnabled: true })).not.toHaveProperty('challengesEnabled');
     expect(normalizeSettings({ localPartyEnabled: true })).not.toHaveProperty('localPartyEnabled');
   });
 
