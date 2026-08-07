@@ -298,8 +298,9 @@ func TestManagedMoveRules(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !underRoot(updated.File, folder) || !boolValue(updated.Source["nameOverride"]) ||
-		!boolValue(updated.Source["folderOverride"]) {
+	nameOverride, _ := updated.Source["nameOverride"].(bool)
+	folderOverride, _ := updated.Source["folderOverride"].(bool)
+	if !underRoot(updated.File, folder) || !nameOverride || !folderOverride {
 		t.Fatalf("MMA overrides = %#v", updated)
 	}
 }

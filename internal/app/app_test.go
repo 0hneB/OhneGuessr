@@ -215,11 +215,7 @@ func TestHTTPFolderAndMapMutations(t *testing.T) {
 
 func TestManagedRootDeleteDisablesSync(t *testing.T) {
 	a := newTestApp(t)
-	a.mma.mu.Lock()
-	err := a.mma.saveConfigLocked(mmaConfig{
-		Version: 1, Enabled: true, APIKey: "mma-key", Username: "mapper",
-	})
-	a.mma.mu.Unlock()
+	_, err := a.mma.SetEnabled(true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +241,7 @@ func TestManagedRootDeleteDisablesSync(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.deleteFolder(mmaRoot, true); !errors.Is(err, errFolderNotFound) || !a.mma.enabled() {
+	if _, err := a.deleteFolder(mmaRoot, true); !errors.Is(err, errFolderNotFound) || !a.mma.Enabled() {
 		t.Fatalf("failed delete did not restore MMA sync: %v", err)
 	}
 
@@ -279,7 +275,7 @@ func TestManagedRootDeleteDisablesSync(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := a.deleteFolder(mmaRoot, false); !errors.Is(err, errFolderNotEmpty) || !a.mma.enabled() {
+	if _, err := a.deleteFolder(mmaRoot, false); !errors.Is(err, errFolderNotEmpty) || !a.mma.Enabled() {
 		t.Fatalf("unconfirmed managed delete = %v", err)
 	}
 	for _, folder := range []string{mmaRoot, learnableRoot} {
@@ -292,11 +288,8 @@ func TestManagedRootDeleteDisablesSync(t *testing.T) {
 		}
 	}
 
-	a.mma.mu.Lock()
-	mma := a.mma.loadConfigLocked()
-	a.mma.mu.Unlock()
-	if mma.Enabled || mma.APIKey != "mma-key" || mma.Username != "mapper" {
-		t.Fatalf("MMA config = %#v", mma)
+	if a.mma.Enabled() {
+		t.Fatal("MMA sync remained enabled after deleting its managed root")
 	}
 	a.learnable.mu.Lock()
 	learnable := a.learnable.loadConfigLocked()

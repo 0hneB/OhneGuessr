@@ -96,11 +96,11 @@ func (a *App) deleteFolder(folder string, recursive bool) ([]string, error) {
 		if !recursive {
 			return nil, errFolderNotEmpty
 		}
-		if a.mma.enabled() {
-			if _, err := a.mma.setEnabled(false); err != nil {
+		if a.mma.Enabled() {
+			if _, err := a.mma.SetEnabled(false); err != nil {
 				return nil, err
 			}
-			restore = func() { _, _ = a.mma.setEnabled(true) }
+			restore = func() { _, _ = a.mma.SetEnabled(true) }
 		}
 	case strings.EqualFold(clean, learnableRoot):
 		if !recursive {

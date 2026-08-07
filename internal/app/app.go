@@ -12,6 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	mapmakingapp "github.com/0hneB/OhneGuessr/plugins/map-making-app"
 )
 
 const maxBodySize = 64 << 20
@@ -19,7 +21,7 @@ const maxBodySize = 64 << 20
 type App struct {
 	maps         *mapStore
 	coordinator  *syncCoordinator
-	mma          *mapMakingAppSync
+	mma          *mapmakingapp.Backend
 	learnable    *learnableMetaSync
 	updates      *updater
 	shutdownOnce sync.Once
@@ -50,7 +52,10 @@ func New(dataDir, version string) (*App, error) {
 		coordinator: coordinator,
 		updates:     newUpdater(version),
 	}
-	a.mma = newMapMakingAppSync(maps, filepath.Join(pluginData, "map-making-app.json"), coordinator)
+	a.mma = mapmakingapp.New(
+		&mapMakingAppHost{maps: maps, coordinator: coordinator},
+		filepath.Join(pluginData, "map-making-app.json"),
+	)
 	a.learnable = newLearnableMetaSync(maps, filepath.Join(pluginData, "learnable-meta.json"), coordinator)
 	return a, nil
 }
@@ -102,7 +107,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	a.registerMapRoutes(mux)
-	a.mma.registerRoutes(mux)
+	a.mma.RegisterRoutes(mux)
 	a.learnable.registerRoutes(mux)
 	a.updates.registerRoutes(mux)
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
@@ -150,16 +155,22 @@ type httpResponseError struct {
 	message string
 }
 
-func (e *httpResponseError) Error() string { return e.message }
+func (e *httpResponseError) Error() string       { return e.message }
+func (e *httpResponseError) HTTPStatus() int     { return e.status }
+func (e *httpResponseError) HTTPMessage() string { return e.message }
 
 func responseError(status int, message string) error {
 	return &httpResponseError{status: status, message: message}
 }
 
 func errorResponse(err error) (int, string) {
-	var response *httpResponseError
+	var response interface {
+		error
+		HTTPStatus() int
+		HTTPMessage() string
+	}
 	if errors.As(err, &response) {
-		return response.status, response.message
+		return response.HTTPStatus(), response.HTTPMessage()
 	}
 	return http.StatusInternalServerError, "request failed"
 }

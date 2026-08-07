@@ -1,12 +1,15 @@
-package app
+package mapmakingapp
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"maps"
+	"mime"
 	"net/http"
 	"os"
 	"path"
@@ -16,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 const (
@@ -23,7 +27,18 @@ const (
 	mmaMaxWorkers  = 10
 	mmaMaxResponse = 64 << 20
 	mmaJobName     = "Map Making App"
+	mmaRoot        = "map-making-app"
+	maxBodySize    = 64 << 20
+	maxNameRunes   = 120
 )
+
+var windowsNames = map[string]bool{
+	"con": true, "prn": true, "aux": true, "nul": true,
+	"com1": true, "com2": true, "com3": true, "com4": true, "com5": true,
+	"com6": true, "com7": true, "com8": true, "com9": true,
+	"lpt1": true, "lpt2": true, "lpt3": true, "lpt4": true, "lpt5": true,
+	"lpt6": true, "lpt7": true, "lpt8": true, "lpt9": true,
+}
 
 type mmaConfig struct {
 	Version    int    `json:"version"`
@@ -43,26 +58,55 @@ type syncRuntime struct {
 	LastResult map[string]any `json:"lastResult"`
 }
 
-type mapMakingAppSync struct {
-	maps        *mapStore
-	configPath  string
-	coordinator *syncCoordinator
-	client      *http.Client
-	baseURL     string
-	mu          sync.Mutex
-	runtime     syncRuntime
+// Entry is the map-library shape needed by this plugin. Core converts its
+// private manifest representation at the host boundary.
+type Entry struct {
+	ID       string
+	Name     string
+	File     string
+	Count    int
+	Checksum string
+	Source   map[string]any
 }
 
-func newMapMakingAppSync(maps *mapStore, configPath string, coordinator *syncCoordinator) *mapMakingAppSync {
-	return &mapMakingAppSync{
-		maps: maps, configPath: configPath, coordinator: coordinator,
+type Manifest struct {
+	Folders []string
+	Maps    []Entry
+}
+
+// Library is only valid during Host.WithLibrary.
+type Library interface {
+	Directory() string
+	Manifest() (Manifest, error)
+	Resolve(string) (string, error)
+	Save(Manifest) error
+}
+
+type Host interface {
+	WithLibrary(func(Library) error) error
+	AcquireSync(string) (context.Context, func(), error)
+	CancelSync(string) bool
+}
+
+type Backend struct {
+	host       Host
+	configPath string
+	client     *http.Client
+	baseURL    string
+	mu         sync.Mutex
+	runtime    syncRuntime
+}
+
+func New(host Host, configPath string) *Backend {
+	return &Backend{
+		host: host, configPath: configPath,
 		client:  &http.Client{Timeout: 90 * time.Second},
 		baseURL: mmaAPIBase,
 		runtime: syncRuntime{Phase: "idle"},
 	}
 }
 
-func (s *mapMakingAppSync) registerRoutes(mux *http.ServeMux) {
+func (s *Backend) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/mma-sync/status", api(func(_ *http.Request) (any, int, error) {
 		return s.publicStatus(), http.StatusOK, nil
 	}))
@@ -73,7 +117,7 @@ func (s *mapMakingAppSync) registerRoutes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, 0, err
 		}
-		status, err := s.setEnabled(body.Enabled)
+		status, err := s.SetEnabled(body.Enabled)
 		return status, http.StatusOK, err
 	}))
 	mux.HandleFunc("PUT /api/mma-sync/key", api(func(r *http.Request) (any, int, error) {
@@ -96,9 +140,84 @@ func (s *mapMakingAppSync) registerRoutes(mux *http.ServeMux) {
 	}))
 }
 
+type httpResponseError struct {
+	status  int
+	message string
+}
+
+func (e *httpResponseError) Error() string       { return e.message }
+func (e *httpResponseError) HTTPStatus() int     { return e.status }
+func (e *httpResponseError) HTTPMessage() string { return e.message }
+
+func responseError(status int, message string) error {
+	return &httpResponseError{status: status, message: message}
+}
+
+func errorResponse(err error) (int, string) {
+	var response interface {
+		error
+		HTTPStatus() int
+		HTTPMessage() string
+	}
+	if errors.As(err, &response) {
+		return response.HTTPStatus(), response.HTTPMessage()
+	}
+	return http.StatusInternalServerError, "request failed"
+}
+
+func api(fn func(*http.Request) (any, int, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		payload, status, err := fn(r)
+		if err != nil {
+			code, message := errorResponse(err)
+			writeJSON(w, code, map[string]string{"error": message})
+			return
+		}
+		writeJSON(w, status, payload)
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	body, err := json.Marshal(value)
+	if err != nil {
+		status = http.StatusInternalServerError
+		body = []byte(`{"error":"response failed"}`)
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(status)
+	_, _ = w.Write(body)
+}
+
+func decodeJSON[T any](r *http.Request) (T, error) {
+	var result T
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || mediaType != "application/json" {
+		return result, responseError(http.StatusUnsupportedMediaType, "Content-Type must be application/json")
+	}
+	if r.ContentLength > maxBodySize {
+		return result, responseError(http.StatusRequestEntityTooLarge, "request body is too large")
+	}
+	r.Body = http.MaxBytesReader(nil, r.Body, maxBodySize)
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&result); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			return result, responseError(http.StatusRequestEntityTooLarge, "request body is too large")
+		}
+		return result, responseError(http.StatusBadRequest, "invalid JSON request")
+	}
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		return result, responseError(http.StatusBadRequest, "request body must contain one JSON value")
+	}
+	return result, nil
+}
+
 func defaultMMAConfig() mmaConfig { return mmaConfig{Version: 1} }
 
-func (s *mapMakingAppSync) loadConfigLocked() mmaConfig {
+func (s *Backend) loadConfigLocked() mmaConfig {
 	raw, err := os.ReadFile(s.configPath)
 	if err != nil {
 		return defaultMMAConfig()
@@ -112,18 +231,18 @@ func (s *mapMakingAppSync) loadConfigLocked() mmaConfig {
 	return config
 }
 
-func (s *mapMakingAppSync) saveConfigLocked(config mmaConfig) error {
+func (s *Backend) saveConfigLocked(config mmaConfig) error {
 	config.Version = 1
 	return atomicWriteJSON(s.configPath, config, 0o600)
 }
 
-func (s *mapMakingAppSync) publicStatus() map[string]any {
+func (s *Backend) publicStatus() map[string]any {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.publicStatusLocked()
 }
 
-func (s *mapMakingAppSync) publicStatusLocked() map[string]any {
+func (s *Backend) publicStatusLocked() map[string]any {
 	config := s.loadConfigLocked()
 	var user any
 	if config.Username != "" {
@@ -144,13 +263,13 @@ func (s *mapMakingAppSync) publicStatusLocked() map[string]any {
 	}
 }
 
-func (s *mapMakingAppSync) enabled() bool {
+func (s *Backend) Enabled() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.loadConfigLocked().Enabled
 }
 
-func (s *mapMakingAppSync) setEnabled(enabled bool) (map[string]any, error) {
+func (s *Backend) SetEnabled(enabled bool) (map[string]any, error) {
 	s.mu.Lock()
 	config := s.loadConfigLocked()
 	config.Enabled = enabled
@@ -167,7 +286,7 @@ func (s *mapMakingAppSync) setEnabled(enabled bool) (map[string]any, error) {
 	return status, nil
 }
 
-func (s *mapMakingAppSync) saveKey(rawKey string) (map[string]any, error) {
+func (s *Backend) saveKey(rawKey string) (map[string]any, error) {
 	key := strings.TrimSpace(rawKey)
 	if key == "" {
 		return nil, responseError(http.StatusBadRequest, "API key required")
@@ -175,7 +294,7 @@ func (s *mapMakingAppSync) saveKey(rawKey string) (map[string]any, error) {
 	if len(key) > 4096 {
 		return nil, responseError(http.StatusBadRequest, "API key is too long")
 	}
-	ctx, release, err := s.coordinator.acquire(mmaJobName)
+	ctx, release, err := s.host.AcquireSync(mmaJobName)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +329,7 @@ func (s *mapMakingAppSync) saveKey(rawKey string) (map[string]any, error) {
 	return status, nil
 }
 
-func (s *mapMakingAppSync) forgetKey() (map[string]any, error) {
+func (s *Backend) forgetKey() (map[string]any, error) {
 	s.cancel()
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -223,8 +342,8 @@ func (s *mapMakingAppSync) forgetKey() (map[string]any, error) {
 	return s.publicStatusLocked(), nil
 }
 
-func (s *mapMakingAppSync) start() (map[string]any, error) {
-	ctx, release, err := s.coordinator.acquire(mmaJobName)
+func (s *Backend) start() (map[string]any, error) {
+	ctx, release, err := s.host.AcquireSync(mmaJobName)
 	if err != nil {
 		return nil, err
 	}
@@ -247,12 +366,12 @@ func (s *mapMakingAppSync) start() (map[string]any, error) {
 	return status, nil
 }
 
-func (s *mapMakingAppSync) beginLocked() {
+func (s *Backend) beginLocked() {
 	s.runtime = syncRuntime{Running: true, Phase: "catalog"}
 }
 
-func (s *mapMakingAppSync) cancel() {
-	if s.coordinator.cancelJob(mmaJobName) {
+func (s *Backend) cancel() {
+	if s.host.CancelSync(mmaJobName) {
 		s.mu.Lock()
 		if s.runtime.Running {
 			s.runtime.Phase = "cancelling"
@@ -262,7 +381,7 @@ func (s *mapMakingAppSync) cancel() {
 	}
 }
 
-func (s *mapMakingAppSync) run(ctx context.Context, release func(), key string) {
+func (s *Backend) run(ctx context.Context, release func(), key string) {
 	defer release()
 	result, err := s.syncMaps(ctx, key)
 	s.mu.Lock()
@@ -292,7 +411,7 @@ func (s *mapMakingAppSync) run(ctx context.Context, release func(), key string) 
 	s.runtime.LastResult = result.asMap()
 }
 
-func (s *mapMakingAppSync) progress(phase string, completed, total int) {
+func (s *Backend) progress(phase string, completed, total int) {
 	s.mu.Lock()
 	s.runtime.Phase = phase
 	s.runtime.Completed = completed
@@ -312,7 +431,7 @@ type mmaRemoteMap struct {
 
 type mmaPlan struct {
 	remote   mmaRemoteMap
-	existing *mapEntry
+	existing *Entry
 	target   string
 	source   map[string]any
 }
@@ -341,15 +460,23 @@ func (r mmaSyncResult) asMap() map[string]any {
 	}
 }
 
-func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncResult, error) {
+func (s *Backend) syncMaps(ctx context.Context, key string) (mmaSyncResult, error) {
 	// ponytail: one storage lock keeps publication atomic; split snapshots only if sync latency blocks real map edits.
-	s.maps.mu.Lock()
-	defer s.maps.mu.Unlock()
-	manifest, err := s.maps.loadManifestLocked()
+	var result mmaSyncResult
+	err := s.host.WithLibrary(func(library Library) error {
+		var err error
+		result, err = s.syncMapsLocked(ctx, key, library)
+		return err
+	})
+	return result, err
+}
+
+func (s *Backend) syncMapsLocked(ctx context.Context, key string, library Library) (mmaSyncResult, error) {
+	manifest, err := library.Manifest()
 	if err != nil {
 		return mmaSyncResult{}, err
 	}
-	staging, err := os.MkdirTemp(s.maps.dir, ".mma-sync-")
+	staging, err := os.MkdirTemp(library.Directory(), ".mma-sync-")
 	if err != nil {
 		return mmaSyncResult{}, err
 	}
@@ -374,8 +501,8 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 		return leftFolder < rightFolder
 	})
 
-	local := make([]mapEntry, 0, len(manifest.Maps))
-	synced := map[int64]mapEntry{}
+	local := make([]Entry, 0, len(manifest.Maps))
+	synced := map[int64]Entry{}
 	for _, entry := range manifest.Maps {
 		if sourceType(entry.Source) != "map-making-app" {
 			local = append(local, entry)
@@ -391,7 +518,7 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 	}
 	plans := make([]mmaPlan, 0, len(remotes))
 	for _, remote := range remotes {
-		var existing *mapEntry
+		var existing *Entry
 		if value, ok := synced[remote.ID]; ok {
 			copy := value
 			existing = &copy
@@ -421,7 +548,7 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 	}
 
 	s.progress("publishing", len(plans), len(plans))
-	finalSynced := make([]mapEntry, 0, len(plans))
+	finalSynced := make([]Entry, 0, len(plans))
 	keepOld := map[string]bool{}
 	failures := map[int64]string{}
 	updated, unchanged := 0, 0
@@ -435,7 +562,7 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 			}
 			continue
 		}
-		targetPath, resolveErr := s.maps.resolve(plan.target)
+		targetPath, resolveErr := library.Resolve(plan.target)
 		if resolveErr != nil {
 			failures[plan.remote.ID] = resolveErr.Error()
 			if plan.existing != nil {
@@ -482,18 +609,17 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 		if plan.existing != nil && boolValue(plan.source["nameOverride"]) {
 			name = plan.existing.Name
 		}
-		finalSynced = append(finalSynced, mapEntry{
+		finalSynced = append(finalSynced, Entry{
 			ID: "mma:" + strconv.FormatInt(plan.remote.ID, 10), Name: name, File: plan.target,
 			Count: download.count, Checksum: download.checksum, Source: plan.source,
 		})
 	}
 
-	finalManifest := mapManifest{
-		Version: manifestVersion,
+	finalManifest := Manifest{
 		Folders: foldersOutsideRoot(manifest.Folders, mmaRoot),
 		Maps:    append(local, finalSynced...),
 	}
-	if err := s.maps.saveManifestLocked(finalManifest); err != nil {
+	if err := library.Save(finalManifest); err != nil {
 		return mmaSyncResult{}, err
 	}
 	finalPaths := map[string]bool{}
@@ -506,13 +632,13 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 		if finalPaths[key] || keepOld[key] {
 			continue
 		}
-		if filename, err := s.maps.resolve(old.File); err == nil {
+		if filename, err := library.Resolve(old.File); err == nil {
 			if err := os.Remove(filename); err == nil || errors.Is(err, os.ErrNotExist) {
 				removed++
 			}
 		}
 	}
-	removeEmptyMapDirectories(s.maps.dir, mmaRoot)
+	removeEmptyMapDirectories(library.Directory(), mmaRoot)
 	failureList := make([]map[string]any, 0, len(failures))
 	ids := make([]int64, 0, len(failures))
 	for id := range failures {
@@ -528,7 +654,7 @@ func (s *mapMakingAppSync) syncMaps(ctx context.Context, key string) (mmaSyncRes
 	}, nil
 }
 
-func canonicalMMATarget(remote mmaRemoteMap, existing *mapEntry, reserved map[string]bool) string {
+func canonicalMMATarget(remote mmaRemoteMap, existing *Entry, reserved map[string]bool) string {
 	source := map[string]any{}
 	if existing != nil {
 		source = existing.Source
@@ -553,7 +679,7 @@ func canonicalMMATarget(remote mmaRemoteMap, existing *mapEntry, reserved map[st
 	return rel
 }
 
-func (s *mapMakingAppSync) downloadMMA(ctx context.Context, key, staging string, plans []mmaPlan) map[int64]mmaDownload {
+func (s *Backend) downloadMMA(ctx context.Context, key, staging string, plans []mmaPlan) map[int64]mmaDownload {
 	jobs := make(chan mmaPlan)
 	results := make(chan mmaDownload, len(plans))
 	workers := min(mmaMaxWorkers, len(plans))
@@ -592,7 +718,7 @@ func (s *mapMakingAppSync) downloadMMA(ctx context.Context, key, staging string,
 	return downloads
 }
 
-func (s *mapMakingAppSync) downloadOneMMA(ctx context.Context, key, staging string, mapID int64) mmaDownload {
+func (s *Backend) downloadOneMMA(ctx context.Context, key, staging string, mapID int64) mmaDownload {
 	result := mmaDownload{mapID: mapID}
 	var locations []json.RawMessage
 	err := s.apiGetJSON(ctx, "/api/maps/"+strconv.FormatInt(mapID, 10)+"/locations", key, &locations)
@@ -618,7 +744,7 @@ func (s *mapMakingAppSync) downloadOneMMA(ctx context.Context, key, staging stri
 	return result
 }
 
-func (s *mapMakingAppSync) apiGetJSON(ctx context.Context, endpoint, key string, target any) error {
+func (s *Backend) apiGetJSON(ctx context.Context, endpoint, key string, target any) error {
 	lastError := errors.New("Map Making App request failed")
 	for attempt := 0; attempt < 3; attempt++ {
 		request, err := http.NewRequestWithContext(ctx, http.MethodGet, s.baseURL+endpoint, nil)
@@ -727,6 +853,11 @@ func boolValue(value any) bool {
 	return result
 }
 
+func sourceType(source map[string]any) string {
+	value, _ := source["type"].(string)
+	return value
+}
+
 func defaultString(value, fallback string) string {
 	if strings.TrimSpace(value) == "" {
 		return fallback
@@ -742,6 +873,107 @@ func nilIfEmpty(value string) any {
 }
 
 func utcNow() string { return time.Now().UTC().Truncate(time.Second).Format(time.RFC3339) }
+
+func safeComponent(value, fallback string) string {
+	var output []rune
+	space := false
+	for _, char := range strings.TrimSpace(value) {
+		if char < 32 || strings.ContainsRune(`<>:"/\|?*`, char) {
+			char = '-'
+		}
+		if unicode.IsSpace(char) {
+			if space {
+				continue
+			}
+			char = ' '
+			space = true
+		} else {
+			space = false
+		}
+		output = append(output, char)
+	}
+	result := strings.TrimRight(strings.TrimSpace(string(output)), ". ")
+	if result == "" || result == "." || result == ".." {
+		result = fallback
+	}
+	if windowsNames[strings.ToLower(result)] {
+		result += "-map"
+	}
+	runes := []rune(result)
+	if len(runes) > maxNameRunes {
+		result = string(runes[:maxNameRunes])
+	}
+	result = strings.TrimRight(result, ". ")
+	if result == "" {
+		return fallback
+	}
+	return result
+}
+
+func folderOf(rel string) string {
+	folder := path.Dir(rel)
+	if folder == "." {
+		return ""
+	}
+	return folder
+}
+
+func foldersOutsideRoot(folders []string, root string) []string {
+	result := make([]string, 0, len(folders))
+	for _, folder := range folders {
+		if !underRoot(folder, root) {
+			result = append(result, folder)
+		}
+	}
+	return result
+}
+
+func underRoot(rel, root string) bool {
+	return strings.EqualFold(rel, root) || strings.HasPrefix(strings.ToLower(rel), strings.ToLower(root)+"/")
+}
+
+func checksumBytes(value []byte) string {
+	digest := sha256.Sum256(value)
+	return "sha256:" + hex.EncodeToString(digest[:])
+}
+
+func atomicWriteJSON(filename string, value any, permission os.FileMode) error {
+	encoded, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		return err
+	}
+	return atomicWrite(filename, append(encoded, '\n'), permission)
+}
+
+func atomicWrite(filename string, value []byte, permission os.FileMode) (err error) {
+	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
+		return err
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(filename), ".ohneguessr-*.tmp")
+	if err != nil {
+		return err
+	}
+	temporaryName := temporary.Name()
+	defer func() {
+		_ = temporary.Close()
+		if err != nil {
+			_ = os.Remove(temporaryName)
+		}
+	}()
+	if err = temporary.Chmod(permission); err == nil {
+		_, err = temporary.Write(value)
+	}
+	if err == nil {
+		err = temporary.Sync()
+	}
+	if closeErr := temporary.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Rename(temporaryName, filename)
+	}
+	return err
+}
 
 func removeEmptyMapDirectories(base, root string) {
 	rootPath := filepath.Join(base, filepath.FromSlash(root))
