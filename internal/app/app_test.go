@@ -18,7 +18,7 @@ import (
 
 func newTestApp(t *testing.T) *App {
 	t.Helper()
-	a, err := New(t.TempDir(), "dev", mapmakingapp.NewPlugin, learnablemeta.NewPlugin)
+	a, err := New(t.TempDir(), mapmakingapp.NewPlugin, learnablemeta.NewPlugin)
 	if err != nil {
 		t.Fatal(err)
 	}

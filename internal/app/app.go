@@ -22,12 +22,11 @@ type App struct {
 	maps         *mapStore
 	coordinator  *syncCoordinator
 	mapPlugins   []pluginhost.MapPlugin
-	updates      *updater
 	shutdownOnce sync.Once
 	shutdownErr  error
 }
 
-func New(dataDir, version string, factories ...pluginhost.MapPluginFactory) (*App, error) {
+func New(dataDir string, factories ...pluginhost.MapPluginFactory) (*App, error) {
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return nil, fmt.Errorf("create data directory: %w", err)
 	}
@@ -49,7 +48,6 @@ func New(dataDir, version string, factories ...pluginhost.MapPluginFactory) (*Ap
 	a := &App{
 		maps:        maps,
 		coordinator: coordinator,
-		updates:     newUpdater(version),
 	}
 	host := &pluginHost{maps: maps, coordinator: coordinator}
 	for _, factory := range factories {
@@ -89,9 +87,6 @@ func ResolveDataDir(args []string) (string, error) {
 
 func (a *App) Shutdown(ctx context.Context) error {
 	a.shutdownOnce.Do(func() {
-		if err := a.updates.shutdown(ctx); err != nil {
-			a.shutdownErr = err
-		}
 		if err := a.coordinator.shutdown(ctx); err != nil {
 			if a.shutdownErr == nil {
 				a.shutdownErr = err
@@ -110,7 +105,6 @@ func (a *App) Handler() http.Handler {
 	for _, plugin := range a.mapPlugins {
 		plugin.RegisterRoutes(mux)
 	}
-	a.updates.registerRoutes(mux)
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.HandleFunc(method+" /api/{path...}", func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})

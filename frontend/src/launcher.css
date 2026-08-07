@@ -291,8 +291,6 @@
 .update-action:hover,
 .update-action:focus-visible { color: var(--launcher-text); }
 
-.update-status { white-space: nowrap; }
-
 .launcher-main {
   min-width: 0;
   min-height: 0;

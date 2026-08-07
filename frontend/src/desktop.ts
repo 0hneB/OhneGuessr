@@ -1,6 +1,7 @@
-import { Application, Browser, Call, Events, System } from '@wailsio/runtime';
+import { Call, Events, System } from '@wailsio/runtime';
 
 const DESKTOP_SERVICE = 'main.DesktopService.';
+const UPDATE_SERVICE = 'main.UpdateService.';
 
 export interface GameWindowState {
   open: boolean;
@@ -68,11 +69,14 @@ export function onGameWindowState(listener: (state: GameWindowState) => void) {
   return onDesktopEvent('desktop:game-state', listener);
 }
 
-export function quitApplication() {
-  if (desktopRuntimeAvailable()) void Application.Quit();
+export async function checkForUpdate() {
+  return desktopRuntimeAvailable()
+    ? callService<string>(UPDATE_SERVICE, 'CheckAvailable')
+    : '';
 }
 
-export function openExternal(url: string) {
-  if (desktopRuntimeAvailable()) void Browser.OpenURL(url);
-  else window.open(url, '_blank', 'noopener,noreferrer');
+export async function openUpdater() {
+  if (desktopRuntimeAvailable()) {
+    await callService<void>(UPDATE_SERVICE, 'OpenUpdater');
+  }
 }

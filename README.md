@@ -208,7 +208,7 @@ Download the release executable rather than an individual source file. `wails3 d
 
 ### An update fails
 
-Check the internet connection and try again from **Display** in the launcher. OhneGuessr refuses any update whose SHA-256 digest or Ed25519 signature does not match the release metadata. Portable copies intentionally open the release page instead of replacing themselves.
+Check the internet connection and restart OhneGuessr to check again. On Windows, an available version appears in the launcher footer; selecting it opens the update window. OhneGuessr refuses any update whose SHA-256 digest or Ed25519 signature does not match the release metadata.
 
 ### Panoramas are missing, blurry, or black
 

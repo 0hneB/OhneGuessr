@@ -48,8 +48,6 @@ OutFile "..\..\..\bin\OhneGuessr-amd64-installer.exe"
 InstallDir "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
 ShowInstDetails show
 
-Var UpdatePID
-
 Function .onInit
   ${IfNot} ${AtLeastWin10}
     MessageBox MB_ICONSTOP "${PRODUCT_NAME} requires Windows 10 or later."
@@ -59,18 +57,6 @@ Function .onInit
     MessageBox MB_ICONSTOP "This installer requires 64-bit Windows."
     Abort
   ${EndIf}
-
-  ${GetParameters} $R0
-  ${GetOptions} $R0 "/UPDATEPID=" $UpdatePID
-  StrCmp $UpdatePID "" done
-  System::Call 'kernel32::OpenProcess(i 0x00100000, i 0, i $UpdatePID) i .r1'
-  IntCmp $1 0 done
-  System::Call 'kernel32::WaitForSingleObject(i r1, i 30000) i .r2'
-  System::Call 'kernel32::CloseHandle(i r1)'
-  IntCmp $2 0 done
-  MessageBox MB_ICONSTOP "${PRODUCT_NAME} did not close in time. Please run the update again."
-  Abort
-done:
 FunctionEnd
 
 Section "${PRODUCT_NAME} (required)" SEC_APP
@@ -105,10 +91,6 @@ Section "${PRODUCT_NAME} (required)" SEC_APP
   System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   WriteRegDWORD HKCU "${UNINSTALL_KEY}" "EstimatedSize" $0
-
-  StrCmp $UpdatePID "" done
-  Exec '"$INSTDIR\${PRODUCT_EXECUTABLE}"'
-done:
 SectionEnd
 
 Section /o "Desktop shortcut" SEC_DESKTOP

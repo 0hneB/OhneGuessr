@@ -15,6 +15,7 @@ import (
 	mapmakingapp "github.com/0hneB/OhneGuessr/plugins/map-making-app"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/updater"
 )
 
 //go:embed all:frontend/dist
@@ -23,6 +24,8 @@ var builtFrontend embed.FS
 var version = "dev"
 
 func run() error {
+	updater.HandleHelperMode()
+
 	frontend, err := fs.Sub(builtFrontend, "frontend/dist")
 	if err != nil {
 		return err
@@ -58,7 +61,6 @@ func run() error {
 	}
 	backend, err := app.New(
 		dataDir,
-		version,
 		mapmakingapp.NewPlugin,
 		learnablemeta.NewPlugin,
 	)
@@ -119,11 +121,16 @@ func run() error {
 			ProgramName: "ohneguessr",
 		},
 	})
+	updates, err := newUpdateService(wailsApp, version)
+	if err != nil {
+		return err
+	}
 	desktop.wails = wailsApp
 	wailsApp.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
 		challenges.QueueFile(challengeService, event.Context().Filename())
 	})
 	wailsApp.RegisterService(application.NewService(desktop))
+	wailsApp.RegisterService(application.NewService(updates))
 	wailsApp.RegisterService(application.NewService(party))
 	wailsApp.RegisterService(application.NewService(challengeService))
 	launcher := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{

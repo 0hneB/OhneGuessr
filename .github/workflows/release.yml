@@ -248,14 +248,17 @@ jobs:
 
           function Sign-Artifact([string]$path) {
             $hash = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            $digest = [Convert]::FromHexString($hash)
             $digestPath = Join-Path $env:RUNNER_TEMP "$([IO.Path]::GetFileName($path)).digest"
             $signaturePath = "$digestPath.sig"
-            [IO.File]::WriteAllBytes($digestPath, [Convert]::FromHexString($hash))
+            [IO.File]::WriteAllBytes($digestPath, $digest)
             & $openssl pkeyutl -sign -rawin -inkey $privateKey -in $digestPath -out $signaturePath
             if ($LASTEXITCODE -ne 0) { throw "Could not sign $path" }
             return @{
               hash = $hash
+              digest = [Convert]::ToBase64String($digest)
               signature = [Convert]::ToBase64String([IO.File]::ReadAllBytes($signaturePath))
+              size = (Get-Item $path).Length
             }
           }
 
@@ -265,7 +268,9 @@ jobs:
           $portable = Sign-Artifact "release/$portableName"
           $base = "https://github.com/0hneB/OhneGuessr/releases/download/$env:RELEASE_TAG"
           $manifest = [ordered]@{
+            schemaVersion = 1
             version = $env:RELEASE_VERSION
+            # Keep these fields until pre-Wails clients have crossed this release.
             setup = [ordered]@{
               url = "$base/$setupName"
               sha256 = $setup.hash
@@ -276,6 +281,19 @@ jobs:
               sha256 = $portable.hash
               signature = $portable.signature
             }
+            artifacts = @(
+              [ordered]@{
+                url = "$base/$portableName"
+                filename = $portableName
+                size = $portable.size
+                platform = "windows"
+                arch = "amd64"
+                digestAlgo = "sha256"
+                digest = $portable.digest
+                signatureAlgo = "ed25519"
+                signature = $portable.signature
+              }
+            )
           }
           $manifest | ConvertTo-Json -Depth 5 | Set-Content release/latest.json -Encoding utf8
           @(
