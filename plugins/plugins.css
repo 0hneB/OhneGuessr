@@ -1,28 +1,33 @@
 .plugins-page {
-  width: min(900px, 100%);
+  width: min(980px, 100%);
 }
 
 .plugin-list {
-  overflow: hidden;
-  border: 1px solid var(--launcher-border);
-  border-radius: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.plugin-row {
+.plugin-row.setting-toggle {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 24px;
-  min-height: 88px;
-  padding: 18px 20px;
+  gap: 16px;
+  min-height: 112px;
+  padding: 20px;
+  border: 1px solid var(--launcher-border);
+  border-radius: 4px;
   cursor: pointer;
 }
 
-.plugin-row + .plugin-row {
-  border-top: 1px solid var(--launcher-border);
+.plugin-icon {
+  width: 40px;
+  height: 40px;
+  filter: var(--launcher-nav-icon-filter);
+  opacity: 0.72;
 }
 
-.plugin-row > span:first-child {
+.plugin-copy {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -38,27 +43,6 @@
   font-size: 13px;
 }
 
-.plugin-row.disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.plugin-row input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.plugin-row input:checked + .switch {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.plugin-row input:checked + .switch::after {
-  transform: translateX(22px);
-  background: var(--accent-ink);
-}
-
 .plugin-row input:focus-visible + .switch {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
@@ -68,4 +52,10 @@
   margin: 12px 20px;
   color: var(--launcher-error);
   opacity: 1;
+}
+
+@media (max-width: 700px) {
+  .plugin-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

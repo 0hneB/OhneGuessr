@@ -1,4 +1,5 @@
 <script lang="ts">
+  import icon from './icon/mma.svg';
   import { mapMakingAppPlugin, setMapMakingAppEnabled } from './status.svelte.js';
 
   let { reportError }: { reportError: (message: string) => void } = $props();
@@ -21,8 +22,9 @@
   }
 </script>
 
-<label class="plugin-row" class:disabled={mapMakingAppPlugin.status?.available === false}>
-  <span><b>Map Making App Sync</b><small>Keep Map Making App maps available locally.</small></span>
+<label class="plugin-row setting-toggle" class:disabled={mapMakingAppPlugin.status?.available === false}>
+  <img class="plugin-icon" src={icon} alt="" />
+  <span class="plugin-copy"><b>Map Making App Sync</b><small>Sync maps from Map Making App.</small></span>
   <input type="checkbox" checked={Boolean(mapMakingAppPlugin.status?.enabled)}
          disabled={!mapMakingAppPlugin.status || mapMakingAppPlugin.status.available === false || busy}
          onchange={(event) => toggle(event.currentTarget.checked)} />
