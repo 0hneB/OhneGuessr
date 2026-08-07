@@ -160,9 +160,9 @@
 .party-round-status button:disabled { opacity: 0.5; }
 .party-result-count { color: #d8dee8; font-size: 14px; }
 .party-result-count b { color: #fff; font-size: 22px; }
-body.party-host #nextBtn:disabled { opacity: 0.5; cursor: wait; }
+body.game-mode-host #nextBtn:disabled { opacity: 0.5; cursor: wait; }
 
-body.party-host .final-card { width: min(88vw, 370px); }
+body.game-mode-host .final-card { width: min(88vw, 370px); }
 .party-leaderboard {
   display: flex;
   flex-direction: column;

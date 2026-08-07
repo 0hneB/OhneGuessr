@@ -80,7 +80,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 const markerAssets = Promise.all([loadImage(GUESS_ASSET), loadImage(CORRECT_ASSET)]);
 let spriteCache: { key: string; promise: Promise<MarkerSprites> } | null = null;
 let correctSpritePromise: Promise<ImageData> | null = null;
-const partySpriteCache = new Map<string, Promise<ImageData>>();
+const coloredSpriteCache = new Map<string, Promise<ImageData>>();
 
 function colorize(image: CanvasImageSource, width: number, height: number, color: string) {
   const canvas = document.createElement('canvas');
@@ -174,17 +174,17 @@ function markerSprites(accent: string): Promise<MarkerSprites> {
   return promise;
 }
 
-const partyImageID = (color: string) => `result-party-${color.replace(/[^a-z0-9]/gi, '')}`;
+const coloredImageID = (color: string) => `result-colored-${color.replace(/[^a-z0-9]/gi, '')}`;
 
-function partyMarkerSprite(color: string) {
+function coloredMarkerSprite(color: string) {
   const filter = getComputedStyle(document.documentElement)
     .getPropertyValue('--result-marker-filter').trim();
   const key = `${color}:${filter}`;
-  let sprite = partySpriteCache.get(key);
+  let sprite = coloredSpriteCache.get(key);
   if (!sprite) {
     sprite = markerAssets.then(([guess]) =>
       createSprite(guess, { width: 38, height: 49 }, filter, color));
-    partySpriteCache.set(key, sprite);
+    coloredSpriteCache.set(key, sprite);
   }
   return sprite;
 }
@@ -265,10 +265,10 @@ export class ResultLayers {
       }
     });
     addLayer(this.map, {
-      id: 'party-links',
+      id: 'colored-result-links',
       type: 'line',
       source: RESULT_SOURCE,
-      filter: ['==', ['get', 'kind'], 'party-link'],
+      filter: ['==', ['get', 'kind'], 'colored-link'],
       paint: {
         'line-color': ['get', 'color'],
         'line-width': 2,
@@ -342,10 +342,10 @@ export class ResultLayers {
         }
       });
       addLayer(this.map, {
-        id: 'result-party-markers',
+        id: 'result-colored-markers',
         type: 'symbol',
         source: RESULT_SOURCE,
-        filter: ['==', ['get', 'kind'], 'party-guess'],
+        filter: ['==', ['get', 'kind'], 'colored-guess'],
         layout: {
           'icon-image': ['get', 'image'],
           'icon-offset': [0, -17],
@@ -353,7 +353,7 @@ export class ResultLayers {
           'icon-ignore-placement': true
         }
       });
-      void this.installPartySprites();
+      void this.installColoredSprites();
     }).catch(() => { /* keep results usable if marker artwork cannot load */ });
   }
 
@@ -388,19 +388,19 @@ export class ResultLayers {
         ));
       }
       if (isPoint(guess)) {
-        const party = typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color);
+        const colored = typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color);
         features.push(feature(
-          party ? 'party-guess' : 'guess',
+          colored ? 'colored-guess' : 'guess',
           { type: 'Point', coordinates: coordinates(guess) },
-          party ? { index, color, image: partyImageID(color) } : { index }
+          colored ? { index, color, image: coloredImageID(color) } : { index }
         ));
         features.push(feature(
-          party ? 'party-link' : 'link',
+          colored ? 'colored-link' : 'link',
           {
             type: 'LineString',
             coordinates: unwrapLine([guess, actual])
           },
-          party ? { color } : {}
+          colored ? { color } : {}
         ));
       }
       if (isPoint(challengerGuess)) {
@@ -434,16 +434,16 @@ export class ResultLayers {
 
     this.data = { type: 'FeatureCollection', features };
     (this.map.getSource(RESULT_SOURCE) as GeoJSONSource | undefined)?.setData(this.data);
-    void this.installPartySprites();
+    void this.installColoredSprites();
   }
 
-  async installPartySprites() {
+  async installColoredSprites() {
     const colors = [...new Set(this.results.map((result) => result.color).filter(
       (color): color is string => typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)
     ))];
     await Promise.all(colors.map(async (color) => {
-      const sprite = await partyMarkerSprite(color);
-      if (this.map.getSource(RESULT_SOURCE)) this.putImage(partyImageID(color), sprite);
+      const sprite = await coloredMarkerSprite(color);
+      if (this.map.getSource(RESULT_SOURCE)) this.putImage(coloredImageID(color), sprite);
     }));
     (this.map.getSource(RESULT_SOURCE) as GeoJSONSource | undefined)?.setData(this.data);
   }

@@ -9,7 +9,7 @@ import {
 import { publishLearnableMetaStatus } from '../../../plugins/learnable-meta/status.js';
 import { openChallengeContents } from '../../../plugins/challenges/open.js';
 import { MAX_CHALLENGE_BYTES } from '../../../plugins/challenges/challenge.js';
-import { launchParty } from '../../../plugins/local-party/api.js';
+import type { MapAction } from '../../../plugins/map-actions.svelte.js';
 import type { MapItem } from '../types.js';
 import {
   addUserMap,
@@ -56,7 +56,7 @@ export const library = $state({
   loading: true,
   exporting: false,
   launchingMapID: '',
-  hostingMapID: '',
+  runningMapAction: '',
   activeMapID: '',
   notice: '',
   noticeError: false
@@ -143,15 +143,15 @@ export async function playMap(map: MapItem) {
   }
 }
 
-export async function hostParty(map: MapItem) {
-  library.hostingMapID = map.id;
+export async function runMapAction(action: MapAction, map: MapItem) {
+  library.runningMapAction = action.id;
   setNotice('');
   try {
-    await launchParty(map.id);
+    await action.run(map);
   } catch (error) {
-    setNotice(errorMessage(error, 'Could not host a local party.'), true);
+    setNotice(errorMessage(error, action.error), true);
   } finally {
-    library.hostingMapID = '';
+    library.runningMapAction = '';
   }
 }
 

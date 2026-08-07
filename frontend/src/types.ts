@@ -67,7 +67,6 @@ export interface Settings {
   movement: MovementMode;
   scoring: ScoringMode;
   challengesEnabled: boolean;
-  localPartyEnabled: boolean;
   keybindings?: Record<string, string[]>;
 }
 

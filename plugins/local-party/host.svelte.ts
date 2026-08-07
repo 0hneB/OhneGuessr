@@ -1,11 +1,17 @@
+import type { RevealResult } from '../../frontend/src/types.js';
 import type { PartyHostState, PartyRoundReveal } from './types.js';
 
 export const partyHost = $state({
-  id: new URLSearchParams(location.search).get('party')?.trim() || '',
+  id: '',
   state: null as PartyHostState | null,
-  rounds: [] as PartyRoundReveal[],
-  busy: false,
-  error: ''
+  rounds: [] as PartyRoundReveal[]
 });
 
-export const isPartyHost = () => Boolean(partyHost.id);
+export function partyRevealResults(reveal: PartyRoundReveal): RevealResult[] {
+  const colors = new Map(partyHost.state?.players.map((player) => [player.id, player.color]));
+  return reveal.results.map((result) => ({
+    guess: result.guess ? { ...result.guess } : null,
+    actual: { ...reveal.actual },
+    color: colors.get(result.playerId)
+  }));
+}

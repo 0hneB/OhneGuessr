@@ -219,12 +219,7 @@ func TestManagedRootDeleteDisablesSync(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a.learnable.mu.Lock()
-	err = a.learnable.saveConfigLocked(learnableConfig{
-		Version: 1, Enabled: true, APIKey: "lm-key",
-		Maps: []learnableConfigMap{{MapID: "demo", Name: "Demo"}},
-	})
-	a.learnable.mu.Unlock()
+	_, err = a.learnable.SetEnabled(true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,11 +286,7 @@ func TestManagedRootDeleteDisablesSync(t *testing.T) {
 	if a.mma.Enabled() {
 		t.Fatal("MMA sync remained enabled after deleting its managed root")
 	}
-	a.learnable.mu.Lock()
-	learnable := a.learnable.loadConfigLocked()
-	a.learnable.mu.Unlock()
-	if learnable.Enabled || learnable.APIKey != "lm-key" ||
-		len(learnable.Maps) != 1 || learnable.Maps[0].MapID != "demo" {
-		t.Fatalf("Learnable Meta config = %#v", learnable)
+	if a.learnable.Enabled() {
+		t.Fatal("Learnable Meta sync remained enabled after deleting its managed root")
 	}
 }

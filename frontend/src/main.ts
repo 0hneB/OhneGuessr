@@ -6,7 +6,12 @@ const target = document.getElementById('app')!;
 
 if (route.view === 'game') {
   await import('./app.css');
-  if (new URLSearchParams(location.search).get('party')) await import('./launcher.css');
+  const partyID = new URLSearchParams(location.search).get('party')?.trim();
+  if (partyID) {
+    await import('./launcher.css');
+    const { setupLocalPartyHost } = await import('../../plugins/local-party/host-game.js');
+    setupLocalPartyHost(partyID);
+  }
   const { default: GameApp } = await import('./GameApp.svelte');
   mount(GameApp, { target });
 } else if (route.view === 'party') {
@@ -17,6 +22,8 @@ if (route.view === 'game') {
   mount(PartyGuestApp, { target, props: { join: route.join } });
 } else {
   await Promise.all([import('./app.css'), import('./launcher.css')]);
+  const { setupLocalParty } = await import('../../plugins/local-party/setup.js');
+  setupLocalParty();
   const { default: LauncherApp } = await import('./LauncherApp.svelte');
   mount(LauncherApp, { target });
 }

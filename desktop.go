@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/0hneB/OhneGuessr/internal/app"
-	"github.com/0hneB/OhneGuessr/plugins/local-party"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -28,7 +27,8 @@ const maxChallengeSize = 5 << 20
 
 type DesktopService struct {
 	backend          *app.App
-	party            *localparty.LocalParty
+	exclusiveActive  func() bool
+	stopExclusive    func()
 	wails            *application.App
 	mu               sync.RWMutex
 	launcher         *application.WebviewWindow
@@ -43,8 +43,18 @@ type DesktopService struct {
 func (d *DesktopService) shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_ = d.party.StopParty("")
+	d.stopExclusiveSession()
 	_ = d.backend.Shutdown(ctx)
+}
+
+func (d *DesktopService) exclusiveSessionActive() bool {
+	return d.exclusiveActive != nil && d.exclusiveActive()
+}
+
+func (d *DesktopService) stopExclusiveSession() {
+	if d.stopExclusive != nil {
+		d.stopExclusive()
+	}
 }
 
 func (d *DesktopService) secondInstance(data application.SecondInstanceData) {
@@ -62,8 +72,8 @@ func (d *DesktopService) secondInstance(data application.SecondInstanceData) {
 }
 
 func (d *DesktopService) LaunchMap(mapID string) error {
-	if d.party.Active() {
-		return errors.New("end the current party first")
+	if d.exclusiveSessionActive() {
+		return errors.New("end the current hosted session first")
 	}
 	mapID = strings.TrimSpace(mapID)
 	if mapID == "" || !d.backend.HasMap(mapID) {
@@ -129,7 +139,7 @@ func (d *DesktopService) launchGame(targetURL, mapID string) error {
 			d.gameTarget = ""
 		}
 		d.mu.Unlock()
-		_ = d.party.StopParty("")
+		d.stopExclusiveSession()
 		d.emitGameState()
 	})
 	game.OnWindowEvent(events.Common.WindowFullscreen, func(*application.WindowEvent) {
@@ -143,8 +153,8 @@ func (d *DesktopService) launchGame(targetURL, mapID string) error {
 }
 
 func (d *DesktopService) LaunchChallenge(id, contents string) error {
-	if d.party.Active() {
-		return errors.New("end the current party first")
+	if d.exclusiveSessionActive() {
+		return errors.New("end the current hosted session first")
 	}
 	id = strings.TrimSpace(id)
 	if id == "" || len(contents) > maxChallengeSize || !json.Valid([]byte(contents)) {

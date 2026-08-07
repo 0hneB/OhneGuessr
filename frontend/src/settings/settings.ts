@@ -204,8 +204,7 @@ export const DEFAULT_SETTINGS: Settings = {
   streetViewZoomedOut: false,
   movement: 'moving', // 'moving' | 'nm' (no move) | 'nmpz' (no move/pan/zoom)
   scoring: 'world', // 'world' fixed scale, 'country' per-map
-  challengesEnabled: false,
-  localPartyEnabled: false
+  challengesEnabled: false
 };
 
 function positiveInteger(value: unknown, fallback: string) {
@@ -243,7 +242,6 @@ export function normalizeSettings(value: unknown): Settings {
       : 'moving',
     scoring: input.scoring === 'country' ? 'country' : 'world',
     challengesEnabled: input.challengesEnabled === true,
-    localPartyEnabled: input.localPartyEnabled === true,
     keybindings: cleanKeybindings(input.keybindings)
   };
 }

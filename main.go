@@ -66,7 +66,8 @@ func run() error {
 			wails.Event.Emit("party:changed", id)
 		}
 	})
-	desktop.party = party
+	desktop.exclusiveActive = party.Active
+	desktop.stopExclusive = func() { _ = party.StopParty("") }
 
 	backendHandler := backend.Handler()
 	handler := http.NewServeMux()

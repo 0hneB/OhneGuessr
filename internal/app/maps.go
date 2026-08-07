@@ -106,11 +106,11 @@ func (a *App) deleteFolder(folder string, recursive bool) ([]string, error) {
 		if !recursive {
 			return nil, errFolderNotEmpty
 		}
-		if a.learnable.enabled() {
-			if _, err := a.learnable.setEnabled(false); err != nil {
+		if a.learnable.Enabled() {
+			if _, err := a.learnable.SetEnabled(false); err != nil {
 				return nil, err
 			}
-			restore = func() { _, _ = a.learnable.setEnabled(true) }
+			restore = func() { _, _ = a.learnable.SetEnabled(true) }
 		}
 	}
 	deleted, err := a.maps.deleteFolder(folder, recursive)

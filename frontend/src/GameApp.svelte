@@ -11,21 +11,20 @@
   import { formatDistance } from './game/scoring.js';
   import { settings, state as gameState } from './game/state.svelte.js';
   import {
+    completeModeRound,
     endUnlimitedGame,
-    endPartyGame,
+    endModeGame,
     exportChallenge as createChallengeFile,
     init,
     nextRound,
-    rematchPartyGame,
-    revealPartyRound,
+    rematchModeGame,
     selectFinalRound,
-    startPartyGame,
+    startModeGame,
     startGame,
     submitGuess
   } from './game/game.js';
-  import { isPartyHost, partyHost } from '../../plugins/local-party/host.svelte.js';
+  import { gameMode } from '../../plugins/game-mode.svelte.js';
   import '../../plugins/challenges/challenges.css';
-  import '../../plugins/local-party/local-party.css';
   import { ui } from './ui.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);
@@ -37,13 +36,8 @@
   );
   let challengeExporting = $state(false);
   let challengeExportMessage = $state('');
-  let partyLinkCopied = $state(false);
-  const partyMode = isPartyHost();
-  const partyPlayers = $derived(partyHost.state?.players || []);
-  const guessedPlayers = $derived(partyPlayers.filter((player) => player.locked).length);
-  const rankedPartyPlayers = $derived([...partyPlayers].sort(
-    (left, right) => (left.place || Infinity) - (right.place || Infinity)
-  ));
+  const modeActive = $derived(Boolean(gameMode.current));
+  const modeComponents = $derived(gameMode.current?.components);
   const timerText = $derived(
     `${Math.floor(ui.timerRemaining / 60)}:${String(ui.timerRemaining % 60).padStart(2, '0')}`
   );
@@ -76,18 +70,6 @@
     }
   }
 
-  async function copyPartyLink() {
-    const url = partyHost.state?.url;
-    if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
-      partyLinkCopied = true;
-      setTimeout(() => { partyLinkCopied = false; }, 1500);
-    } catch {
-      partyHost.error = 'Could not copy automatically. Select the link instead.';
-    }
-  }
-
   onMount(async () => {
     gameReady(new URLSearchParams(location.search).get('map') || '');
     await init();
@@ -95,58 +77,14 @@
 </script>
 
 <svelte:window onkeydown={handleWindowKeydown} />
-<svelte:body class:party-host={partyMode} />
+<svelte:body class:game-mode-host={modeActive} />
 
 <div id="pano"></div>
 
-{#if partyMode && gameState.phase === 'empty'}
-  <div class="party-lobby launcher-shell" data-theme={settings.theme}>
-    <section class="party-lobby-card" aria-label="Party lobby">
-      <div class="party-lobby-copy">
-        <div class="party-lobby-heading">
-          <h1>Join the game</h1>
-          <p>Open the link on the same network.</p>
-        </div>
-        <div class="party-join-link">
-          <span>{partyHost.state?.url || 'Starting local server…'}</span>
-          <button class="party-icon-button" class:copied={partyLinkCopied} type="button"
-                  disabled={!partyHost.state?.url}
-                  aria-label={partyLinkCopied ? 'Join link copied' : 'Copy join link'}
-                  title={partyLinkCopied ? 'Copied' : 'Copy join link'} onclick={copyPartyLink}>
-            <span class="svg-icon link-icon" aria-hidden="true"></span>
-          </button>
-        </div>
-        <div class="party-lobby-actions">
-          <div class="party-roster-count" aria-label={`${partyPlayers.length} players joined`}>
-            <span><b>{partyPlayers.length}</b> / 16 joined</span>
-          </div>
-          <button class="party-start" type="button"
-                  disabled={!partyPlayers.length || partyHost.busy}
-                  onclick={startPartyGame}>
-            {partyHost.busy ? 'Starting…' : 'Start game'}
-          </button>
-          <button class="party-icon-button party-end" type="button" disabled={partyHost.busy}
-                  aria-label="End party" title="End party" onclick={endPartyGame}>
-            <span class="svg-icon close-icon" aria-hidden="true"></span>
-          </button>
-        </div>
-        {#if partyHost.error}<p class="party-error" role="alert">{partyHost.error}</p>{/if}
-      </div>
-      {#if partyHost.state?.qrCode}
-        <img class="party-qr" src={partyHost.state.qrCode} alt="QR code for the local party link" />
-      {/if}
-    </section>
-    {#if partyPlayers.length}
-      <ul class="party-player-cards" aria-label="Joined players">
-        {#each partyPlayers as player}
-          <li>
-            <i style={`--player-color:${player.color}`} aria-hidden="true"></i>
-            <span>{player.name}</span>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </div>
+{#if modeActive && gameState.phase === 'empty' && modeComponents?.Lobby}
+  {@const Lobby = modeComponents.Lobby}
+  <Lobby busy={gameMode.busy} error={gameMode.error}
+         onstart={startModeGame} onclose={endModeGame} />
 {/if}
 
 <button id="settingsBtn" aria-label="Open launcher settings" title="Open launcher settings"
@@ -189,19 +127,15 @@
   <span class="svg-icon timer-icon" aria-hidden="true"></span><b id="timerVal">{timerText}</b>
 </div>
 
-{#if partyMode}
-  {#if gameState.phase === 'guessing'}
-    <div id="partyRoundStatus" class="hud-pill party-round-status">
-      <b>{guessedPlayers}</b> / {partyPlayers.length} guessed
-      <button type="button" disabled={partyHost.busy} onclick={revealPartyRound}>Reveal now</button>
-    </div>
-  {/if}
+{#if modeActive && gameState.phase === 'guessing' && modeComponents?.RoundStatus}
+  {@const RoundStatus = modeComponents.RoundStatus}
+  <RoundStatus busy={gameMode.busy} oncomplete={completeModeRound} />
 {:else}
   <div id="scoreBox" class="hud-pill">Score <b id="total">{gameState.total}</b></div>
 {/if}
 
 <div id="guessPanel"
-     class:hidden={partyMode}
+     class:hidden={modeActive && !gameMode.current?.allowsGuess}
      class:map-fullscreen={ui.guessMapFullscreen}
      class:pinned={ui.guessMapPinned}
      data-map-size={ui.guessMapSize}>
@@ -213,8 +147,9 @@
 <div id="resultScreen" class:hidden={!ui.resultVisible}>
   <div id="resultMap"></div>
   <div id="resultPanel">
-    {#if partyMode}
-      <div class="party-result-count"><b>{guessedPlayers}</b> / {partyPlayers.length} guessed</div>
+    {#if modeActive && modeComponents?.ResultStatus}
+      {@const ResultStatus = modeComponents.ResultStatus}
+      <ResultStatus error={gameMode.error} />
     {:else}
       <div class="result-dist">
         <b id="resultDist">{currentResult?.distKm == null ? '—' : formatDistance(currentResult.distKm)}</b> away
@@ -223,7 +158,7 @@
     {/if}
     <div class="result-actions">
       <button id="nextBtn" type="button"
-              disabled={partyMode && partyHost.busy}
+              disabled={modeActive && gameMode.busy}
               onclick={(event) => { nextRound(); event.currentTarget.blur(); }}>{ui.nextLabel}</button>
       <button id="endGameBtn" class:hidden={!ui.endGameVisible} type="button"
               onkeydown={(event) => {
@@ -231,41 +166,19 @@
               }}
               onclick={(event) => { endUnlimitedGame(); event.currentTarget.blur(); }}>End game</button>
     </div>
-    {#if partyMode && partyHost.error}<p class="party-error" role="alert">{partyHost.error}</p>{/if}
   </div>
 </div>
 
 <div id="final" class:hidden={!ui.finalVisible}>
   <div id="finalMap"></div>
   <div class="final-card">
-    <h1>{partyMode ? 'Party results' : gameState.challenge ? challengeOutcome : 'Game over'}</h1>
-    {#if partyMode && gameState.phase === 'final'}
-      <ol class="party-leaderboard">
-        {#each rankedPartyPlayers as player}
-          <li>
-            <span class="party-place">{player.place}</span>
-            <i style={`--player-color:${player.color}`} aria-hidden="true"></i>
-            <b>{player.name}</b>
-            <strong>{player.total}</strong>
-          </li>
-        {/each}
-      </ol>
-      <div id="finalRounds" class="final-rounds party-final-rounds" aria-label="Result map round">
-        {#each partyHost.rounds as _result, index}
-          <button type="button" class="final-round"
-                  class:selected={ui.selectedFinalRound === index}
-                  aria-pressed={ui.selectedFinalRound === index}
-                  title={`Show round ${index + 1}`}
-                  onkeydown={(event) => event.stopPropagation()}
-                  onclick={(event) => {
-                    if (event.detail) event.currentTarget.blur();
-                    selectFinalRound(index);
-                  }}>
-            <span class="fr-no">{index + 1}</span>
-          </button>
-        {/each}
-      </div>
-    {:else if !partyMode}
+    {#if modeActive && modeComponents?.Final}
+      {@const Final = modeComponents.Final}
+      <Final busy={gameMode.busy} error={gameMode.error}
+             selectedRound={ui.selectedFinalRound}
+             onselect={selectFinalRound} onrematch={rematchModeGame} onclose={endModeGame} />
+    {:else}
+      <h1>{gameState.challenge ? challengeOutcome : 'Game over'}</h1>
       <p id="finalScore" class="final-score">
         {gameState.total} / {gameState.results.length * CONFIG.SCORE_MAX}
         {#if gameState.challenge}<small aria-label={`Challenger score ${challengerTotal}`}>{challengerTotal}</small>{/if}
@@ -292,24 +205,18 @@
           </button>
         {/each}
       </div>
+      <div class="final-actions">
+        <button id="playAgain" onclick={startGame}>Play again</button>
+        {#if settings.challengesEnabled}
+          <button type="button" disabled={challengeExporting} onclick={exportCurrentChallenge}>
+            {challengeExporting ? 'Saving…' : 'Create challenge'}
+          </button>
+        {/if}
+      </div>
+      {#if challengeExportMessage}
+        <p class="challenge-export-error" role="alert">{challengeExportMessage}</p>
+      {/if}
     {/if}
-    <div class="final-actions">
-      <button id="playAgain" onclick={partyMode ? rematchPartyGame : startGame}>
-        {partyMode ? 'Rematch' : 'Play again'}
-      </button>
-      {#if partyMode}
-        <button class="party-final-end" type="button" aria-label="End party" title="End party"
-                onclick={endPartyGame}>
-          <span class="svg-icon close-icon" aria-hidden="true"></span>
-        </button>
-      {/if}
-      {#if !partyMode && settings.challengesEnabled}
-        <button type="button" disabled={challengeExporting} onclick={exportCurrentChallenge}>
-          {challengeExporting ? 'Saving…' : 'Create challenge'}
-        </button>
-      {/if}
-    </div>
-    {#if challengeExportMessage}<p class="challenge-export-error" role="alert">{challengeExportMessage}</p>{/if}
   </div>
 </div>
 

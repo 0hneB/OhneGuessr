@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	learnablemeta "github.com/0hneB/OhneGuessr/plugins/learnable-meta"
 	mapmakingapp "github.com/0hneB/OhneGuessr/plugins/map-making-app"
 )
 
@@ -22,7 +23,7 @@ type App struct {
 	maps         *mapStore
 	coordinator  *syncCoordinator
 	mma          *mapmakingapp.Backend
-	learnable    *learnableMetaSync
+	learnable    *learnablemeta.Backend
 	updates      *updater
 	shutdownOnce sync.Once
 	shutdownErr  error
@@ -52,11 +53,12 @@ func New(dataDir, version string) (*App, error) {
 		coordinator: coordinator,
 		updates:     newUpdater(version),
 	}
+	host := &pluginHost{maps: maps, coordinator: coordinator}
 	a.mma = mapmakingapp.New(
-		&mapMakingAppHost{maps: maps, coordinator: coordinator},
+		host,
 		filepath.Join(pluginData, "map-making-app.json"),
 	)
-	a.learnable = newLearnableMetaSync(maps, filepath.Join(pluginData, "learnable-meta.json"), coordinator)
+	a.learnable = learnablemeta.New(host, filepath.Join(pluginData, "learnable-meta.json"))
 	return a, nil
 }
 
@@ -108,7 +110,7 @@ func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	a.registerMapRoutes(mux)
 	a.mma.RegisterRoutes(mux)
-	a.learnable.registerRoutes(mux)
+	a.learnable.RegisterRoutes(mux)
 	a.updates.registerRoutes(mux)
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.HandleFunc(method+" /api/{path...}", func(w http.ResponseWriter, _ *http.Request) {

@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
-  import { desktopRuntimeAvailable } from '../desktop.js';
-  import { settings } from '../settings/store.svelte.js';
+  import { mapActions } from '../../../plugins/map-actions.svelte.js';
   import type { MapItem } from '../types.js';
   import {
     canCreateFolder,
@@ -12,7 +11,6 @@
     isManagedRoot,
     library,
     libraryRows,
-    hostParty,
     moveMap,
     moveTargets,
     playMap,
@@ -20,6 +18,7 @@
     removeMap,
     renameFolder,
     renameMap,
+    runMapAction,
     selectFolder,
     toggleFolder
   } from './library.svelte.js';
@@ -418,14 +417,14 @@
               </div>
             {:else}
               <div class="row-actions">
-                {#if settings.localPartyEnabled && desktopRuntimeAvailable()}
-                  <button class="row-action" type="button" title="Host local party"
-                          aria-label={`Host ${row.map.name} as a local party`}
-                          disabled={Boolean(library.hostingMapID)}
-                          onclick={() => hostParty(row.map)}>
-                    <span class="svg-icon link-icon" aria-hidden="true"></span>
+                {#each mapActions.filter((action) => action.visible(row.map)) as action (action.id)}
+                  <button class="row-action" type="button" title={action.title}
+                          aria-label={action.label(row.map)}
+                          disabled={Boolean(library.runningMapAction)}
+                          onclick={() => runMapAction(action, row.map)}>
+                    <span class={`svg-icon ${action.icon}`} aria-hidden="true"></span>
                   </button>
-                {/if}
+                {/each}
                 {#if row.canRename}
                   <button class="row-action" type="button" title="Rename map"
                           aria-label={`Rename ${row.map.name}`}
