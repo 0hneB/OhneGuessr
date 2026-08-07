@@ -158,9 +158,21 @@
 .party-round-status { right: 14px; padding-right: 6px; }
 .party-round-status button { height: 26px; padding-block: 3px; font-size: 11px; }
 .party-round-status button:disabled { opacity: 0.5; }
-.party-result-count { color: #d8dee8; font-size: 14px; }
-.party-result-count b { color: #fff; font-size: 22px; }
 body.game-mode-host #nextBtn:disabled { opacity: 0.5; cursor: wait; }
+
+#resultPanel:has(.party-round-leaderboard) {
+  left: 28px;
+  top: 50%;
+  bottom: auto;
+  width: min(88vw, 370px);
+  max-height: calc(100vh - 56px);
+  padding: 24px 28px;
+  transform: translateY(-50%);
+  align-items: stretch;
+}
+#resultPanel:has(.party-round-leaderboard) h1 { margin-bottom: 8px; font-size: 24px; }
+.party-round-leaderboard { margin-bottom: 10px; }
+#resultPanel:has(.party-round-leaderboard) .result-actions { justify-content: center; }
 
 body.game-mode-host .final-card { width: min(88vw, 370px); }
 .party-leaderboard {
@@ -184,6 +196,7 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
 }
 .party-leaderboard b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .party-leaderboard strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+.party-round-leaderboard strong { color: #fff; }
 .party-place { color: #aab2bd; font-weight: 800; }
 .party-final-rounds { flex-flow: row wrap; justify-content: center; overflow-y: visible; }
 .party-final-rounds .final-round { display: grid; width: 38px; grid-template-columns: 1fr; padding: 8px; }
@@ -378,6 +391,18 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
 @media (max-width: 760px) {
   .party-lobby-card { grid-template-columns: 1fr; }
   .party-qr { display: none; }
+}
+
+@media (max-width: 700px) {
+  #resultPanel:has(.party-round-leaderboard) {
+    left: 50%;
+    top: auto;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    width: min(calc(100vw - 32px), 420px);
+    max-height: min(46vh, calc(100vh - 32px));
+    padding: 18px 20px;
+    transform: translateX(-50%);
+  }
 }
 
 @media (max-width: 380px) {
