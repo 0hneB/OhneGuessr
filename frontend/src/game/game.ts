@@ -860,12 +860,6 @@ export async function init() {
   onSettingsChanged(applyLiveSettings);
   initSettingsSync();
   gameMode.current?.subscribe?.(() => { void refreshGameMode(); });
-  try {
-    const { setupLearnableMeta } = await import('../../../plugins/learnable-meta/index.js');
-    await setupLearnableMeta();
-  } catch (error) {
-    console.warn('Learnable Meta plugin unavailable:', error);
-  }
 
   window.addEventListener('keydown', keybindings.onKeyDown);
   window.addEventListener('keyup', keybindings.onKeyUp);

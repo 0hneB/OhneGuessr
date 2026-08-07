@@ -1,6 +1,7 @@
 // Folder-aware map storage. The versioned manifest remains plain JSON so the
 // cached library can still run from any static HTTP server.
 import { requestJSON as api } from '../api.js';
+import { isManagedSource } from '../../../plugins/map-sources.js';
 import type { Location, MapItem, MapSource } from '../types.js';
 
 const MANIFEST_URL = '/data/maps.json';
@@ -45,7 +46,7 @@ const mapItemFrom = (entry: StoredMap): MapItem => {
     file,
     folder: folderOf(file),
     source: entry.source && typeof entry.source === 'object' ? entry.source : null,
-    managed: entry.source?.managed === true || entry.source?.type === 'map-making-app'
+    managed: isManagedSource(entry.source)
   };
 };
 

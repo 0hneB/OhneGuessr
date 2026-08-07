@@ -1,14 +1,9 @@
 import { SvelteSet } from 'svelte/reactivity';
 import { closeGame, exportMaps as exportMapsToFile, launchMap } from '../desktop.js';
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
-import {
-  getStatus as getLearnableMetaStatus,
-  removeMap as removeLearnableMap,
-  renameMap as renameLearnableMap
-} from '../../../plugins/learnable-meta/api.js';
-import { publishLearnableMetaStatus } from '../../../plugins/learnable-meta/status.js';
 import { fileHandlerFor } from '../../../plugins/file-handlers.svelte.js';
 import type { MapAction } from '../../../plugins/map-actions.svelte.js';
+import { mapSourceFor, refreshMapSourceRoot } from '../../../plugins/map-sources.js';
 import type { MapItem } from '../types.js';
 import {
   addUserMap,
@@ -26,11 +21,8 @@ import {
   canMoveMap,
   canStoreLocalMap,
   isManagedRoot,
-  LEARNABLE_META_ROOT,
   mapMoveTargets,
-  MMA_ROOT,
-  parentFolder,
-  sourceType
+  parentFolder
 } from './library-tree.js';
 
 export { canCreateFolder, canStoreLocalMap, isManagedRoot };
@@ -228,11 +220,7 @@ export async function renameFolder(folder: string, name: string) {
 
 async function refreshManagedStatus(folder: string) {
   try {
-    if (folder === MMA_ROOT) {
-      window.dispatchEvent(new Event('ohneguessr:mma-sync-changed'));
-    } else if (folder === LEARNABLE_META_ROOT) {
-      publishLearnableMetaStatus(await getLearnableMetaStatus());
-    }
+    await refreshMapSourceRoot(folder);
   } catch { /* deletion already succeeded */ }
 }
 
@@ -250,13 +238,9 @@ export async function removeFolder(folder: string, recursive = false) {
 
 export async function renameMap(map: MapItem, name: string) {
   try {
-    if (sourceType(map) === 'learnable-meta') {
-      publishLearnableMetaStatus(
-        await renameLearnableMap(String(map.source?.mapId || ''), name)
-      );
-    } else {
-      await renameUserMap(map, name);
-    }
+    const rename = mapSourceFor(map)?.rename;
+    if (typeof rename === 'function') await rename(map, name);
+    else await renameUserMap(map, name);
     await reloadLibrary();
     setNotice('');
   } catch (error) {
@@ -277,13 +261,9 @@ export async function moveMap(map: MapItem, folder: string) {
 
 export async function removeMap(map: MapItem) {
   try {
-    if (sourceType(map) === 'learnable-meta') {
-      publishLearnableMetaStatus(
-        await removeLearnableMap(String(map.source?.mapId || ''))
-      );
-    } else {
-      await deleteUserMap(map);
-    }
+    const remove = mapSourceFor(map)?.remove;
+    if (typeof remove === 'function') await remove(map);
+    else await deleteUserMap(map);
     await reloadLibrary();
     if (library.activeMapID === map.id) closeGame();
     setNotice('');

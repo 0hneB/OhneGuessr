@@ -1,7 +1,19 @@
 import type { MapItem } from '../types.js';
+import {
+  canCreateManagedFolder,
+  canDeleteManagedFolder,
+  canMoveManagedMap,
+  canRemoveManagedMap,
+  canRenameManagedFolder,
+  canRenameManagedMap,
+  canStoreLocalMap,
+  isManagedRoot,
+  managedFolderName,
+  managedMapMoveTargets,
+  managedRootRank
+} from '../../../plugins/map-sources.js';
 
-export const MMA_ROOT = 'map-making-app';
-export const LEARNABLE_META_ROOT = 'Learnable Meta';
+export { canStoreLocalMap, isManagedRoot };
 
 export type LibraryRow =
   | {
@@ -27,48 +39,18 @@ export type LibraryRow =
 
 export const parentFolder = (value: string) => value.split('/').slice(0, -1).join('/');
 export const folderName = (value: string) => {
-  if (value === MMA_ROOT) return 'Map Making App';
-  if (value === LEARNABLE_META_ROOT) return 'Learnable Meta';
+  const managedName = managedFolderName(value);
+  if (managedName) return managedName;
   return value.split('/').pop() || '';
 };
-export const sourceType = (map: MapItem) => String(map.source?.type || '');
-export const isUnder = (value: string, root: string) =>
-  value.toLocaleLowerCase() === root.toLocaleLowerCase() ||
-  value.toLocaleLowerCase().startsWith(root.toLocaleLowerCase() + '/');
-const rootRank = (value: string) =>
-  value === MMA_ROOT ? 0 : value === LEARNABLE_META_ROOT ? 1 : 2;
 
-export function canRenameFolder(folder: string) {
-  return folder !== MMA_ROOT && !isUnder(folder, LEARNABLE_META_ROOT);
-}
-
-export function isManagedRoot(folder: string) {
-  return folder.toLocaleLowerCase() === MMA_ROOT.toLocaleLowerCase() ||
-    folder.toLocaleLowerCase() === LEARNABLE_META_ROOT.toLocaleLowerCase();
-}
-
-export function canDeleteFolder(folder: string) {
-  return !isUnder(folder, LEARNABLE_META_ROOT) || isManagedRoot(folder);
-}
-
-export function canCreateFolder(folder: string) {
-  return !isUnder(folder, LEARNABLE_META_ROOT);
-}
-
-export function canStoreLocalMap(folder: string) {
-  return !isUnder(folder, MMA_ROOT) && !isUnder(folder, LEARNABLE_META_ROOT);
-}
-
-export function canMoveMap(map: MapItem) {
-  return sourceType(map) !== 'learnable-meta';
-}
+export const canRenameFolder = canRenameManagedFolder;
+export const canDeleteFolder = canDeleteManagedFolder;
+export const canCreateFolder = canCreateManagedFolder;
+export const canMoveMap = canMoveManagedMap;
 
 export function mapMoveTargets(map: MapItem, folders: string[]) {
-  const targets = ['', ...folders];
-  if (sourceType(map) === 'map-making-app') {
-    return targets.filter((folder) => isUnder(folder, MMA_ROOT));
-  }
-  return targets.filter(canStoreLocalMap);
+  return managedMapMoveTargets(map, folders);
 }
 
 export function buildLibraryRows(
@@ -111,7 +93,9 @@ export function buildLibraryRows(
     const children = [...visibleFolders]
       .filter((folder) => parentFolder(folder) === parent)
       .sort((left, right) => {
-        if (!parent && rootRank(left) !== rootRank(right)) return rootRank(left) - rootRank(right);
+        if (!parent && managedRootRank(left) !== managedRootRank(right)) {
+          return managedRootRank(left) - managedRootRank(right);
+        }
         return folderName(left).localeCompare(folderName(right), undefined, { sensitivity: 'base' });
       });
     for (const folder of children) {
@@ -135,14 +119,13 @@ export function buildLibraryRows(
     for (const map of visibleMaps
       .filter((item) => item.folder === parent)
       .sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }))) {
-      const type = sourceType(map);
       rows.push({
         kind: 'map',
         map,
         depth,
-        canRename: true,
+        canRename: canRenameManagedMap(map),
         canMove: canMoveMap(map),
-        canRemove: !map.managed || type === 'learnable-meta' || type === 'map-making-app'
+        canRemove: canRemoveManagedMap(map)
       });
     }
   }

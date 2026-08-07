@@ -13,8 +13,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	learnablemeta "github.com/0hneB/OhneGuessr/plugins/learnable-meta"
-	mapmakingapp "github.com/0hneB/OhneGuessr/plugins/map-making-app"
+	"github.com/0hneB/OhneGuessr/internal/pluginhost"
 )
 
 const maxBodySize = 64 << 20
@@ -22,14 +21,13 @@ const maxBodySize = 64 << 20
 type App struct {
 	maps         *mapStore
 	coordinator  *syncCoordinator
-	mma          *mapmakingapp.Backend
-	learnable    *learnablemeta.Backend
+	mapPlugins   []pluginhost.MapPlugin
 	updates      *updater
 	shutdownOnce sync.Once
 	shutdownErr  error
 }
 
-func New(dataDir, version string) (*App, error) {
+func New(dataDir, version string, factories ...pluginhost.MapPluginFactory) (*App, error) {
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return nil, fmt.Errorf("create data directory: %w", err)
 	}
@@ -54,11 +52,11 @@ func New(dataDir, version string) (*App, error) {
 		updates:     newUpdater(version),
 	}
 	host := &pluginHost{maps: maps, coordinator: coordinator}
-	a.mma = mapmakingapp.New(
-		host,
-		filepath.Join(pluginData, "map-making-app.json"),
-	)
-	a.learnable = learnablemeta.New(host, filepath.Join(pluginData, "learnable-meta.json"))
+	for _, factory := range factories {
+		plugin := factory(host, pluginData)
+		a.mapPlugins = append(a.mapPlugins, plugin)
+		maps.registerMapPolicy(plugin.MapPolicy())
+	}
 	return a, nil
 }
 
@@ -109,8 +107,9 @@ func (a *App) Shutdown(ctx context.Context) error {
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	a.registerMapRoutes(mux)
-	a.mma.RegisterRoutes(mux)
-	a.learnable.RegisterRoutes(mux)
+	for _, plugin := range a.mapPlugins {
+		plugin.RegisterRoutes(mux)
+	}
 	a.updates.registerRoutes(mux)
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.HandleFunc(method+" /api/{path...}", func(w http.ResponseWriter, _ *http.Request) {

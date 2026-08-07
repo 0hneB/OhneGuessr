@@ -105,6 +105,14 @@ func New(host Host, configPath string) *Backend {
 	return service
 }
 
+func NewPlugin(host Host, dataDir string) pluginhost.MapPlugin {
+	return New(host, filepath.Join(dataDir, "learnable-meta.json"))
+}
+
+func (s *Backend) MapPolicy() pluginhost.MapPolicy {
+	return pluginhost.MapPolicy{SourceType: "learnable-meta", Root: learnableRoot}
+}
+
 func (s *Backend) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/learnable-meta/status", api(func(_ *http.Request) (any, int, error) {
 		return s.publicStatus(), http.StatusOK, nil

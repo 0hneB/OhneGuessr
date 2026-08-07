@@ -5,6 +5,11 @@
     fileHandlerFor
   } from '../../../plugins/file-handlers.svelte.js';
   import { mapActions } from '../../../plugins/map-actions.svelte.js';
+  import {
+    managedMapBadge,
+    managedMapRemoveLabel,
+    managedMapRemovePrompt
+  } from '../../../plugins/map-sources.js';
   import type { MapItem } from '../types.js';
   import {
     canCreateFolder,
@@ -400,24 +405,20 @@
                 <small>
                   · {(row.map.count || 0).toLocaleString()} locations
                   {#if row.map.managed}
-                    · {row.map.source?.type === 'map-making-app' ? 'MMA' : 'Learnable Meta'}
+                    · {managedMapBadge(row.map)}
                   {/if}
                 </small>
               </button>
             {/if}
             {#if pendingDelete?.kind === 'map' && pendingDelete.map.id === row.map.id}
               <div class="delete-confirm">
-                <span>{row.map.source?.type === 'map-making-app'
-                  ? 'Delete until next sync?'
-                  : 'Delete permanently?'}</span>
+                <span>{managedMapRemovePrompt(row.map)}</span>
                 <button bind:this={deleteCancel} type="button"
                         aria-label={`Cancel deleting ${row.map.name}`}
                         onkeydown={cancelDeleteOnEscape}
                         onclick={() => { pendingDelete = null; }}>Cancel</button>
                 <button class="danger" type="button"
-                        aria-label={row.map.source?.type === 'map-making-app'
-                          ? `Delete local copy of ${row.map.name}`
-                          : `Permanently delete ${row.map.name}`}
+                        aria-label={managedMapRemoveLabel(row.map)}
                         onkeydown={cancelDeleteOnEscape}
                         onclick={confirmDelete}>Delete</button>
               </div>

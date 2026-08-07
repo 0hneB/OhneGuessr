@@ -1,6 +1,9 @@
 package pluginhost
 
-import "context"
+import (
+	"context"
+	"net/http"
+)
 
 type Entry struct {
 	ID       string
@@ -29,3 +32,23 @@ type Host interface {
 	AcquireSync(string) (context.Context, func(), error)
 	CancelSync(string) bool
 }
+
+type MapPolicy struct {
+	SourceType      string
+	Root            string
+	EditableFolders bool
+	RenameMaps      bool
+	MoveMaps        bool
+	DeleteMaps      bool
+	Filename        func(string) string
+	UpdateSource    func(map[string]any, bool, bool) map[string]any
+}
+
+type MapPlugin interface {
+	RegisterRoutes(*http.ServeMux)
+	MapPolicy() MapPolicy
+	Enabled() bool
+	SetEnabled(bool) (map[string]any, error)
+}
+
+type MapPluginFactory func(Host, string) MapPlugin

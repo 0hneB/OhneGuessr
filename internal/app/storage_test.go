@@ -5,18 +5,24 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/0hneB/OhneGuessr/internal/pluginhost"
 )
 
-func storageTestStore(t *testing.T) *mapStore {
+func storageTestStore(t *testing.T, policies ...pluginhost.MapPolicy) *mapStore {
 	t.Helper()
 	store, err := newMapStore(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
+	}
+	for _, policy := range policies {
+		store.registerMapPolicy(policy)
 	}
 	if err := store.initialize(); err != nil {
 		store.Close()
@@ -267,41 +273,80 @@ func TestRecursiveFolderDelete(t *testing.T) {
 }
 
 func TestManagedMoveRules(t *testing.T) {
-	store := storageTestStore(t)
+	const managedType = "editable-sync"
+	const managedRoot = "editable-sync"
+	const lockedType = "locked-sync"
+	const lockedRoot = "Locked Sync"
+	store := storageTestStore(t, pluginhost.MapPolicy{
+		SourceType: managedType, Root: managedRoot, EditableFolders: true,
+		RenameMaps: true, MoveMaps: true, DeleteMaps: true,
+		Filename: func(name string) string { return safeComponent(name, "Untitled map") + ".json" },
+		UpdateSource: func(source map[string]any, renamed, moved bool) map[string]any {
+			source = maps.Clone(source)
+			if renamed {
+				source["nameOverride"] = true
+			}
+			if moved {
+				source["folderOverride"] = true
+			}
+			return source
+		},
+	}, pluginhost.MapPolicy{
+		SourceType: lockedType, Root: lockedRoot,
+	})
 	local, err := store.createLocal("Local", json.RawMessage(`[{"lat":1,"lng":2}]`), "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, folder := range []string{mmaRoot, path.Join(mmaRoot, "Custom")} {
+	for _, folder := range []string{managedRoot, path.Join(managedRoot, "Custom"), lockedRoot} {
 		if err := os.MkdirAll(filepath.Join(store.dir, filepath.FromSlash(folder)), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
-	managedFile := path.Join(mmaRoot, "Managed.json")
+	managedFile := path.Join(managedRoot, "Managed.json")
+	lockedFile := path.Join(lockedRoot, "Locked.json")
 	if err := os.WriteFile(filepath.Join(store.dir, filepath.FromSlash(managedFile)), []byte(`[{"lat":1,"lng":2}]`), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(store.dir, filepath.FromSlash(lockedFile)), []byte(`[{"lat":1,"lng":2}]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	manifest := storageManifest(t, store)
-	manifest.Folders = append(manifest.Folders, mmaRoot, path.Join(mmaRoot, "Custom"))
-	manifest.Maps = append(manifest.Maps, mapEntry{
-		ID: "mma:1", Name: "Managed", File: managedFile, Count: 1,
-		Source: map[string]any{"type": "map-making-app", "managed": true, "mapId": 1},
-	})
+	manifest.Folders = append(manifest.Folders, managedRoot, path.Join(managedRoot, "Custom"), lockedRoot)
+	manifest.Maps = append(manifest.Maps,
+		mapEntry{
+			ID: "editable:1", Name: "Managed", File: managedFile, Count: 1,
+			Source: map[string]any{"type": managedType, "managed": true, "mapId": 1},
+		},
+		mapEntry{
+			ID: "locked:1", Name: "Locked", File: lockedFile, Count: 1,
+			Source: map[string]any{"type": lockedType, "managed": true, "mapId": 1},
+		},
+	)
 	saveStorageManifest(t, store, manifest)
 
-	if _, err := store.updateMap(local.ID, nil, pointer(path.Join(mmaRoot, "Custom"))); !errors.Is(err, errMoveRestricted) {
+	if _, err := store.updateMap(local.ID, nil, pointer(path.Join(managedRoot, "Custom"))); !errors.Is(err, errMoveRestricted) {
 		t.Fatalf("local managed-root move error = %v", err)
 	}
 	name := "My managed map"
-	folder := path.Join(mmaRoot, "Custom")
-	updated, err := store.updateMap("mma:1", &name, &folder)
+	folder := path.Join(managedRoot, "Custom")
+	updated, err := store.updateMap("editable:1", &name, &folder)
 	if err != nil {
 		t.Fatal(err)
 	}
 	nameOverride, _ := updated.Source["nameOverride"].(bool)
 	folderOverride, _ := updated.Source["folderOverride"].(bool)
 	if !underRoot(updated.File, folder) || !nameOverride || !folderOverride {
-		t.Fatalf("MMA overrides = %#v", updated)
+		t.Fatalf("managed overrides = %#v", updated)
+	}
+	if _, err := store.createFolder(lockedRoot, "Nope"); !errors.Is(err, errManagedFolder) {
+		t.Fatalf("locked managed folder create error = %v", err)
+	}
+	if _, err := store.updateMap("locked:1", &name, nil); !errors.Is(err, errManagedMap) {
+		t.Fatalf("locked managed rename error = %v", err)
+	}
+	if err := store.deleteLocal("locked:1"); !errors.Is(err, errManagedMap) {
+		t.Fatalf("locked managed delete error = %v", err)
 	}
 }
 

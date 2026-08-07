@@ -6,8 +6,24 @@ const target = document.getElementById('app')!;
 const params = new URLSearchParams(location.search);
 const challengeID = params.get('view') === 'game' ? params.get('challenge')?.trim() || '' : '';
 
+async function setupMapSources() {
+  const [{ setupMapMakingApp }, { setupLearnableMetaMapSource }] = await Promise.all([
+    import('../../plugins/map-making-app/setup.js'),
+    import('../../plugins/learnable-meta/setup.js')
+  ]);
+  setupMapMakingApp();
+  setupLearnableMetaMapSource();
+}
+
 if (route.view === 'game' || challengeID) {
   await import('./app.css');
+  await setupMapSources();
+  try {
+    const { setupLearnableMeta } = await import('../../plugins/learnable-meta/index.js');
+    await setupLearnableMeta();
+  } catch (error) {
+    console.warn('Learnable Meta plugin unavailable:', error);
+  }
   const { setupChallengeGame } = await import('../../plugins/challenges/setup.js');
   const partyID = params.get('party')?.trim();
   setupChallengeGame(partyID ? '' : challengeID);
@@ -26,6 +42,7 @@ if (route.view === 'game' || challengeID) {
   mount(PartyGuestApp, { target, props: { join: route.join } });
 } else {
   await Promise.all([import('./app.css'), import('./launcher.css')]);
+  await setupMapSources();
   const { setupLocalParty } = await import('../../plugins/local-party/setup.js');
   setupLocalParty();
   const { default: LauncherApp } = await import('./LauncherApp.svelte');

@@ -8,6 +8,7 @@
     saveKey,
     type MapMakingAppStatus
   } from './api.js';
+  import { publishMapMakingAppStatus } from './status.svelte.js';
 
   const POLL_MS = 650;
   const errorMessage = (error: unknown, fallback: string) =>
@@ -75,6 +76,7 @@
   async function accept(next: MapMakingAppStatus) {
     const completed = wasRunning && !next.running && next.phase === 'complete';
     status = next;
+    publishMapMakingAppStatus(next);
     wasRunning = Boolean(next.running);
     schedulePoll();
     if (completed) await reloadLibrary();

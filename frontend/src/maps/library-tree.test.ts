@@ -1,11 +1,27 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { mapSources, registerMapSource } from '../../../plugins/map-sources.js';
 import type { MapItem } from '../types.js';
 import {
   buildLibraryRows,
-  LEARNABLE_META_ROOT,
-  MMA_ROOT,
+  canMoveMap,
   mapMoveTargets
 } from './library-tree.js';
+
+const EDITABLE_ROOT = 'editable-sync';
+const LOCKED_ROOT = 'Locked Sync';
+
+beforeEach(() => {
+  registerMapSource({
+    type: 'editable-sync', root: EDITABLE_ROOT, label: 'Editable Sync', badge: 'Editable',
+    editableFolders: true, moveWithinRoot: true, rename: true, remove: true
+  });
+  registerMapSource({
+    type: 'locked-sync', root: LOCKED_ROOT, label: 'Locked Sync', badge: 'Locked',
+    rename: true, remove: true
+  });
+});
+
+afterEach(() => { mapSources.length = 0; });
 
 const map = (
   id: string,
@@ -47,33 +63,34 @@ describe('library tree', () => {
   });
 
   it('filters move targets for managed sources', () => {
-    const folders = ['Local', 'map-making-app', 'map-making-app/Custom', 'Learnable Meta'];
-    expect(mapMoveTargets(map('mma', 'MMA', 'map-making-app', 'map-making-app', true), folders))
-      .toEqual(['map-making-app', 'map-making-app/Custom']);
+    const folders = ['Local', EDITABLE_ROOT, `${EDITABLE_ROOT}/Custom`, LOCKED_ROOT];
+    expect(mapMoveTargets(map('sync', 'Sync', EDITABLE_ROOT, 'editable-sync', true), folders))
+      .toEqual([EDITABLE_ROOT, `${EDITABLE_ROOT}/Custom`]);
     expect(mapMoveTargets(map('local', 'Local', ''), folders))
       .toEqual(['', 'Local']);
+    expect(canMoveMap(map('local', 'Local', ''))).toBe(true);
   });
 
-  it('allows managed roots and MMA maps to be deleted', () => {
+  it('uses each managed source folder policy', () => {
     const rows = buildLibraryRows(
       [
-        map('mma', 'MMA', `${MMA_ROOT}/World`, 'map-making-app', true),
-        map('lm', 'LM', LEARNABLE_META_ROOT, 'learnable-meta', true)
+        map('editable', 'Editable', `${EDITABLE_ROOT}/World`, 'editable-sync', true),
+        map('locked', 'Locked', LOCKED_ROOT, 'locked-sync', true)
       ],
-      [MMA_ROOT, `${MMA_ROOT}/World`, LEARNABLE_META_ROOT],
+      [EDITABLE_ROOT, `${EDITABLE_ROOT}/World`, LOCKED_ROOT],
       '',
-      new Set([MMA_ROOT, `${MMA_ROOT}/World`, LEARNABLE_META_ROOT]),
+      new Set([EDITABLE_ROOT, `${EDITABLE_ROOT}/World`, LOCKED_ROOT]),
       ''
     );
     const folders = rows.filter((row) => row.kind === 'folder');
-    expect(folders[0]).toMatchObject({ path: MMA_ROOT, canRename: false, canDelete: true });
+    expect(folders[0]).toMatchObject({ path: EDITABLE_ROOT, canRename: false, canDelete: true });
     expect(folders[1]).toMatchObject({
-      path: `${MMA_ROOT}/World`,
+      path: `${EDITABLE_ROOT}/World`,
       canRename: true,
       canDelete: true
     });
     expect(folders[2]).toMatchObject({
-      path: LEARNABLE_META_ROOT,
+      path: LOCKED_ROOT,
       canRename: false,
       canDelete: true
     });

@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -17,13 +16,13 @@ import (
 	"strings"
 	"sync"
 	"unicode"
+
+	"github.com/0hneB/OhneGuessr/internal/pluginhost"
 )
 
 const (
 	manifestVersion   = 2
 	manifestName      = "maps.json"
-	mmaRoot           = "map-making-app"
-	learnableRoot     = "Learnable Meta"
 	localNameMaxRunes = 120
 )
 
@@ -69,6 +68,7 @@ type mapStore struct {
 	dir          string
 	manifestPath string
 	root         *os.Root
+	mapPolicies  map[string]pluginhost.MapPolicy
 	mu           sync.Mutex
 }
 
@@ -80,7 +80,14 @@ func newMapStore(dir string) (*mapStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open maps directory: %w", err)
 	}
-	return &mapStore{dir: dir, manifestPath: filepath.Join(dir, manifestName), root: root}, nil
+	return &mapStore{
+		dir: dir, manifestPath: filepath.Join(dir, manifestName), root: root,
+		mapPolicies: map[string]pluginhost.MapPolicy{},
+	}, nil
+}
+
+func (s *mapStore) registerMapPolicy(policy pluginhost.MapPolicy) {
+	s.mapPolicies[strings.ToLower(policy.SourceType)] = policy
 }
 
 func (s *mapStore) Close() error { return s.root.Close() }
@@ -194,7 +201,7 @@ func (s *mapStore) createLocal(name string, locations json.RawMessage, folder st
 		return mapEntry{}, errInvalidFolder
 	}
 	if folder != "" {
-		if underRoot(folder, mmaRoot) || underRoot(folder, learnableRoot) {
+		if _, managed := s.policyForFolder(folder); managed {
 			return mapEntry{}, errMoveRestricted
 		}
 		canonical, found := findFolder(manifest, folder)
@@ -264,8 +271,12 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 		return mapEntry{}, errMapNotFound
 	}
 	entry := &manifest.Maps[index]
-	source := sourceType(entry.Source)
-	if source == "learnable-meta" || (isManagedSource(entry.Source) && source != "map-making-app") {
+	policy, pluginManaged := s.policyForSource(entry.Source)
+	managed := s.isManagedSource(entry.Source)
+	if requestedName != nil && managed && (!pluginManaged || !policy.RenameMaps) {
+		return mapEntry{}, errManagedMap
+	}
+	if requestedFolder != nil && managed && (!pluginManaged || !policy.MoveMaps) {
 		return mapEntry{}, errManagedMap
 	}
 	folder := folderOf(entry.File)
@@ -282,12 +293,14 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 			}
 			folder = canonical
 		}
-		if source == "map-making-app" {
-			if !underRoot(folder, mmaRoot) {
+		if pluginManaged {
+			if !underRoot(folder, policy.Root) {
 				return mapEntry{}, errMoveRestricted
 			}
-		} else if underRoot(folder, mmaRoot) || underRoot(folder, learnableRoot) {
-			return mapEntry{}, errMoveRestricted
+		} else {
+			if _, restricted := s.policyForFolder(folder); restricted {
+				return mapEntry{}, errMoveRestricted
+			}
 		}
 	}
 	if requestedName == nil {
@@ -304,8 +317,8 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 	}
 	filename := path.Base(entry.File)
 	if requestedName != nil && entry.Name != name {
-		if source == "map-making-app" {
-			filename = safeComponent(name, "Untitled map") + ".json"
+		if pluginManaged && policy.Filename != nil {
+			filename = policy.Filename(name)
 		} else {
 			filename = slugify(name) + ".json"
 		}
@@ -346,14 +359,8 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 	}
 	entry.Name = name
 	entry.File = newRel
-	if source == "map-making-app" {
-		entry.Source = maps.Clone(entry.Source)
-		if requestedName != nil {
-			entry.Source["nameOverride"] = true
-		}
-		if requestedFolder != nil {
-			entry.Source["folderOverride"] = true
-		}
+	if pluginManaged && policy.UpdateSource != nil {
+		entry.Source = policy.UpdateSource(entry.Source, requestedName != nil, requestedFolder != nil)
 	}
 	err = s.saveManifestLocked(manifest)
 	if err != nil && moved {
@@ -380,7 +387,8 @@ func (s *mapStore) deleteLocal(id string) error {
 		return errMapNotFound
 	}
 	entry := manifest.Maps[index]
-	if isManagedSource(entry.Source) && sourceType(entry.Source) != "map-making-app" {
+	policy, pluginManaged := s.policyForSource(entry.Source)
+	if s.isManagedSource(entry.Source) && (!pluginManaged || !policy.DeleteMaps) {
 		return errManagedMap
 	}
 	filename, err := s.resolve(entry.File)
@@ -423,11 +431,11 @@ func (s *mapStore) createFolder(parent, name string) (string, error) {
 		}
 		parent = canonical
 	}
-	if underRoot(parent, learnableRoot) {
+	if policy, managed := s.policyForFolder(parent); managed && !policy.EditableFolders {
 		return "", errManagedFolder
 	}
 	folder := path.Join(parent, name)
-	if strings.EqualFold(folder, mmaRoot) || strings.EqualFold(folder, learnableRoot) {
+	if s.isManagedRoot(folder) {
 		return "", errManagedFolder
 	}
 	if hasFolder(manifest, folder) {
@@ -474,12 +482,13 @@ func (s *mapStore) renameFolder(folder, name string) (string, error) {
 		return "", errFolderNotFound
 	}
 	folder = canonical
-	if strings.EqualFold(folder, mmaRoot) || underRoot(folder, learnableRoot) {
+	if policy, managed := s.policyForFolder(folder); managed &&
+		(strings.EqualFold(folder, policy.Root) || !policy.EditableFolders) {
 		return "", errManagedFolder
 	}
 	parent := folderOf(folder)
 	target := path.Join(parent, name)
-	if strings.EqualFold(target, mmaRoot) || strings.EqualFold(target, learnableRoot) {
+	if s.isManagedRoot(target) {
 		return "", errManagedFolder
 	}
 	if strings.EqualFold(folder, target) && folder == target {
@@ -512,9 +521,8 @@ func (s *mapStore) renameFolder(folder, name string) (string, error) {
 			continue
 		}
 		entry.File = path.Join(target, strings.TrimPrefix(entry.File, folder+"/"))
-		if sourceType(entry.Source) == "map-making-app" {
-			entry.Source = maps.Clone(entry.Source)
-			entry.Source["folderOverride"] = true
+		if policy, managed := s.policyForSource(entry.Source); managed && policy.UpdateSource != nil {
+			entry.Source = policy.UpdateSource(entry.Source, false, true)
 		}
 	}
 	for index, current := range manifest.Folders {
@@ -551,7 +559,8 @@ func (s *mapStore) deleteFolder(folder string, recursive bool) ([]string, error)
 		return nil, errFolderNotFound
 	}
 	folder = canonical
-	if underRoot(folder, learnableRoot) && !strings.EqualFold(folder, learnableRoot) {
+	if policy, managed := s.policyForFolder(folder); managed &&
+		!strings.EqualFold(folder, policy.Root) && !policy.EditableFolders {
 		return nil, errManagedFolder
 	}
 	deleted := make([]string, 0)
@@ -969,20 +978,31 @@ func sourceType(source map[string]any) string {
 	return value
 }
 
-func isManagedSource(source map[string]any) bool {
-	managed, _ := source["managed"].(bool)
-	return managed || sourceType(source) == "map-making-app"
+func (s *mapStore) policyForSource(source map[string]any) (pluginhost.MapPolicy, bool) {
+	policy, found := s.mapPolicies[strings.ToLower(sourceType(source))]
+	return policy, found
 }
 
-func managedRoot(source map[string]any) string {
-	switch sourceType(source) {
-	case "map-making-app":
-		return mmaRoot
-	case "learnable-meta":
-		return learnableRoot
-	default:
-		return ""
+func (s *mapStore) policyForFolder(folder string) (pluginhost.MapPolicy, bool) {
+	var match pluginhost.MapPolicy
+	found := false
+	for _, policy := range s.mapPolicies {
+		if underRoot(folder, policy.Root) && (!found || len(policy.Root) > len(match.Root)) {
+			match, found = policy, true
+		}
 	}
+	return match, found
+}
+
+func (s *mapStore) isManagedSource(source map[string]any) bool {
+	managed, _ := source["managed"].(bool)
+	_, pluginManaged := s.policyForSource(source)
+	return managed || pluginManaged
+}
+
+func (s *mapStore) isManagedRoot(folder string) bool {
+	policy, found := s.policyForFolder(folder)
+	return found && strings.EqualFold(folder, policy.Root)
 }
 
 func underRoot(rel, root string) bool {

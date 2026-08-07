@@ -13,14 +13,8 @@
     showLibraryNotice
   } from './maps/library.svelte.js';
   import { onLauncherPageRequested } from './launcher-events.js';
-  import LearnableMetaSettings from '../../plugins/learnable-meta/Settings.svelte';
-  import MapMakingAppSettings from '../../plugins/map-making-app/Settings.svelte';
+  import MapSyncLayout from '../../plugins/MapSyncLayout.svelte';
   import PluginsPanel from '../../plugins/PluginsPanel.svelte';
-  import {
-    initPluginStatusSync,
-    pluginStatus,
-    refreshPluginStatus
-  } from '../../plugins/status.svelte.js';
   import KeybindingsPanel from './settings/KeybindingsPanel.svelte';
   import {
     initSettingsSync,
@@ -92,7 +86,6 @@
 
   onMount(() => {
     const stopSettings = initSettingsSync();
-    const stopPluginStatus = initPluginStatusSync();
     const stopGameState = onGameWindowState(receiveGameState);
     const stopLauncherRequests = onLauncherPageRequested((request) => {
       if (request.page === 'plugins') pluginMessage = request.message || '';
@@ -101,10 +94,8 @@
     });
     void getGameWindowState().then(receiveGameState);
     void initLibrary();
-    void refreshPluginStatus();
     return () => {
       stopSettings();
-      stopPluginStatus();
       stopGameState();
       stopLauncherRequests();
     };
@@ -142,19 +133,9 @@
 
   <main class="launcher-main">
     {#if page === 'maps'}
-      <div class="maps-layout" class:maps-only={!pluginStatus.mma?.enabled && !pluginStatus.learnable?.enabled}>
+      <MapSyncLayout>
         <MapLibrary />
-        {#if pluginStatus.mma?.enabled || pluginStatus.learnable?.enabled}
-          <aside class="sync-panel" aria-label="Map syncing">
-            {#if pluginStatus.mma?.enabled}
-              <div class="sync-plugin-mount"><MapMakingAppSettings /></div>
-            {/if}
-            {#if pluginStatus.learnable?.enabled}
-              <div class="sync-plugin-mount"><LearnableMetaSettings /></div>
-            {/if}
-          </aside>
-        {/if}
-      </div>
+      </MapSyncLayout>
     {:else if page === 'plugins'}
       <PluginsPanel message={pluginMessage} />
     {:else if page === 'game'}

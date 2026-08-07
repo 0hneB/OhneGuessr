@@ -11,11 +11,14 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	learnablemeta "github.com/0hneB/OhneGuessr/plugins/learnable-meta"
+	mapmakingapp "github.com/0hneB/OhneGuessr/plugins/map-making-app"
 )
 
 func newTestApp(t *testing.T) *App {
 	t.Helper()
-	a, err := New(t.TempDir(), "dev")
+	a, err := New(t.TempDir(), "dev", mapmakingapp.NewPlugin, learnablemeta.NewPlugin)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,11 +218,13 @@ func TestHTTPFolderAndMapMutations(t *testing.T) {
 
 func TestManagedRootDeleteDisablesSync(t *testing.T) {
 	a := newTestApp(t)
-	_, err := a.mma.SetEnabled(true)
+	mma, learnable := a.mapPlugins[0], a.mapPlugins[1]
+	mmaPolicy, learnablePolicy := mma.MapPolicy(), learnable.MapPolicy()
+	_, err := mma.SetEnabled(true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = a.learnable.SetEnabled(true)
+	_, err = learnable.SetEnabled(true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,17 +235,17 @@ func TestManagedRootDeleteDisablesSync(t *testing.T) {
 		a.maps.mu.Unlock()
 		t.Fatal(err)
 	}
-	manifest.Folders = append(manifest.Folders, mmaRoot)
+	manifest.Folders = append(manifest.Folders, mmaPolicy.Root)
 	err = a.maps.saveManifestLocked(manifest)
 	a.maps.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.deleteFolder(mmaRoot, true); !errors.Is(err, errFolderNotFound) || !a.mma.Enabled() {
+	if _, err := a.deleteFolder(mmaPolicy.Root, true); !errors.Is(err, errFolderNotFound) || !mma.Enabled() {
 		t.Fatalf("failed delete did not restore MMA sync: %v", err)
 	}
 
-	for _, folder := range []string{mmaRoot, learnableRoot} {
+	for _, folder := range []string{mmaPolicy.Root, learnablePolicy.Root} {
 		filename := filepath.Join(a.maps.dir, folder, "Map.json")
 		if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
 			t.Fatal(err)
@@ -252,15 +257,15 @@ func TestManagedRootDeleteDisablesSync(t *testing.T) {
 	a.maps.mu.Lock()
 	manifest, err = a.maps.loadManifestLocked()
 	if err == nil {
-		manifest.Folders = append(manifest.Folders, learnableRoot)
+		manifest.Folders = append(manifest.Folders, learnablePolicy.Root)
 		manifest.Maps = append(manifest.Maps,
 			mapEntry{
-				ID: "mma:1", Name: "MMA", File: mmaRoot + "/Map.json", Count: 1,
-				Source: map[string]any{"type": "map-making-app", "mapId": 1},
+				ID: "editable:1", Name: "Editable", File: mmaPolicy.Root + "/Map.json", Count: 1,
+				Source: map[string]any{"type": mmaPolicy.SourceType, "mapId": 1},
 			},
 			mapEntry{
-				ID: "learnable:demo", Name: "Learnable", File: learnableRoot + "/Map.json", Count: 1,
-				Source: map[string]any{"type": "learnable-meta", "managed": true, "mapId": "demo"},
+				ID: "locked:demo", Name: "Locked", File: learnablePolicy.Root + "/Map.json", Count: 1,
+				Source: map[string]any{"type": learnablePolicy.SourceType, "managed": true, "mapId": "demo"},
 			},
 		)
 		err = a.maps.saveManifestLocked(manifest)
@@ -270,10 +275,10 @@ func TestManagedRootDeleteDisablesSync(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := a.deleteFolder(mmaRoot, false); !errors.Is(err, errFolderNotEmpty) || !a.mma.Enabled() {
+	if _, err := a.deleteFolder(mmaPolicy.Root, false); !errors.Is(err, errFolderNotEmpty) || !mma.Enabled() {
 		t.Fatalf("unconfirmed managed delete = %v", err)
 	}
-	for _, folder := range []string{mmaRoot, learnableRoot} {
+	for _, folder := range []string{mmaPolicy.Root, learnablePolicy.Root} {
 		deleted, err := a.deleteFolder(folder, true)
 		if err != nil || len(deleted) != 1 {
 			t.Fatalf("delete %s = %#v, %v", folder, deleted, err)
@@ -283,10 +288,10 @@ func TestManagedRootDeleteDisablesSync(t *testing.T) {
 		}
 	}
 
-	if a.mma.Enabled() {
+	if mma.Enabled() {
 		t.Fatal("MMA sync remained enabled after deleting its managed root")
 	}
-	if a.learnable.Enabled() {
+	if learnable.Enabled() {
 		t.Fatal("Learnable Meta sync remained enabled after deleting its managed root")
 	}
 }

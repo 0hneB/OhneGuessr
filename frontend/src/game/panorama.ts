@@ -11,7 +11,7 @@ const OPENSV_SRC = publicAsset('vendor/opensv/opensv.js');
 const DEFAULT_ZOOM = 1;
 const FULLY_ZOOMED_OUT = -3; // bottom of OpenSV's panorama zoom range
 const ZOOM_IN = 3;     // google SV zoom level for "zoomed in"
-const TWEEN_MS = 160;  // matches MMA's tweenPov feel
+const TWEEN_MS = 160;
 const POSITION_EPSILON = 1e-5; // ~1 m; enough to bind a viewer event to its lookup
 // Keys Street View uses to walk; blocked outside moving mode.
 const MOVE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
@@ -464,7 +464,7 @@ export class OpenSvViewer {
     return wait.promise;
   }
 
-  // Eased POV move (quadratic ease-out, shortest-angle), à la MMA's tweenPov.
+  // Eased POV move (quadratic ease-out, shortest-angle).
   _tweenPov(heading: number, pitch: number) {
     this._cancelTween();
     const from = this.pano.getPov();

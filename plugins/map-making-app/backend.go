@@ -83,6 +83,34 @@ func New(host Host, configPath string) *Backend {
 	}
 }
 
+func NewPlugin(host Host, dataDir string) pluginhost.MapPlugin {
+	return New(host, filepath.Join(dataDir, "map-making-app.json"))
+}
+
+func (s *Backend) MapPolicy() pluginhost.MapPolicy {
+	return pluginhost.MapPolicy{
+		SourceType:      "map-making-app",
+		Root:            mmaRoot,
+		EditableFolders: true,
+		RenameMaps:      true,
+		MoveMaps:        true,
+		DeleteMaps:      true,
+		Filename: func(name string) string {
+			return safeComponent(name, "Untitled map") + ".json"
+		},
+		UpdateSource: func(source map[string]any, renamed, moved bool) map[string]any {
+			source = maps.Clone(source)
+			if renamed {
+				source["nameOverride"] = true
+			}
+			if moved {
+				source["folderOverride"] = true
+			}
+			return source
+		},
+	}
+}
+
 func (s *Backend) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/mma-sync/status", api(func(_ *http.Request) (any, int, error) {
 		return s.publicStatus(), http.StatusOK, nil
@@ -506,6 +534,7 @@ func (s *Backend) syncMapsLocked(ctx context.Context, key string, library Librar
 			source = maps.Clone(existing.Source)
 		}
 		source["type"] = "map-making-app"
+		source["managed"] = true
 		source["mapId"] = remote.ID
 		source["remoteName"] = defaultString(remote.Name, "Untitled map")
 		if remote.Folder == "" {

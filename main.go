@@ -10,7 +10,9 @@ import (
 
 	"github.com/0hneB/OhneGuessr/internal/app"
 	"github.com/0hneB/OhneGuessr/plugins/challenges"
+	learnablemeta "github.com/0hneB/OhneGuessr/plugins/learnable-meta"
 	"github.com/0hneB/OhneGuessr/plugins/local-party"
+	mapmakingapp "github.com/0hneB/OhneGuessr/plugins/map-making-app"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -54,7 +56,12 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	backend, err := app.New(dataDir, version)
+	backend, err := app.New(
+		dataDir,
+		version,
+		mapmakingapp.NewPlugin,
+		learnablemeta.NewPlugin,
+	)
 	if err != nil {
 		return err
 	}

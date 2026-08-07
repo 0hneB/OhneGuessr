@@ -91,27 +91,20 @@ func (a *App) registerMapRoutes(mux *http.ServeMux) {
 func (a *App) deleteFolder(folder string, recursive bool) ([]string, error) {
 	clean, _ := normalizeRelative(folder)
 	var restore func()
-	switch {
-	case strings.EqualFold(clean, mmaRoot):
+	for _, plugin := range a.mapPlugins {
+		if !strings.EqualFold(clean, plugin.MapPolicy().Root) {
+			continue
+		}
 		if !recursive {
 			return nil, errFolderNotEmpty
 		}
-		if a.mma.Enabled() {
-			if _, err := a.mma.SetEnabled(false); err != nil {
+		if plugin.Enabled() {
+			if _, err := plugin.SetEnabled(false); err != nil {
 				return nil, err
 			}
-			restore = func() { _, _ = a.mma.SetEnabled(true) }
+			restore = func() { _, _ = plugin.SetEnabled(true) }
 		}
-	case strings.EqualFold(clean, learnableRoot):
-		if !recursive {
-			return nil, errFolderNotEmpty
-		}
-		if a.learnable.Enabled() {
-			if _, err := a.learnable.SetEnabled(false); err != nil {
-				return nil, err
-			}
-			restore = func() { _, _ = a.learnable.SetEnabled(true) }
-		}
+		break
 	}
 	deleted, err := a.maps.deleteFolder(folder, recursive)
 	if err != nil && restore != nil {

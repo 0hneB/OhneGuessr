@@ -188,6 +188,9 @@ func TestSyncPartialFailureAndRedaction(t *testing.T) {
 	if len(manifest.Maps) != 1 || manifest.Maps[0].ID != "mma:1" || manifest.Maps[0].File != "map-making-app/World/One.json" {
 		t.Fatalf("manifest = %#v", manifest.Maps)
 	}
+	if managed, _ := manifest.Maps[0].Source["managed"].(bool); !managed {
+		t.Fatalf("managed source metadata = %#v", manifest.Maps[0].Source)
+	}
 	if _, err := os.Stat(filepath.Join(host.dir, filepath.FromSlash(manifest.Maps[0].File))); err != nil {
 		t.Fatal(err)
 	}

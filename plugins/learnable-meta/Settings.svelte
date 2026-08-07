@@ -10,7 +10,7 @@
     type LearnableMetaStatus
   } from './api.js';
   import './learnable-meta.css';
-  import { onLearnableMetaStatus, publishLearnableMetaStatus } from './status.js';
+  import { onLearnableMetaStatus, publishLearnableMetaStatus } from './status.svelte.js';
 
   const POLL_MS = 650;
   const errorMessage = (error: unknown, fallback: string) =>
