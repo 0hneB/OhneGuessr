@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createChallenge, parseChallenge, serializeChallenge } from './challenge.js';
+import {
+  createChallenge,
+  isChallengeFilename,
+  parseChallenge,
+  serializeChallenge
+} from './challenge.js';
 import {
   challengeGame,
   challengeRevealResults,
@@ -27,6 +32,11 @@ describe('.ohne challenges', () => {
   afterEach(() => {
     challengeGame.challenge = null;
     challengeGame.results = [];
+  });
+
+  it('recognizes challenge filenames case-insensitively', () => {
+    expect(isChallengeFilename('GAME.OHNE')).toBe(true);
+    expect(isChallengeFilename('game.json')).toBe(false);
   });
 
   it('parses v1 and ignores additive fields', () => {

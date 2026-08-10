@@ -1,7 +1,12 @@
 import { requestLauncherPage } from '../../frontend/src/launcher-events.js';
 import { launchChallenge } from './api.js';
-import { parseChallenge } from './challenge.js';
+import { MAX_CHALLENGE_BYTES, parseChallenge } from './challenge.js';
 import { challengeSettings } from './settings.svelte.js';
+
+export async function openChallengeFile(file: File) {
+  if (file.size > MAX_CHALLENGE_BYTES) throw new Error('Challenge file is too large.');
+  return openChallengeContents(await file.text());
+}
 
 export async function openChallengeContents(contents: string) {
   if (!challengeSettings.enabled) {

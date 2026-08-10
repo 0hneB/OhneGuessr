@@ -18,6 +18,8 @@ import {
 import type { ChallengeRules } from './types.js';
 import './challenges.css';
 
+export const challengeAction = $state({ busy: false, error: '' });
+
 function createChallengeMode(id: string): GameMode {
   const mode: GameMode = {
     id: 'challenge',
@@ -99,7 +101,7 @@ function currentRules(): ChallengeRules {
   };
 }
 
-export async function exportCurrentChallenge() {
+async function exportCurrentChallenge() {
   if (!challengeSettings.enabled) throw new Error('Enable Challenges in the launcher first.');
   if (state.phase !== 'final' || !state.map) {
     throw new Error('Finish the game before creating a challenge.');
@@ -119,4 +121,19 @@ export function installChallengeGame(id: string) {
 
 export function challengeActionVisible() {
   return challengeSettings.enabled && (!gameMode.current || gameMode.current.id === 'challenge');
+}
+
+export async function runChallengeAction() {
+  if (challengeAction.busy) return;
+  challengeAction.busy = true;
+  challengeAction.error = '';
+  try {
+    await exportCurrentChallenge();
+  } catch (error) {
+    challengeAction.error = error instanceof Error && error.message
+      ? error.message
+      : 'Could not save the challenge.';
+  } finally {
+    challengeAction.busy = false;
+  }
 }

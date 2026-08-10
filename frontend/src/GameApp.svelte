@@ -23,16 +23,17 @@
     submitGuess
   } from './game/game.js';
   import {
-    finalActions,
-    runFinalAction
-  } from '../../plugins/final-actions.svelte.js';
+    challengeAction,
+    challengeActionVisible,
+    runChallengeAction
+  } from '../../plugins/challenges/game.svelte.js';
   import { gameMode } from '../../plugins/game-mode.svelte.js';
   import { ui } from './ui.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);
   const modeActive = $derived(Boolean(gameMode.current));
   const modeComponents = $derived(gameMode.current?.components);
-  const visibleFinalActions = $derived(finalActions.items.filter((action) => action.visible()));
+  const showChallengeAction = $derived(challengeActionVisible());
   const timerText = $derived(
     `${Math.floor(ui.timerRemaining / 60)}:${String(ui.timerRemaining % 60).padStart(2, '0')}`
   );
@@ -185,27 +186,27 @@
       </div>
     {/if}
     <div class="final-actions">
-      <button id="playAgain" disabled={gameMode.busy || Boolean(finalActions.busy)}
+      <button id="playAgain" disabled={gameMode.busy || challengeAction.busy}
               onclick={modeActive ? rematchModeGame : startGame}>
         {gameMode.current?.restartLabel || 'Play again'}
       </button>
-      {#each visibleFinalActions as action (action.id)}
-        <button type="button" disabled={Boolean(finalActions.busy)}
-                onclick={() => runFinalAction(action)}>
-          {finalActions.busy === action.id ? action.runningLabel : action.label}
+      {#if showChallengeAction}
+        <button type="button" disabled={challengeAction.busy}
+                onclick={runChallengeAction}>
+          {challengeAction.busy ? 'Saving…' : 'Create challenge'}
         </button>
-      {/each}
+      {/if}
       {#if gameMode.current?.closeLabel}
         <button class="game-mode-final-close" type="button"
-                disabled={gameMode.busy || Boolean(finalActions.busy)}
+                disabled={gameMode.busy || challengeAction.busy}
                 aria-label={gameMode.current.closeLabel} title={gameMode.current.closeLabel}
                 onclick={endModeGame}>
           <span class="svg-icon close-icon" aria-hidden="true"></span>
         </button>
       {/if}
     </div>
-    {#if gameMode.error || finalActions.error}
-      <p class="final-action-error" role="alert">{gameMode.error || finalActions.error}</p>
+    {#if gameMode.error || challengeAction.error}
+      <p class="final-action-error" role="alert">{gameMode.error || challengeAction.error}</p>
     {/if}
   </div>
 </div>

@@ -1,30 +1,45 @@
-import { onPluginEvent, PLUGIN_EVENTS } from '../events.js';
+import type { Location, MapItem } from '../../frontend/src/types.js';
 import { getStatus } from './api.js';
 import { LearnableMetaClues } from './clues.js';
 import './learnable-meta.css';
 
-let instance: { clues: LearnableMetaClues } | null = null;
+let clues: LearnableMetaClues | null = null;
 
 export async function setupLearnableMeta() {
-  if (instance) return instance;
-  const clues = new LearnableMetaClues();
+  if (clues) return clues;
+  const next = new LearnableMetaClues();
   const status = await getStatus().catch(() => null);
-  clues.setEnabled(Boolean(status?.enabled && status.available !== false));
-  onPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, ({ map }) => {
-    if (map?.source?.type !== 'learnable-meta') clues.hide({ resetClose: true });
-  });
-  onPluginEvent(PLUGIN_EVENTS.GAME_RESET, () => clues.hide({ resetClose: true }));
-  onPluginEvent(PLUGIN_EVENTS.ROUND_START, (detail) => {
-    clues.hide({ resetClose: true });
-    clues.preload(detail);
-  });
-  onPluginEvent(PLUGIN_EVENTS.ROUND_RESULT, (detail) => {
-    clues.show({ ...detail, context: 'result' });
-  });
-  onPluginEvent(PLUGIN_EVENTS.FINAL_ROUND_SELECTED, (detail) => {
-    if (!detail.location) clues.hide();
-    else clues.show({ ...detail, location: detail.location, context: 'final' });
-  });
-  instance = { clues };
-  return instance;
+  next.setEnabled(Boolean(status?.enabled && status.available !== false));
+  clues = next;
+  return clues;
+}
+
+export function selectLearnableMetaMap(map: MapItem | null) {
+  if (map?.source?.type !== 'learnable-meta') clues?.hide({ resetClose: true });
+}
+
+export function resetLearnableMetaClues() {
+  clues?.hide({ resetClose: true });
+}
+
+export function startLearnableMetaRound(map: MapItem | null, location: Location) {
+  clues?.hide({ resetClose: true });
+  clues?.preload({ map, location });
+}
+
+export function showLearnableMetaResult(
+  map: MapItem | null,
+  location: Location,
+  roundIndex: number
+) {
+  void clues?.show({ map, location, roundIndex, context: 'result' });
+}
+
+export function selectLearnableMetaFinalRound(
+  map: MapItem | null,
+  location: Location | null,
+  roundIndex: number | null
+) {
+  if (!location) clues?.hide();
+  else void clues?.show({ map, location, roundIndex, context: 'final' });
 }

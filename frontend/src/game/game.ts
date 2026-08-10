@@ -17,9 +17,15 @@ import {
   updateSettings
 } from '../settings/store.svelte.js';
 import { getLocations, loadLibrary } from '../maps/api.js';
-import { emitPluginEvent, PLUGIN_EVENTS } from '../../../plugins/events.js';
-import { finalActions } from '../../../plugins/final-actions.svelte.js';
+import { challengeAction } from '../../../plugins/challenges/game.svelte.js';
 import { gameMode } from '../../../plugins/game-mode.svelte.js';
+import {
+  resetLearnableMetaClues,
+  selectLearnableMetaFinalRound,
+  selectLearnableMetaMap,
+  showLearnableMetaResult,
+  startLearnableMetaRound
+} from '../../../plugins/learnable-meta/index.js';
 import type {
   GamePhase,
   GameSnapshot,
@@ -213,11 +219,11 @@ function takeRoundPreload(index: number) {
 }
 
 export async function startGame() {
-  finalActions.error = '';
+  challengeAction.error = '';
   gameMode.current?.reset?.();
   cancelRoundPreload();
   roundTimer.stop();
-  emitPluginEvent(PLUGIN_EVENTS.GAME_RESET, { map: currentMapItem() });
+  resetLearnableMetaClues();
   state.phase = GAME_PHASE.LOADING;
   setHidden('resultScreen', true);
   setHidden('final', true);
@@ -473,11 +479,7 @@ async function loadRound(preparation: RoundPreparation | null = null) {
   setLoading(false);
   saveProgress(); // persist the (resolved) round so a refresh resumes here
   roundTimer.start(); // start after load so loading time isn't counted
-  emitPluginEvent(PLUGIN_EVENTS.ROUND_START, {
-    map: currentMapItem(),
-    location: { ...state.current },
-    roundIndex: state.round
-  });
+  startLearnableMetaRound(currentMapItem(), { ...state.current });
   if (completeImmediately) void completeModeRound();
 }
 
@@ -662,12 +664,7 @@ function showRoundResult(result: RoundResult, trail: Trail | null = null) {
   const modeResults = gameMode.current?.roundResults?.(state.round, result);
   if (modeResults?.length) resultMap.showMany(modeResults, trail);
   else resultMap.show(result, trail);
-  emitPluginEvent(PLUGIN_EVENTS.ROUND_RESULT, {
-    map: currentMapItem(),
-    location: { ...actual },
-    result,
-    roundIndex: state.round
-  });
+  showLearnableMetaResult(currentMapItem(), { ...actual }, state.round);
   scheduleNextRoundPreload();
 }
 
@@ -720,12 +717,11 @@ function applyFinalRoundSelection() {
   const selectedResult = ui.selectedFinalRound == null
     ? null
     : state.results[ui.selectedFinalRound];
-  emitPluginEvent(PLUGIN_EVENTS.FINAL_ROUND_SELECTED, {
-    map: currentMapItem(),
-    location: selectedResult?.actual ? { ...selectedResult.actual } : null,
-    result: selectedResult || null,
-    roundIndex: ui.selectedFinalRound
-  });
+  selectLearnableMetaFinalRound(
+    currentMapItem(),
+    selectedResult?.actual ? { ...selectedResult.actual } : null,
+    ui.selectedFinalRound
+  );
 }
 
 export function selectFinalRound(index: number) {
@@ -798,9 +794,7 @@ async function loadRequestedGame() {
   }
 
   state.map = map;
-  emitPluginEvent(PLUGIN_EVENTS.MAP_SELECTED, {
-    map: { ...map, source: map.source ? { ...map.source } : null }
-  });
+  selectLearnableMetaMap(currentMapItem());
   setLoading(true, `Loading ${map.name}…`);
   if (!locations.length) throw new Error(`"${map.name}" has no playable locations`);
   state.all = locations;

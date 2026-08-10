@@ -1,10 +1,7 @@
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
-  import {
-    acceptedFileTypes,
-    fileHandlerFor
-  } from '../../../plugins/file-handlers.svelte.js';
-  import { mapActions } from '../../../plugins/map-actions.svelte.js';
+  import { isChallengeFilename } from '../../../plugins/challenges/challenge.js';
+  import { localPartyMapAction } from '../../../plugins/local-party/map-action.js';
   import {
     managedMapBadge,
     managedMapRemoveLabel,
@@ -16,6 +13,7 @@
     canStoreLocalMap,
     createFolder,
     exportMaps,
+    hostLocalParty,
     importFile,
     isManagedRoot,
     library,
@@ -27,7 +25,6 @@
     removeMap,
     renameFolder,
     renameMap,
-    runMapAction,
     selectFolder,
     toggleFolder
   } from './library.svelte.js';
@@ -36,7 +33,7 @@
   const folderName = $derived(library.search.trim());
   const folderCreationAllowed = $derived(canCreateFolder(library.selectedFolder));
   const importAllowed = $derived(canStoreLocalMap(library.selectedFolder));
-  const fileTypes = $derived(acceptedFileTypes());
+  const fileTypes = '.json,application/json,.ohne';
 
   let fileInput: HTMLInputElement;
   let searchInput: HTMLInputElement;
@@ -230,8 +227,8 @@
 
   async function acceptFiles(files?: FileList | null) {
     for (const file of Array.from(files || [])) {
-      const handler = fileHandlerFor(file);
-      if (!await importFile(file) || handler?.single) break;
+      const challenge = isChallengeFilename(file.name);
+      if (!await importFile(file) || challenge) break;
     }
     if (fileInput) fileInput.value = '';
   }
@@ -424,14 +421,14 @@
               </div>
             {:else}
               <div class="row-actions">
-                {#each mapActions.filter((action) => action.visible(row.map)) as action (action.id)}
-                  <button class="row-action" type="button" title={action.title}
-                          aria-label={action.label(row.map)}
-                          disabled={Boolean(library.runningMapAction)}
-                          onclick={() => runMapAction(action, row.map)}>
-                    <span class={`svg-icon ${action.icon}`} aria-hidden="true"></span>
+                {#if localPartyMapAction.visible()}
+                  <button class="row-action" type="button" title={localPartyMapAction.title}
+                          aria-label={localPartyMapAction.label(row.map)}
+                          disabled={library.hostingParty}
+                          onclick={() => hostLocalParty(row.map)}>
+                    <span class={`svg-icon ${localPartyMapAction.icon}`} aria-hidden="true"></span>
                   </button>
-                {/each}
+                {/if}
                 {#if row.canRename}
                   <button class="row-action" type="button" title="Rename map"
                           aria-label={`Rename ${row.map.name}`}

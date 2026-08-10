@@ -1,8 +1,9 @@
 import { SvelteSet } from 'svelte/reactivity';
 import { closeGame, exportMaps as exportMapsToFile, launchMap } from '../desktop.js';
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
-import { fileHandlerFor } from '../../../plugins/file-handlers.svelte.js';
-import type { MapAction } from '../../../plugins/map-actions.svelte.js';
+import { isChallengeFilename } from '../../../plugins/challenges/challenge.js';
+import { openChallengeFile } from '../../../plugins/challenges/open.js';
+import { localPartyMapAction } from '../../../plugins/local-party/map-action.js';
 import { mapSourceFor, refreshMapSourceRoot } from '../../../plugins/map-sources.js';
 import type { MapItem } from '../types.js';
 import {
@@ -47,7 +48,7 @@ export const library = $state({
   loading: true,
   exporting: false,
   launchingMapID: '',
-  runningMapAction: '',
+  hostingParty: false,
   activeMapID: '',
   notice: '',
   noticeError: false
@@ -134,15 +135,15 @@ export async function playMap(map: MapItem) {
   }
 }
 
-export async function runMapAction(action: MapAction, map: MapItem) {
-  library.runningMapAction = action.id;
+export async function hostLocalParty(map: MapItem) {
+  library.hostingParty = true;
   setNotice('');
   try {
-    await action.run(map);
+    await localPartyMapAction.run(map);
   } catch (error) {
-    setNotice(errorMessage(error, action.error), true);
+    setNotice(errorMessage(error, localPartyMapAction.error), true);
   } finally {
-    library.runningMapAction = '';
+    library.hostingParty = false;
   }
 }
 
@@ -179,14 +180,13 @@ export async function importMap(file: File) {
 }
 
 export async function importFile(file: File) {
-  const handler = fileHandlerFor(file);
-  if (!handler) return importMap(file);
+  if (!isChallengeFilename(file.name)) return importMap(file);
   try {
-    await handler.open(file);
+    await openChallengeFile(file);
     setNotice('');
     return true;
   } catch (error) {
-    setNotice(errorMessage(error, handler.error), true);
+    setNotice(errorMessage(error, 'Could not open that challenge.'), true);
     return false;
   }
 }

@@ -9,6 +9,7 @@ export const CHALLENGE_FORMAT = 'ohneguessr.challenge';
 export const CHALLENGE_VERSION = 1;
 export const MAX_CHALLENGE_BYTES = 5 * 1024 * 1024;
 export const MAX_CHALLENGE_ROUNDS = 10_000;
+export const isChallengeFilename = (name: string) => /\.ohne$/i.test(name);
 
 type JsonObject = Record<string, unknown>;
 

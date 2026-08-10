@@ -43,8 +43,6 @@ if (route.view === 'game' || challengeID) {
 } else {
   await Promise.all([import('./app.css'), import('./launcher.css')]);
   await setupMapSources();
-  const { setupLocalParty } = await import('../../plugins/local-party/setup.js');
-  setupLocalParty();
   const { default: LauncherApp } = await import('./LauncherApp.svelte');
   mount(LauncherApp, { target });
   const { setupChallengeLauncher } = await import('../../plugins/challenges/setup.js');
