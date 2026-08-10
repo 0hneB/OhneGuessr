@@ -248,7 +248,12 @@ export class OpenSvViewer {
   // V temporarily visits an armed checkpoint; releasing it restores this view.
   startCheckpointPeek() {
     if (this.mode !== 'moving' || !this._trailActive ||
-        !this._checkpoint || this._checkpointBusy || this._lookBehind) return false;
+        !this._checkpoint || this._lookBehind) return false;
+    if (this._checkpointPeek) {
+      this._checkpointPeek.released = false;
+      return true;
+    }
+    if (this._checkpointBusy) return false;
     const source = this._captureView();
     if (!source) return false;
 
@@ -264,8 +269,8 @@ export class OpenSvViewer {
     this._jumpToView(this._checkpoint).then((ok) => {
       if (this._checkpointPeek !== peek || peek.token !== this._roundToken) return;
       this._cancelCheckpointJump = null;
-      if (!ok || peek.released) { this._restoreCheckpointPeek(peek); return; }
-      peek.ready = true;
+      peek.ready = ok;
+      if (!ok || peek.released) this._restoreCheckpointPeek(peek);
     });
     return true;
   }
@@ -275,7 +280,6 @@ export class OpenSvViewer {
     if (!peek) return;
     peek.released = true;
     if (peek.ready) this._restoreCheckpointPeek(peek);
-    else this._cancelCheckpointJump?.();
   }
 
   startLookBehind() {
@@ -444,6 +448,7 @@ export class OpenSvViewer {
         if (p) this._trail.push([{ lat: p.lat(), lng: p.lng() }]);
       }
       this.pano.focus?.();
+      if (ok && peek.ready && !peek.released) this.startCheckpointPeek();
     });
   }
 
