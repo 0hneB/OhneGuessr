@@ -2,14 +2,10 @@ package mapmakingapp
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"maps"
-	"mime"
 	"net/http"
 	"os"
 	"path"
@@ -19,8 +15,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
+	"github.com/0hneB/OhneGuessr/internal/httpjson"
+	"github.com/0hneB/OhneGuessr/internal/mapfile"
 	"github.com/0hneB/OhneGuessr/internal/pluginhost"
 )
 
@@ -30,17 +27,7 @@ const (
 	mmaMaxResponse = 64 << 20
 	mmaJobName     = "Map Making App"
 	mmaRoot        = "map-making-app"
-	maxBodySize    = 64 << 20
-	maxNameRunes   = 120
 )
-
-var windowsNames = map[string]bool{
-	"con": true, "prn": true, "aux": true, "nul": true,
-	"com1": true, "com2": true, "com3": true, "com4": true, "com5": true,
-	"com6": true, "com7": true, "com8": true, "com9": true,
-	"lpt1": true, "lpt2": true, "lpt3": true, "lpt4": true, "lpt5": true,
-	"lpt6": true, "lpt7": true, "lpt8": true, "lpt9": true,
-}
 
 type mmaConfig struct {
 	Version    int    `json:"version"`
@@ -96,7 +83,7 @@ func (s *Backend) MapPolicy() pluginhost.MapPolicy {
 		MoveMaps:        true,
 		DeleteMaps:      true,
 		Filename: func(name string) string {
-			return safeComponent(name, "Untitled map") + ".json"
+			return mapfile.SafeComponent(name, "Untitled map") + ".json"
 		},
 		UpdateSource: func(source map[string]any, renamed, moved bool) map[string]any {
 			source = maps.Clone(source)
@@ -112,11 +99,11 @@ func (s *Backend) MapPolicy() pluginhost.MapPolicy {
 }
 
 func (s *Backend) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/mma-sync/status", api(func(_ *http.Request) (any, int, error) {
+	mux.HandleFunc("GET /api/mma-sync/status", httpjson.Handler(func(_ *http.Request) (any, int, error) {
 		return s.publicStatus(), http.StatusOK, nil
 	}))
-	mux.HandleFunc("PUT /api/mma-sync/config", api(func(r *http.Request) (any, int, error) {
-		body, err := decodeJSON[struct {
+	mux.HandleFunc("PUT /api/mma-sync/config", httpjson.Handler(func(r *http.Request) (any, int, error) {
+		body, err := httpjson.Decode[struct {
 			Enabled bool `json:"enabled"`
 		}](r)
 		if err != nil {
@@ -125,8 +112,8 @@ func (s *Backend) RegisterRoutes(mux *http.ServeMux) {
 		status, err := s.SetEnabled(body.Enabled)
 		return status, http.StatusOK, err
 	}))
-	mux.HandleFunc("PUT /api/mma-sync/key", api(func(r *http.Request) (any, int, error) {
-		body, err := decodeJSON[struct {
+	mux.HandleFunc("PUT /api/mma-sync/key", httpjson.Handler(func(r *http.Request) (any, int, error) {
+		body, err := httpjson.Decode[struct {
 			APIKey string `json:"apiKey"`
 		}](r)
 		if err != nil {
@@ -135,89 +122,14 @@ func (s *Backend) RegisterRoutes(mux *http.ServeMux) {
 		status, err := s.saveKey(body.APIKey)
 		return status, http.StatusOK, err
 	}))
-	mux.HandleFunc("DELETE /api/mma-sync/key", api(func(_ *http.Request) (any, int, error) {
+	mux.HandleFunc("DELETE /api/mma-sync/key", httpjson.Handler(func(_ *http.Request) (any, int, error) {
 		status, err := s.forgetKey()
 		return status, http.StatusOK, err
 	}))
-	mux.HandleFunc("POST /api/mma-sync/run", api(func(_ *http.Request) (any, int, error) {
+	mux.HandleFunc("POST /api/mma-sync/run", httpjson.Handler(func(_ *http.Request) (any, int, error) {
 		status, err := s.start()
 		return status, http.StatusAccepted, err
 	}))
-}
-
-type httpResponseError struct {
-	status  int
-	message string
-}
-
-func (e *httpResponseError) Error() string       { return e.message }
-func (e *httpResponseError) HTTPStatus() int     { return e.status }
-func (e *httpResponseError) HTTPMessage() string { return e.message }
-
-func responseError(status int, message string) error {
-	return &httpResponseError{status: status, message: message}
-}
-
-func errorResponse(err error) (int, string) {
-	var response interface {
-		error
-		HTTPStatus() int
-		HTTPMessage() string
-	}
-	if errors.As(err, &response) {
-		return response.HTTPStatus(), response.HTTPMessage()
-	}
-	return http.StatusInternalServerError, "request failed"
-}
-
-func api(fn func(*http.Request) (any, int, error)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		payload, status, err := fn(r)
-		if err != nil {
-			code, message := errorResponse(err)
-			writeJSON(w, code, map[string]string{"error": message})
-			return
-		}
-		writeJSON(w, status, payload)
-	}
-}
-
-func writeJSON(w http.ResponseWriter, status int, value any) {
-	body, err := json.Marshal(value)
-	if err != nil {
-		status = http.StatusInternalServerError
-		body = []byte(`{"error":"response failed"}`)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(status)
-	_, _ = w.Write(body)
-}
-
-func decodeJSON[T any](r *http.Request) (T, error) {
-	var result T
-	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || mediaType != "application/json" {
-		return result, responseError(http.StatusUnsupportedMediaType, "Content-Type must be application/json")
-	}
-	if r.ContentLength > maxBodySize {
-		return result, responseError(http.StatusRequestEntityTooLarge, "request body is too large")
-	}
-	r.Body = http.MaxBytesReader(nil, r.Body, maxBodySize)
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&result); err != nil {
-		var tooLarge *http.MaxBytesError
-		if errors.As(err, &tooLarge) {
-			return result, responseError(http.StatusRequestEntityTooLarge, "request body is too large")
-		}
-		return result, responseError(http.StatusBadRequest, "invalid JSON request")
-	}
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return result, responseError(http.StatusBadRequest, "request body must contain one JSON value")
-	}
-	return result, nil
 }
 
 func defaultMMAConfig() mmaConfig { return mmaConfig{Version: 1} }
@@ -238,7 +150,7 @@ func (s *Backend) loadConfigLocked() mmaConfig {
 
 func (s *Backend) saveConfigLocked(config mmaConfig) error {
 	config.Version = 1
-	return atomicWriteJSON(s.configPath, config, 0o600)
+	return mapfile.WriteJSON(s.configPath, config, 0o600)
 }
 
 func (s *Backend) publicStatus() map[string]any {
@@ -282,7 +194,7 @@ func (s *Backend) SetEnabled(enabled bool) (map[string]any, error) {
 	status := s.publicStatusLocked()
 	s.mu.Unlock()
 	if err != nil {
-		return nil, responseError(http.StatusInternalServerError, "could not save Map Making App settings")
+		return nil, httpjson.Error(http.StatusInternalServerError, "could not save Map Making App settings")
 	}
 	if !enabled {
 		s.cancel()
@@ -294,10 +206,10 @@ func (s *Backend) SetEnabled(enabled bool) (map[string]any, error) {
 func (s *Backend) saveKey(rawKey string) (map[string]any, error) {
 	key := strings.TrimSpace(rawKey)
 	if key == "" {
-		return nil, responseError(http.StatusBadRequest, "API key required")
+		return nil, httpjson.Error(http.StatusBadRequest, "API key required")
 	}
 	if len(key) > 4096 {
-		return nil, responseError(http.StatusBadRequest, "API key is too long")
+		return nil, httpjson.Error(http.StatusBadRequest, "API key is too long")
 	}
 	ctx, release, err := s.host.AcquireSync(mmaJobName)
 	if err != nil {
@@ -309,11 +221,11 @@ func (s *Backend) saveKey(rawKey string) (map[string]any, error) {
 	}
 	if err := s.apiGetJSON(ctx, "/api/user", key, &user); err != nil {
 		release()
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	if user.ID == nil || strings.TrimSpace(user.Username) == "" {
 		release()
-		return nil, responseError(http.StatusBadRequest, "Map Making App returned an invalid user")
+		return nil, httpjson.Error(http.StatusBadRequest, "Map Making App returned an invalid user")
 	}
 
 	s.mu.Lock()
@@ -325,7 +237,7 @@ func (s *Backend) saveKey(rawKey string) (map[string]any, error) {
 	if err := s.saveConfigLocked(config); err != nil {
 		s.mu.Unlock()
 		release()
-		return nil, responseError(http.StatusInternalServerError, "could not save Map Making App settings")
+		return nil, httpjson.Error(http.StatusInternalServerError, "could not save Map Making App settings")
 	}
 	s.beginLocked()
 	status := s.publicStatusLocked()
@@ -342,7 +254,7 @@ func (s *Backend) forgetKey() (map[string]any, error) {
 	clean := defaultMMAConfig()
 	clean.LastSyncAt = previous.LastSyncAt
 	if err := s.saveConfigLocked(clean); err != nil {
-		return nil, responseError(http.StatusInternalServerError, "could not forget the Map Making App key")
+		return nil, httpjson.Error(http.StatusInternalServerError, "could not forget the Map Making App key")
 	}
 	return s.publicStatusLocked(), nil
 }
@@ -357,12 +269,12 @@ func (s *Backend) start() (map[string]any, error) {
 	if !config.Enabled {
 		s.mu.Unlock()
 		release()
-		return nil, responseError(http.StatusBadRequest, "Map Making App sync is off")
+		return nil, httpjson.Error(http.StatusBadRequest, "Map Making App sync is off")
 	}
 	if config.APIKey == "" {
 		s.mu.Unlock()
 		release()
-		return nil, responseError(http.StatusBadRequest, "Save an API key first")
+		return nil, httpjson.Error(http.StatusBadRequest, "Save an API key first")
 	}
 	s.beginLocked()
 	status := s.publicStatusLocked()
@@ -509,7 +421,7 @@ func (s *Backend) syncMapsLocked(ctx context.Context, key string, library Librar
 	local := make([]Entry, 0, len(manifest.Maps))
 	synced := map[int64]Entry{}
 	for _, entry := range manifest.Maps {
-		if sourceType(entry.Source) != "map-making-app" {
+		if mapfile.SourceType(entry.Source) != "map-making-app" {
 			local = append(local, entry)
 			continue
 		}
@@ -622,7 +534,7 @@ func (s *Backend) syncMapsLocked(ctx context.Context, key string, library Librar
 	}
 
 	finalManifest := Manifest{
-		Folders: foldersOutsideRoot(manifest.Folders, mmaRoot),
+		Folders: mapfile.FoldersOutsideRoot(manifest.Folders, mmaRoot),
 		Maps:    append(local, finalSynced...),
 	}
 	if err := library.Save(finalManifest); err != nil {
@@ -644,7 +556,7 @@ func (s *Backend) syncMapsLocked(ctx context.Context, key string, library Librar
 			}
 		}
 	}
-	removeEmptyMapDirectories(library.Directory(), mmaRoot)
+	mapfile.RemoveEmptyDirectories(library.Directory(), mmaRoot)
 	failureList := make([]map[string]any, 0, len(failures))
 	ids := make([]int64, 0, len(failures))
 	for id := range failures {
@@ -667,11 +579,11 @@ func canonicalMMATarget(remote mmaRemoteMap, existing *Entry, reserved map[strin
 	}
 	folder := mmaRoot
 	if existing != nil && boolValue(source["folderOverride"]) {
-		folder = folderOf(existing.File)
+		folder = mapfile.Folder(existing.File)
 	} else if remote.Folder != "" {
-		folder = path.Join(folder, safeComponent(remote.Folder, "Unsorted"))
+		folder = path.Join(folder, mapfile.SafeComponent(remote.Folder, "Unsorted"))
 	}
-	filename := safeComponent(remote.Name, "Untitled map") + ".json"
+	filename := mapfile.SafeComponent(remote.Name, "Untitled map") + ".json"
 	if existing != nil && boolValue(source["nameOverride"]) {
 		filename = path.Base(existing.File)
 	}
@@ -741,12 +653,12 @@ func (s *Backend) downloadOneMMA(ctx context.Context, key, staging string, mapID
 		return result
 	}
 	result.stagePath = filepath.Join(staging, strconv.FormatInt(mapID, 10)+".json")
-	if err := atomicWrite(result.stagePath, encoded, 0o644); err != nil {
+	if err := mapfile.Write(result.stagePath, encoded, 0o644); err != nil {
 		result.err = err
 		return result
 	}
 	result.count = len(locations)
-	result.checksum = checksumBytes(encoded)
+	result.checksum = mapfile.Checksum(encoded)
 	return result
 }
 
@@ -762,7 +674,7 @@ func (s *Backend) apiGetJSON(ctx context.Context, endpoint, key string, target a
 		request.Header.Set("User-Agent", "OhneGuessr/1")
 		response, err := s.client.Do(request)
 		if err == nil {
-			body, readErr := readLimited(response.Body, mmaMaxResponse)
+			body, readErr := httpjson.ReadLimited(response.Body, mmaMaxResponse)
 			response.Body.Close()
 			if readErr != nil {
 				return fmt.Errorf("Map Making App response is too large")
@@ -794,7 +706,7 @@ func (s *Backend) apiGetJSON(ctx context.Context, endpoint, key string, target a
 				delay = time.Duration(seconds) * time.Second
 			}
 			if attempt < 2 {
-				if err := waitContext(ctx, delay); err != nil {
+				if err := httpjson.Wait(ctx, delay); err != nil {
 					return err
 				}
 			}
@@ -805,34 +717,12 @@ func (s *Backend) apiGetJSON(ctx context.Context, endpoint, key string, target a
 		}
 		lastError = fmt.Errorf("Map Making App request failed: %v", err)
 		if attempt < 2 {
-			if err := waitContext(ctx, time.Duration(attempt+1)*750*time.Millisecond); err != nil {
+			if err := httpjson.Wait(ctx, time.Duration(attempt+1)*750*time.Millisecond); err != nil {
 				return err
 			}
 		}
 	}
 	return lastError
-}
-
-func readLimited(reader io.Reader, maximum int64) ([]byte, error) {
-	value, err := io.ReadAll(io.LimitReader(reader, maximum+1))
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(value)) > maximum {
-		return nil, errors.New("response is too large")
-	}
-	return value, nil
-}
-
-func waitContext(ctx context.Context, duration time.Duration) error {
-	timer := time.NewTimer(duration)
-	defer timer.Stop()
-	select {
-	case <-timer.C:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
 }
 
 func integerValue(value any) (int64, bool) {
@@ -859,11 +749,6 @@ func boolValue(value any) bool {
 	return result
 }
 
-func sourceType(source map[string]any) string {
-	value, _ := source["type"].(string)
-	return value
-}
-
 func defaultString(value, fallback string) string {
 	if strings.TrimSpace(value) == "" {
 		return fallback
@@ -879,122 +764,3 @@ func nilIfEmpty(value string) any {
 }
 
 func utcNow() string { return time.Now().UTC().Truncate(time.Second).Format(time.RFC3339) }
-
-func safeComponent(value, fallback string) string {
-	var output []rune
-	space := false
-	for _, char := range strings.TrimSpace(value) {
-		if char < 32 || strings.ContainsRune(`<>:"/\|?*`, char) {
-			char = '-'
-		}
-		if unicode.IsSpace(char) {
-			if space {
-				continue
-			}
-			char = ' '
-			space = true
-		} else {
-			space = false
-		}
-		output = append(output, char)
-	}
-	result := strings.TrimRight(strings.TrimSpace(string(output)), ". ")
-	if result == "" || result == "." || result == ".." {
-		result = fallback
-	}
-	if windowsNames[strings.ToLower(result)] {
-		result += "-map"
-	}
-	runes := []rune(result)
-	if len(runes) > maxNameRunes {
-		result = string(runes[:maxNameRunes])
-	}
-	result = strings.TrimRight(result, ". ")
-	if result == "" {
-		return fallback
-	}
-	return result
-}
-
-func folderOf(rel string) string {
-	folder := path.Dir(rel)
-	if folder == "." {
-		return ""
-	}
-	return folder
-}
-
-func foldersOutsideRoot(folders []string, root string) []string {
-	result := make([]string, 0, len(folders))
-	for _, folder := range folders {
-		if !underRoot(folder, root) {
-			result = append(result, folder)
-		}
-	}
-	return result
-}
-
-func underRoot(rel, root string) bool {
-	return strings.EqualFold(rel, root) || strings.HasPrefix(strings.ToLower(rel), strings.ToLower(root)+"/")
-}
-
-func checksumBytes(value []byte) string {
-	digest := sha256.Sum256(value)
-	return "sha256:" + hex.EncodeToString(digest[:])
-}
-
-func atomicWriteJSON(filename string, value any, permission os.FileMode) error {
-	encoded, err := json.MarshalIndent(value, "", "  ")
-	if err != nil {
-		return err
-	}
-	return atomicWrite(filename, append(encoded, '\n'), permission)
-}
-
-func atomicWrite(filename string, value []byte, permission os.FileMode) (err error) {
-	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
-		return err
-	}
-	temporary, err := os.CreateTemp(filepath.Dir(filename), ".ohneguessr-*.tmp")
-	if err != nil {
-		return err
-	}
-	temporaryName := temporary.Name()
-	defer func() {
-		_ = temporary.Close()
-		if err != nil {
-			_ = os.Remove(temporaryName)
-		}
-	}()
-	if err = temporary.Chmod(permission); err == nil {
-		_, err = temporary.Write(value)
-	}
-	if err == nil {
-		err = temporary.Sync()
-	}
-	if closeErr := temporary.Close(); err == nil {
-		err = closeErr
-	}
-	if err == nil {
-		err = os.Rename(temporaryName, filename)
-	}
-	return err
-}
-
-func removeEmptyMapDirectories(base, root string) {
-	rootPath := filepath.Join(base, filepath.FromSlash(root))
-	info, err := os.Lstat(rootPath)
-	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		return
-	}
-	directories := make([]string, 0)
-	_ = filepath.WalkDir(rootPath, func(filename string, entry os.DirEntry, err error) error {
-		if err == nil && entry.IsDir() && entry.Type()&os.ModeSymlink == 0 {
-			directories = append(directories, filename)
-		}
-		return nil
-	})
-	for index := len(directories) - 1; index >= 0; index-- {
-		_ = os.Remove(directories[index])
-	}
-}

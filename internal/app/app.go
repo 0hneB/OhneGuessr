@@ -2,21 +2,17 @@ package app
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 
+	"github.com/0hneB/OhneGuessr/internal/httpjson"
 	"github.com/0hneB/OhneGuessr/internal/pluginhost"
 )
-
-const maxBodySize = 64 << 20
 
 type App struct {
 	maps         *mapStore
@@ -107,7 +103,7 @@ func (a *App) Handler() http.Handler {
 	}
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.HandleFunc(method+" /api/{path...}", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+			httpjson.Write(w, http.StatusNotFound, map[string]string{"error": "not found"})
 		})
 	}
 	mux.HandleFunc("GET /data/{file...}", a.serveMapData)
@@ -133,81 +129,6 @@ func (a *App) ExportMaps(filename string) error {
 	return a.maps.exportZIP(filename)
 }
 
-func api(fn func(*http.Request) (any, int, error)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		payload, status, err := fn(r)
-		if err != nil {
-			code, message := errorResponse(err)
-			writeJSON(w, code, map[string]string{"error": message})
-			return
-		}
-		writeJSON(w, status, payload)
-	}
-}
-
-type httpResponseError struct {
-	status  int
-	message string
-}
-
-func (e *httpResponseError) Error() string       { return e.message }
-func (e *httpResponseError) HTTPStatus() int     { return e.status }
-func (e *httpResponseError) HTTPMessage() string { return e.message }
-
-func responseError(status int, message string) error {
-	return &httpResponseError{status: status, message: message}
-}
-
-func errorResponse(err error) (int, string) {
-	var response interface {
-		error
-		HTTPStatus() int
-		HTTPMessage() string
-	}
-	if errors.As(err, &response) {
-		return response.HTTPStatus(), response.HTTPMessage()
-	}
-	return http.StatusInternalServerError, "request failed"
-}
-
-func writeJSON(w http.ResponseWriter, status int, value any) {
-	body, err := json.Marshal(value)
-	if err != nil {
-		status = http.StatusInternalServerError
-		body = []byte(`{"error":"response failed"}`)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(status)
-	_, _ = w.Write(body)
-}
-
-func decodeJSON[T any](r *http.Request) (T, error) {
-	var result T
-	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || mediaType != "application/json" {
-		return result, responseError(http.StatusUnsupportedMediaType, "Content-Type must be application/json")
-	}
-	if r.ContentLength > maxBodySize {
-		return result, responseError(http.StatusRequestEntityTooLarge, "request body is too large")
-	}
-	r.Body = http.MaxBytesReader(nil, r.Body, maxBodySize)
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&result); err != nil {
-		var tooLarge *http.MaxBytesError
-		if errors.As(err, &tooLarge) {
-			return result, responseError(http.StatusRequestEntityTooLarge, "request body is too large")
-		}
-		return result, responseError(http.StatusBadRequest, "invalid JSON request")
-	}
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return result, responseError(http.StatusBadRequest, "request body must contain one JSON value")
-	}
-	return result, nil
-}
-
 type syncCoordinator struct {
 	mu      sync.Mutex
 	name    string
@@ -221,10 +142,10 @@ func (c *syncCoordinator) acquire(name string) (context.Context, func(), error) 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.closing {
-		return nil, nil, responseError(http.StatusConflict, "OhneGuessr is stopping")
+		return nil, nil, httpjson.Error(http.StatusConflict, "OhneGuessr is stopping")
 	}
 	if c.name != "" {
-		return nil, nil, responseError(http.StatusConflict, c.name+" synchronization is running")
+		return nil, nil, httpjson.Error(http.StatusConflict, c.name+" synchronization is running")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	c.jobID++

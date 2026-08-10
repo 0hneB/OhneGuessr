@@ -3,8 +3,6 @@ package app
 import (
 	"archive/zip"
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,8 +13,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"unicode"
 
+	"github.com/0hneB/OhneGuessr/internal/mapfile"
 	"github.com/0hneB/OhneGuessr/internal/pluginhost"
 )
 
@@ -40,13 +38,6 @@ var (
 	errNameRequired   = errors.New("name required")
 	errNameTooLong    = errors.New("name is too long")
 	errInvalidFolder  = errors.New("invalid folder")
-	windowsNames      = map[string]bool{
-		"con": true, "prn": true, "aux": true, "nul": true,
-		"com1": true, "com2": true, "com3": true, "com4": true, "com5": true,
-		"com6": true, "com7": true, "com8": true, "com9": true,
-		"lpt1": true, "lpt2": true, "lpt3": true, "lpt4": true, "lpt5": true,
-		"lpt6": true, "lpt7": true, "lpt8": true, "lpt9": true,
-	}
 )
 
 type mapEntry struct {
@@ -152,7 +143,7 @@ func cleanManifest(manifest mapManifest) (mapManifest, error) {
 			}
 		}
 		clean.Maps = append(clean.Maps, entry)
-		addFolderParents(folders, folderOf(rel))
+		addFolderParents(folders, mapfile.Folder(rel))
 	}
 	for _, folder := range manifest.Folders {
 		rel, err := normalizeRelative(folder)
@@ -170,7 +161,7 @@ func (s *mapStore) saveManifestLocked(manifest mapManifest) error {
 	if err != nil {
 		return err
 	}
-	return atomicWriteJSON(s.manifestPath, clean, 0o644)
+	return mapfile.WriteJSON(s.manifestPath, clean, 0o644)
 }
 
 func (s *mapStore) createLocal(name string, locations json.RawMessage, folder string) (mapEntry, error) {
@@ -223,7 +214,7 @@ func (s *mapStore) createLocal(name string, locations json.RawMessage, folder st
 		return mapEntry{}, err
 	}
 	id := rand.Text()
-	if err := atomicWrite(filename, encoded, 0o644); err != nil {
+	if err := mapfile.Write(filename, encoded, 0o644); err != nil {
 		return mapEntry{}, err
 	}
 	entry := mapEntry{ID: id, Name: name, File: rel, Count: len(values)}
@@ -279,7 +270,7 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 	if requestedFolder != nil && managed && (!pluginManaged || !policy.MoveMaps) {
 		return mapEntry{}, errManagedMap
 	}
-	folder := folderOf(entry.File)
+	folder := mapfile.Folder(entry.File)
 	if requestedFolder != nil {
 		var err error
 		folder, err = normalizeRelative(*requestedFolder)
@@ -294,7 +285,7 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 			folder = canonical
 		}
 		if pluginManaged {
-			if !underRoot(folder, policy.Root) {
+			if !mapfile.UnderRoot(folder, policy.Root) {
 				return mapEntry{}, errMoveRestricted
 			}
 		} else {
@@ -306,7 +297,7 @@ func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) 
 	if requestedName == nil {
 		name = entry.Name
 	}
-	if entry.Name == name && strings.EqualFold(folderOf(entry.File), folder) {
+	if entry.Name == name && strings.EqualFold(mapfile.Folder(entry.File), folder) {
 		return *entry, nil
 	}
 	reserved := map[string]bool{}
@@ -486,7 +477,7 @@ func (s *mapStore) renameFolder(folder, name string) (string, error) {
 		(strings.EqualFold(folder, policy.Root) || !policy.EditableFolders) {
 		return "", errManagedFolder
 	}
-	parent := folderOf(folder)
+	parent := mapfile.Folder(folder)
 	target := path.Join(parent, name)
 	if s.isManagedRoot(target) {
 		return "", errManagedFolder
@@ -517,7 +508,7 @@ func (s *mapStore) renameFolder(folder, name string) (string, error) {
 	}
 	for index := range manifest.Maps {
 		entry := &manifest.Maps[index]
-		if !underRoot(entry.File, folder) {
+		if !mapfile.UnderRoot(entry.File, folder) {
 			continue
 		}
 		entry.File = path.Join(target, strings.TrimPrefix(entry.File, folder+"/"))
@@ -526,7 +517,7 @@ func (s *mapStore) renameFolder(folder, name string) (string, error) {
 		}
 	}
 	for index, current := range manifest.Folders {
-		if !underRoot(current, folder) {
+		if !mapfile.UnderRoot(current, folder) {
 			continue
 		}
 		if strings.EqualFold(current, folder) {
@@ -566,7 +557,7 @@ func (s *mapStore) deleteFolder(folder string, recursive bool) ([]string, error)
 	deleted := make([]string, 0)
 	kept := make([]mapEntry, 0, len(manifest.Maps))
 	for _, entry := range manifest.Maps {
-		if underRoot(entry.File, folder) {
+		if mapfile.UnderRoot(entry.File, folder) {
 			deleted = append(deleted, entry.ID)
 		} else {
 			kept = append(kept, entry)
@@ -574,7 +565,7 @@ func (s *mapStore) deleteFolder(folder string, recursive bool) ([]string, error)
 	}
 	hasChildren := false
 	for _, child := range manifest.Folders {
-		if !strings.EqualFold(child, folder) && underRoot(child, folder) {
+		if !strings.EqualFold(child, folder) && mapfile.UnderRoot(child, folder) {
 			hasChildren = true
 			break
 		}
@@ -608,7 +599,7 @@ func (s *mapStore) deleteFolder(folder string, recursive bool) ([]string, error)
 	manifest.Maps = kept
 	folders := manifest.Folders[:0]
 	for _, current := range manifest.Folders {
-		if !underRoot(current, folder) {
+		if !mapfile.UnderRoot(current, folder) {
 			folders = append(folders, current)
 		}
 	}
@@ -863,47 +854,10 @@ func validateFolderName(value string) (string, error) {
 		return "", errNameTooLong
 	}
 	base := strings.ToLower(strings.SplitN(value, ".", 2)[0])
-	if windowsNames[base] {
+	if mapfile.IsWindowsName(base) {
 		return "", errInvalidFolder
 	}
 	return value, nil
-}
-
-func safeComponent(value, fallback string) string {
-	var output []rune
-	space := false
-	for _, char := range strings.TrimSpace(value) {
-		invalid := char < 32 || strings.ContainsRune(`<>:"/\|?*`, char)
-		if invalid {
-			char = '-'
-		}
-		if unicode.IsSpace(char) {
-			if space {
-				continue
-			}
-			char = ' '
-			space = true
-		} else {
-			space = false
-		}
-		output = append(output, char)
-	}
-	result := strings.TrimRight(strings.TrimSpace(string(output)), ". ")
-	if result == "" || result == "." || result == ".." {
-		result = fallback
-	}
-	if windowsNames[strings.ToLower(result)] {
-		result += "-map"
-	}
-	runes := []rune(result)
-	if len(runes) > localNameMaxRunes {
-		result = string(runes[:localNameMaxRunes])
-	}
-	result = strings.TrimRight(result, ". ")
-	if result == "" {
-		return fallback
-	}
-	return result
 }
 
 func slugify(value string) string {
@@ -929,18 +883,10 @@ func slugify(value string) string {
 	return result
 }
 
-func folderOf(rel string) string {
-	folder := path.Dir(rel)
-	if folder == "." {
-		return ""
-	}
-	return folder
-}
-
 func addFolderParents(values map[string]string, folder string) {
 	for folder != "" && folder != "." {
 		values[strings.ToLower(folder)] = folder
-		folder = folderOf(folder)
+		folder = mapfile.Folder(folder)
 	}
 }
 
@@ -950,16 +896,6 @@ func folderValues(values map[string]string) []string {
 		result = append(result, value)
 	}
 	sortFold(result)
-	return result
-}
-
-func foldersOutsideRoot(folders []string, root string) []string {
-	result := make([]string, 0, len(folders))
-	for _, folder := range folders {
-		if !underRoot(folder, root) {
-			result = append(result, folder)
-		}
-	}
 	return result
 }
 
@@ -973,13 +909,8 @@ func sortFold(values []string) {
 	})
 }
 
-func sourceType(source map[string]any) string {
-	value, _ := source["type"].(string)
-	return value
-}
-
 func (s *mapStore) policyForSource(source map[string]any) (pluginhost.MapPolicy, bool) {
-	policy, found := s.mapPolicies[strings.ToLower(sourceType(source))]
+	policy, found := s.mapPolicies[strings.ToLower(mapfile.SourceType(source))]
 	return policy, found
 }
 
@@ -987,7 +918,7 @@ func (s *mapStore) policyForFolder(folder string) (pluginhost.MapPolicy, bool) {
 	var match pluginhost.MapPolicy
 	found := false
 	for _, policy := range s.mapPolicies {
-		if underRoot(folder, policy.Root) && (!found || len(policy.Root) > len(match.Root)) {
+		if mapfile.UnderRoot(folder, policy.Root) && (!found || len(policy.Root) > len(match.Root)) {
 			match, found = policy, true
 		}
 	}
@@ -1003,52 +934,4 @@ func (s *mapStore) isManagedSource(source map[string]any) bool {
 func (s *mapStore) isManagedRoot(folder string) bool {
 	policy, found := s.policyForFolder(folder)
 	return found && strings.EqualFold(folder, policy.Root)
-}
-
-func underRoot(rel, root string) bool {
-	return strings.EqualFold(rel, root) || strings.HasPrefix(strings.ToLower(rel), strings.ToLower(root)+"/")
-}
-
-func checksumBytes(value []byte) string {
-	digest := sha256.Sum256(value)
-	return "sha256:" + hex.EncodeToString(digest[:])
-}
-
-func atomicWriteJSON(filename string, value any, permission os.FileMode) error {
-	encoded, err := json.MarshalIndent(value, "", "  ")
-	if err != nil {
-		return err
-	}
-	encoded = append(encoded, '\n')
-	return atomicWrite(filename, encoded, permission)
-}
-
-func atomicWrite(filename string, value []byte, permission os.FileMode) (err error) {
-	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
-		return err
-	}
-	temporary, err := os.CreateTemp(filepath.Dir(filename), ".ohneguessr-*.tmp")
-	if err != nil {
-		return err
-	}
-	temporaryName := temporary.Name()
-	defer func() {
-		temporary.Close()
-		if err != nil {
-			_ = os.Remove(temporaryName)
-		}
-	}()
-	if err = temporary.Chmod(permission); err == nil {
-		_, err = temporary.Write(value)
-	}
-	if err == nil {
-		err = temporary.Sync()
-	}
-	if closeErr := temporary.Close(); err == nil {
-		err = closeErr
-	}
-	if err == nil {
-		err = os.Rename(temporaryName, filename)
-	}
-	return err
 }

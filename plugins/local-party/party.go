@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -257,7 +258,7 @@ func partyURLs(port int, secret string) []string {
 		}
 	}
 	sort.Strings(addresses)
-	addresses = compactStrings(addresses)
+	addresses = slices.Compact(addresses)
 	if preferred != "" {
 		ordered := []string{preferred}
 		for _, address := range addresses {
@@ -276,19 +277,6 @@ func partyURLs(port int, secret string) []string {
 		urls = append(urls, "http://"+host+"/?view=party&join="+url.QueryEscape(secret))
 	}
 	return urls
-}
-
-func compactStrings(values []string) []string {
-	if len(values) < 2 {
-		return values
-	}
-	result := values[:1]
-	for _, value := range values[1:] {
-		if value != result[len(result)-1] {
-			result = append(result, value)
-		}
-	}
-	return result
 }
 
 func (p *partyServer) close() error {

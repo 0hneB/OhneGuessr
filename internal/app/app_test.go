@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0hneB/OhneGuessr/internal/httpjson"
 	learnablemeta "github.com/0hneB/OhneGuessr/plugins/learnable-meta"
 	mapmakingapp "github.com/0hneB/OhneGuessr/plugins/map-making-app"
 )
@@ -88,7 +89,7 @@ func TestHTTPRejectsBadBodiesAndPrivateData(t *testing.T) {
 		t.Fatalf("empty map = %d", got)
 	}
 	tooLarge := localRequest(http.MethodPost, "/api/maps", `{}`)
-	tooLarge.ContentLength = maxBodySize + 1
+	tooLarge.ContentLength = httpjson.MaxBodySize + 1
 	if got := perform(handler, tooLarge).Code; got != http.StatusRequestEntityTooLarge {
 		t.Fatalf("oversized body = %d", got)
 	}

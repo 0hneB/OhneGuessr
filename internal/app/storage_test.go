@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/0hneB/OhneGuessr/internal/mapfile"
 	"github.com/0hneB/OhneGuessr/internal/pluginhost"
 )
 
@@ -61,7 +62,7 @@ func TestSafeNamesAndPaths(t *testing.T) {
 		`...`:        "Untitled",
 	}
 	for input, want := range tests {
-		if got := safeComponent(input, "Untitled"); got != want {
+		if got := mapfile.SafeComponent(input, "Untitled"); got != want {
 			t.Errorf("safeComponent(%q) = %q, want %q", input, got, want)
 		}
 	}
@@ -280,7 +281,7 @@ func TestManagedMoveRules(t *testing.T) {
 	store := storageTestStore(t, pluginhost.MapPolicy{
 		SourceType: managedType, Root: managedRoot, EditableFolders: true,
 		RenameMaps: true, MoveMaps: true, DeleteMaps: true,
-		Filename: func(name string) string { return safeComponent(name, "Untitled map") + ".json" },
+		Filename: func(name string) string { return mapfile.SafeComponent(name, "Untitled map") + ".json" },
 		UpdateSource: func(source map[string]any, renamed, moved bool) map[string]any {
 			source = maps.Clone(source)
 			if renamed {
@@ -336,7 +337,7 @@ func TestManagedMoveRules(t *testing.T) {
 	}
 	nameOverride, _ := updated.Source["nameOverride"].(bool)
 	folderOverride, _ := updated.Source["folderOverride"].(bool)
-	if !underRoot(updated.File, folder) || !nameOverride || !folderOverride {
+	if !mapfile.UnderRoot(updated.File, folder) || !nameOverride || !folderOverride {
 		t.Fatalf("managed overrides = %#v", updated)
 	}
 	if _, err := store.createFolder(lockedRoot, "Nope"); !errors.Is(err, errManagedFolder) {

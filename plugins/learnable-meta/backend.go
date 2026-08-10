@@ -7,9 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
-	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,8 +17,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
+	"github.com/0hneB/OhneGuessr/internal/httpjson"
+	"github.com/0hneB/OhneGuessr/internal/mapfile"
 	"github.com/0hneB/OhneGuessr/internal/pluginhost"
 )
 
@@ -33,20 +32,11 @@ const (
 	maxLearnableLocationBytes = 32 << 20
 	maxLearnableClueBytes     = 2 << 20
 	learnableRoot             = "Learnable Meta"
-	maxBodySize               = 64 << 20
-	maxNameRunes              = 120
 )
 
 var (
 	learnableMapIDPattern = regexp.MustCompile(`^[A-Za-z0-9._~-]+$`)
 	errMapDataMissing     = errors.New("map data is missing")
-	windowsNames          = map[string]bool{
-		"con": true, "prn": true, "aux": true, "nul": true,
-		"com1": true, "com2": true, "com3": true, "com4": true, "com5": true,
-		"com6": true, "com7": true, "com8": true, "com9": true,
-		"lpt1": true, "lpt2": true, "lpt3": true, "lpt4": true, "lpt5": true,
-		"lpt6": true, "lpt7": true, "lpt8": true, "lpt9": true,
-	}
 )
 
 type Entry = pluginhost.Entry
@@ -114,15 +104,15 @@ func (s *Backend) MapPolicy() pluginhost.MapPolicy {
 }
 
 func (s *Backend) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/learnable-meta/status", api(func(_ *http.Request) (any, int, error) {
+	mux.HandleFunc("GET /api/learnable-meta/status", httpjson.Handler(func(_ *http.Request) (any, int, error) {
 		return s.publicStatus(), http.StatusOK, nil
 	}))
-	mux.HandleFunc("GET /api/learnable-meta/clue", api(func(r *http.Request) (any, int, error) {
+	mux.HandleFunc("GET /api/learnable-meta/clue", httpjson.Handler(func(r *http.Request) (any, int, error) {
 		clue, err := s.getClue(r.URL.Query().Get("mapId"), r.URL.Query().Get("panoId"))
 		return clue, http.StatusOK, learnableHTTPError(err)
 	}))
-	mux.HandleFunc("PUT /api/learnable-meta/settings", api(func(r *http.Request) (any, int, error) {
-		body, err := decodeJSON[struct {
+	mux.HandleFunc("PUT /api/learnable-meta/settings", httpjson.Handler(func(r *http.Request) (any, int, error) {
+		body, err := httpjson.Decode[struct {
 			Enabled bool `json:"enabled"`
 		}](r)
 		if err != nil {
@@ -131,8 +121,8 @@ func (s *Backend) RegisterRoutes(mux *http.ServeMux) {
 		status, err := s.SetEnabled(body.Enabled)
 		return status, http.StatusOK, err
 	}))
-	mux.HandleFunc("PUT /api/learnable-meta/key", api(func(r *http.Request) (any, int, error) {
-		body, err := decodeJSON[struct {
+	mux.HandleFunc("PUT /api/learnable-meta/key", httpjson.Handler(func(r *http.Request) (any, int, error) {
+		body, err := httpjson.Decode[struct {
 			APIKey string `json:"apiKey"`
 		}](r)
 		if err != nil {
@@ -141,28 +131,28 @@ func (s *Backend) RegisterRoutes(mux *http.ServeMux) {
 		status, err := s.saveKey(body.APIKey)
 		return status, http.StatusOK, err
 	}))
-	mux.HandleFunc("DELETE /api/learnable-meta/key", api(func(_ *http.Request) (any, int, error) {
+	mux.HandleFunc("DELETE /api/learnable-meta/key", httpjson.Handler(func(_ *http.Request) (any, int, error) {
 		status, err := s.forgetKey()
 		return status, http.StatusOK, err
 	}))
-	mux.HandleFunc("POST /api/learnable-meta/maps", api(func(r *http.Request) (any, int, error) {
-		body, err := decodeJSON[learnableConfigMap](r)
+	mux.HandleFunc("POST /api/learnable-meta/maps", httpjson.Handler(func(r *http.Request) (any, int, error) {
+		body, err := httpjson.Decode[learnableConfigMap](r)
 		if err != nil {
 			return nil, 0, err
 		}
 		status, err := s.addMap(body.MapID, body.Name)
 		return status, http.StatusCreated, learnableHTTPError(err)
 	}))
-	mux.HandleFunc("PATCH /api/learnable-meta/maps", api(func(r *http.Request) (any, int, error) {
-		body, err := decodeJSON[learnableConfigMap](r)
+	mux.HandleFunc("PATCH /api/learnable-meta/maps", httpjson.Handler(func(r *http.Request) (any, int, error) {
+		body, err := httpjson.Decode[learnableConfigMap](r)
 		if err != nil {
 			return nil, 0, err
 		}
 		status, err := s.renameMap(body.MapID, body.Name)
 		return status, http.StatusOK, learnableHTTPError(err)
 	}))
-	mux.HandleFunc("DELETE /api/learnable-meta/maps", api(func(r *http.Request) (any, int, error) {
-		body, err := decodeJSON[struct {
+	mux.HandleFunc("DELETE /api/learnable-meta/maps", httpjson.Handler(func(r *http.Request) (any, int, error) {
+		body, err := httpjson.Decode[struct {
 			MapID string `json:"mapId"`
 		}](r)
 		if err != nil {
@@ -171,85 +161,10 @@ func (s *Backend) RegisterRoutes(mux *http.ServeMux) {
 		status, err := s.removeMap(body.MapID)
 		return status, http.StatusOK, learnableHTTPError(err)
 	}))
-	mux.HandleFunc("POST /api/learnable-meta/sync", api(func(_ *http.Request) (any, int, error) {
+	mux.HandleFunc("POST /api/learnable-meta/sync", httpjson.Handler(func(_ *http.Request) (any, int, error) {
 		status, err := s.start()
 		return status, http.StatusAccepted, err
 	}))
-}
-
-type httpResponseError struct {
-	status  int
-	message string
-}
-
-func (e *httpResponseError) Error() string       { return e.message }
-func (e *httpResponseError) HTTPStatus() int     { return e.status }
-func (e *httpResponseError) HTTPMessage() string { return e.message }
-
-func responseError(status int, message string) error {
-	return &httpResponseError{status: status, message: message}
-}
-
-func errorResponse(err error) (int, string) {
-	var response interface {
-		error
-		HTTPStatus() int
-		HTTPMessage() string
-	}
-	if errors.As(err, &response) {
-		return response.HTTPStatus(), response.HTTPMessage()
-	}
-	return http.StatusInternalServerError, "request failed"
-}
-
-func api(fn func(*http.Request) (any, int, error)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		payload, status, err := fn(r)
-		if err != nil {
-			code, message := errorResponse(err)
-			writeJSON(w, code, map[string]string{"error": message})
-			return
-		}
-		writeJSON(w, status, payload)
-	}
-}
-
-func writeJSON(w http.ResponseWriter, status int, value any) {
-	body, err := json.Marshal(value)
-	if err != nil {
-		status = http.StatusInternalServerError
-		body = []byte(`{"error":"response failed"}`)
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(status)
-	_, _ = w.Write(body)
-}
-
-func decodeJSON[T any](r *http.Request) (T, error) {
-	var result T
-	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || mediaType != "application/json" {
-		return result, responseError(http.StatusUnsupportedMediaType, "Content-Type must be application/json")
-	}
-	if r.ContentLength > maxBodySize {
-		return result, responseError(http.StatusRequestEntityTooLarge, "request body is too large")
-	}
-	r.Body = http.MaxBytesReader(nil, r.Body, maxBodySize)
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&result); err != nil {
-		var tooLarge *http.MaxBytesError
-		if errors.As(err, &tooLarge) {
-			return result, responseError(http.StatusRequestEntityTooLarge, "request body is too large")
-		}
-		return result, responseError(http.StatusBadRequest, "invalid JSON request")
-	}
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return result, responseError(http.StatusBadRequest, "request body must contain one JSON value")
-	}
-	return result, nil
 }
 
 func defaultLearnableConfig() learnableConfig {
@@ -290,7 +205,7 @@ func (s *Backend) saveConfigLocked(config learnableConfig) error {
 	if config.Maps == nil {
 		config.Maps = []learnableConfigMap{}
 	}
-	return atomicWriteJSON(s.configPath, config, 0o600)
+	return mapfile.WriteJSON(s.configPath, config, 0o600)
 }
 
 func (s *Backend) publicStatus() map[string]any {
@@ -327,7 +242,7 @@ func (s *Backend) Enabled() bool {
 func (s *Backend) SetEnabled(enabled bool) (map[string]any, error) {
 	if enabled {
 		if err := s.ensureRoot(); err != nil {
-			return nil, responseError(http.StatusInternalServerError, "could not create Learnable Meta map folder")
+			return nil, httpjson.Error(http.StatusInternalServerError, "could not create Learnable Meta map folder")
 		}
 	}
 	s.mu.Lock()
@@ -337,7 +252,7 @@ func (s *Backend) SetEnabled(enabled bool) (map[string]any, error) {
 	status := s.publicStatusLocked()
 	s.mu.Unlock()
 	if err != nil {
-		return nil, responseError(http.StatusInternalServerError, "could not save Learnable Meta settings")
+		return nil, httpjson.Error(http.StatusInternalServerError, "could not save Learnable Meta settings")
 	}
 	if !enabled {
 		s.cancel()
@@ -355,21 +270,21 @@ func (s *Backend) ensureRoot() error {
 func (s *Backend) saveKey(rawKey string) (map[string]any, error) {
 	key, err := cleanLearnableAPIKey(rawKey)
 	if err != nil {
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.runtime.Running {
-		return nil, responseError(http.StatusConflict, "Stop synchronization before replacing the API key")
+		return nil, httpjson.Error(http.StatusConflict, "Stop synchronization before replacing the API key")
 	}
 	config := s.loadConfigLocked()
 	config.Enabled = true
 	config.APIKey = key
 	if err := s.saveConfigLocked(config); err != nil {
-		return nil, responseError(http.StatusInternalServerError, "could not save Learnable Meta settings")
+		return nil, httpjson.Error(http.StatusInternalServerError, "could not save Learnable Meta settings")
 	}
 	if err := s.ensureRoot(); err != nil {
-		return nil, responseError(http.StatusInternalServerError, "could not create Learnable Meta map folder")
+		return nil, httpjson.Error(http.StatusInternalServerError, "could not create Learnable Meta map folder")
 	}
 	return s.publicStatusLocked(), nil
 }
@@ -382,7 +297,7 @@ func (s *Backend) forgetKey() (map[string]any, error) {
 	config.APIKey = ""
 	config.Enabled = false
 	if err := s.saveConfigLocked(config); err != nil {
-		return nil, responseError(http.StatusInternalServerError, "could not forget the Learnable Meta key")
+		return nil, httpjson.Error(http.StatusInternalServerError, "could not forget the Learnable Meta key")
 	}
 	return s.publicStatusLocked(), nil
 }
@@ -390,11 +305,11 @@ func (s *Backend) forgetKey() (map[string]any, error) {
 func (s *Backend) addMap(rawID, rawName string) (map[string]any, error) {
 	mapID, err := cleanLearnableMapID(rawID)
 	if err != nil {
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	name, err := cleanLearnableMapName(rawName)
 	if err != nil {
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	ctx, release, err := s.host.AcquireSync(learnableJobName)
 	if err != nil {
@@ -405,11 +320,11 @@ func (s *Backend) addMap(rawID, rawName string) (map[string]any, error) {
 	config := s.loadConfigLocked()
 	if err := requireLearnableReady(config); err != nil {
 		s.mu.Unlock()
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	if err := checkLearnableUnique(config, mapID, name); err != nil {
 		s.mu.Unlock()
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	key := config.APIKey
 	s.mu.Unlock()
@@ -420,27 +335,27 @@ func (s *Backend) addMap(rawID, rawName string) (map[string]any, error) {
 	}
 	locations, err := normalizeLearnableLocations(rawLocations)
 	if err != nil {
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, responseError(http.StatusConflict, "synchronization cancelled")
+		return nil, httpjson.Error(http.StatusConflict, "synchronization cancelled")
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	config = s.loadConfigLocked()
 	if err := requireLearnableReady(config); err != nil {
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	if err := checkLearnableUnique(config, mapID, name); err != nil {
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	previous := config
 	previous.Maps = append([]learnableConfigMap(nil), config.Maps...)
 	config.Maps = append(config.Maps, learnableConfigMap{MapID: mapID, Name: name})
 	config.LastSyncAt = utcNow()
 	if err := s.saveConfigLocked(config); err != nil {
-		return nil, responseError(http.StatusInternalServerError, "could not save Learnable Meta settings")
+		return nil, httpjson.Error(http.StatusInternalServerError, "could not save Learnable Meta settings")
 	}
 	changed, err := s.publishLearnableMap(mapID, name, locations)
 	if err != nil {
@@ -457,11 +372,11 @@ func (s *Backend) addMap(rawID, rawName string) (map[string]any, error) {
 func (s *Backend) renameMap(rawID, rawName string) (map[string]any, error) {
 	mapID, err := cleanLearnableMapID(rawID)
 	if err != nil {
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	name, err := cleanLearnableMapName(rawName)
 	if err != nil {
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	_, release, err := s.host.AcquireSync(learnableJobName)
 	if err != nil {
@@ -473,17 +388,17 @@ func (s *Backend) renameMap(rawID, rawName string) (map[string]any, error) {
 	config := s.loadConfigLocked()
 	index := findLearnableConfigMap(config, mapID)
 	if index < 0 {
-		return nil, responseError(http.StatusNotFound, "Learnable Meta map not found")
+		return nil, httpjson.Error(http.StatusNotFound, "Learnable Meta map not found")
 	}
 	for i, item := range config.Maps {
 		if i != index && strings.EqualFold(item.Name, name) {
-			return nil, responseError(http.StatusBadRequest, "A Learnable Meta map already uses that name")
+			return nil, httpjson.Error(http.StatusBadRequest, "A Learnable Meta map already uses that name")
 		}
 	}
 	oldName := config.Maps[index].Name
 	config.Maps[index].Name = name
 	if err := s.saveConfigLocked(config); err != nil {
-		return nil, responseError(http.StatusInternalServerError, "could not save Learnable Meta settings")
+		return nil, httpjson.Error(http.StatusInternalServerError, "could not save Learnable Meta settings")
 	}
 	if err := s.renamePublishedLearnableMap(mapID, name); err != nil {
 		config.Maps[index].Name = oldName
@@ -496,7 +411,7 @@ func (s *Backend) renameMap(rawID, rawName string) (map[string]any, error) {
 func (s *Backend) removeMap(rawID string) (map[string]any, error) {
 	mapID, err := cleanLearnableMapID(rawID)
 	if err != nil {
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	_, release, err := s.host.AcquireSync(learnableJobName)
 	if err != nil {
@@ -508,12 +423,12 @@ func (s *Backend) removeMap(rawID string) (map[string]any, error) {
 	config := s.loadConfigLocked()
 	index := findLearnableConfigMap(config, mapID)
 	if index < 0 {
-		return nil, responseError(http.StatusNotFound, "Learnable Meta map not found")
+		return nil, httpjson.Error(http.StatusNotFound, "Learnable Meta map not found")
 	}
 	previous := append([]learnableConfigMap(nil), config.Maps...)
 	config.Maps = append(config.Maps[:index], config.Maps[index+1:]...)
 	if err := s.saveConfigLocked(config); err != nil {
-		return nil, responseError(http.StatusInternalServerError, "could not save Learnable Meta settings")
+		return nil, httpjson.Error(http.StatusInternalServerError, "could not save Learnable Meta settings")
 	}
 	if err := s.deletePublishedLearnableMap(mapID); err != nil {
 		config.Maps = previous
@@ -533,12 +448,12 @@ func (s *Backend) start() (map[string]any, error) {
 	if err := requireLearnableReady(config); err != nil {
 		s.mu.Unlock()
 		release()
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	if len(config.Maps) == 0 {
 		s.mu.Unlock()
 		release()
-		return nil, responseError(http.StatusBadRequest, "Add a Learnable Meta map first")
+		return nil, httpjson.Error(http.StatusBadRequest, "Add a Learnable Meta map first")
 	}
 	maps := append([]learnableConfigMap(nil), config.Maps...)
 	s.runtime = syncRuntime{Running: true, Phase: "starting", Total: len(maps)}
@@ -627,17 +542,17 @@ func learnableResult(total, updated, unchanged int, failures []map[string]any) m
 func (s *Backend) getClue(rawMapID, rawPanoID string) (map[string]any, error) {
 	mapID, err := cleanLearnableMapID(rawMapID)
 	if err != nil {
-		return nil, responseError(http.StatusBadRequest, err.Error())
+		return nil, httpjson.Error(http.StatusBadRequest, err.Error())
 	}
 	panoID := strings.TrimSpace(rawPanoID)
 	if panoID == "" || len(panoID) > 512 {
-		return nil, responseError(http.StatusBadRequest, "Panorama ID required")
+		return nil, httpjson.Error(http.StatusBadRequest, "Panorama ID required")
 	}
 	s.mu.Lock()
 	configured := findLearnableConfigMap(s.loadConfigLocked(), mapID) >= 0
 	s.mu.Unlock()
 	if !configured {
-		return nil, responseError(http.StatusNotFound, "Learnable Meta map not found")
+		return nil, httpjson.Error(http.StatusNotFound, "Learnable Meta map not found")
 	}
 	query := url.Values{"mapId": {mapID}, "panoId": {panoID}}
 	var raw map[string]any
@@ -678,7 +593,7 @@ func learnableHTTPError(err error) error {
 		if status != 401 && status != 403 && status != 404 && status != 429 {
 			status = http.StatusBadGateway
 		}
-		return responseError(status, apiError.message)
+		return httpjson.Error(status, apiError.message)
 	}
 	return err
 }
@@ -701,7 +616,7 @@ func (s *Backend) apiGetJSON(ctx context.Context, endpoint, key string, maximum 
 				response.Body.Close()
 				return &learnableAPIError{message: "Learnable Meta response is too large", status: http.StatusBadGateway}
 			}
-			body, readErr := readLimited(response.Body, maximum)
+			body, readErr := httpjson.ReadLimited(response.Body, maximum)
 			response.Body.Close()
 			if readErr != nil {
 				return &learnableAPIError{message: "Learnable Meta response is too large", status: http.StatusBadGateway}
@@ -723,7 +638,7 @@ func (s *Backend) apiGetJSON(ctx context.Context, endpoint, key string, maximum 
 			lastError = &learnableAPIError{message: "Could not reach Learnable Meta: " + err.Error(), status: http.StatusBadGateway}
 		}
 		if attempt < retries {
-			if err := waitContext(ctx, time.Duration(attempt+1)*400*time.Millisecond); err != nil {
+			if err := httpjson.Wait(ctx, time.Duration(attempt+1)*400*time.Millisecond); err != nil {
 				return err
 			}
 		}
@@ -926,7 +841,7 @@ func learnableTarget(mapID, name string, fullHash bool) string {
 	if !fullHash {
 		hash = hash[:16]
 	}
-	return path.Join(learnableRoot, safeComponent(name, "Untitled map")+"-"+hash+".json")
+	return path.Join(learnableRoot, mapfile.SafeComponent(name, "Untitled map")+"-"+hash+".json")
 }
 
 func (s *Backend) publishLearnableMap(mapID, name string, locations []map[string]any) (bool, error) {
@@ -934,7 +849,7 @@ func (s *Backend) publishLearnableMap(mapID, name string, locations []map[string
 	if err != nil {
 		return false, err
 	}
-	checksum := checksumBytes(encoded)
+	checksum := mapfile.Checksum(encoded)
 	var changed bool
 	err = s.host.WithLibrary(func(library Library) error {
 		changed, err = publishLearnableMapLocked(library, mapID, name, locations, encoded, checksum)
@@ -950,7 +865,7 @@ func publishLearnableMapLocked(library Library, mapID, name string, locations []
 	}
 	index := -1
 	for i, entry := range manifest.Maps {
-		if sourceType(entry.Source) == "learnable-meta" && entry.Source["mapId"] == mapID {
+		if mapfile.SourceType(entry.Source) == "learnable-meta" && entry.Source["mapId"] == mapID {
 			index = i
 			break
 		}
@@ -976,7 +891,7 @@ func publishLearnableMapLocked(library Library, mapID, name string, locations []
 		same = err == nil
 	}
 	if !same {
-		if err := atomicWrite(filename, encoded, 0o644); err != nil {
+		if err := mapfile.Write(filename, encoded, 0o644); err != nil {
 			return false, err
 		}
 	}
@@ -1018,7 +933,7 @@ func renamePublishedLearnableMapLocked(library Library, mapID, name string) erro
 	}
 	index := -1
 	for i, entry := range manifest.Maps {
-		if sourceType(entry.Source) == "learnable-meta" && entry.Source["mapId"] == mapID {
+		if mapfile.SourceType(entry.Source) == "learnable-meta" && entry.Source["mapId"] == mapID {
 			index = i
 			break
 		}
@@ -1082,7 +997,7 @@ func deletePublishedLearnableMapLocked(library Library, mapID string) error {
 	targets := make([]Entry, 0)
 	kept := make([]Entry, 0, len(manifest.Maps))
 	for _, entry := range manifest.Maps {
-		if sourceType(entry.Source) == "learnable-meta" && entry.Source["mapId"] == mapID {
+		if mapfile.SourceType(entry.Source) == "learnable-meta" && entry.Source["mapId"] == mapID {
 			targets = append(targets, entry)
 		} else {
 			kept = append(kept, entry)
@@ -1093,7 +1008,7 @@ func deletePublishedLearnableMapLocked(library Library, mapID string) error {
 	}
 	previous := manifest
 	manifest.Maps = kept
-	manifest.Folders = foldersOutsideRoot(manifest.Folders, learnableRoot)
+	manifest.Folders = mapfile.FoldersOutsideRoot(manifest.Folders, learnableRoot)
 	if err := library.Save(manifest); err != nil {
 		return err
 	}
@@ -1108,7 +1023,7 @@ func deletePublishedLearnableMapLocked(library Library, mapID string) error {
 			return err
 		}
 	}
-	removeEmptyMapDirectories(library.Directory(), learnableRoot)
+	mapfile.RemoveEmptyDirectories(library.Directory(), learnableRoot)
 	return nil
 }
 
@@ -1119,33 +1034,6 @@ func boolInt(value bool) int {
 	return 0
 }
 
-func readLimited(reader io.Reader, maximum int64) ([]byte, error) {
-	value, err := io.ReadAll(io.LimitReader(reader, maximum+1))
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(value)) > maximum {
-		return nil, errors.New("response is too large")
-	}
-	return value, nil
-}
-
-func waitContext(ctx context.Context, duration time.Duration) error {
-	timer := time.NewTimer(duration)
-	defer timer.Stop()
-	select {
-	case <-timer.C:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-func sourceType(source map[string]any) string {
-	value, _ := source["type"].(string)
-	return value
-}
-
 func nilIfEmpty(value string) any {
 	if value == "" {
 		return nil
@@ -1154,114 +1042,3 @@ func nilIfEmpty(value string) any {
 }
 
 func utcNow() string { return time.Now().UTC().Truncate(time.Second).Format(time.RFC3339) }
-
-func safeComponent(value, fallback string) string {
-	var output []rune
-	space := false
-	for _, char := range strings.TrimSpace(value) {
-		if char < 32 || strings.ContainsRune(`<>:"/\|?*`, char) {
-			char = '-'
-		}
-		if unicode.IsSpace(char) {
-			if space {
-				continue
-			}
-			char = ' '
-			space = true
-		} else {
-			space = false
-		}
-		output = append(output, char)
-	}
-	result := strings.TrimRight(strings.TrimSpace(string(output)), ". ")
-	if result == "" || result == "." || result == ".." {
-		result = fallback
-	}
-	if windowsNames[strings.ToLower(result)] {
-		result += "-map"
-	}
-	runes := []rune(result)
-	if len(runes) > maxNameRunes {
-		result = string(runes[:maxNameRunes])
-	}
-	result = strings.TrimRight(result, ". ")
-	if result == "" {
-		return fallback
-	}
-	return result
-}
-
-func foldersOutsideRoot(folders []string, root string) []string {
-	result := make([]string, 0, len(folders))
-	for _, folder := range folders {
-		if !underRoot(folder, root) {
-			result = append(result, folder)
-		}
-	}
-	return result
-}
-
-func underRoot(rel, root string) bool {
-	return strings.EqualFold(rel, root) || strings.HasPrefix(strings.ToLower(rel), strings.ToLower(root)+"/")
-}
-
-func checksumBytes(value []byte) string {
-	digest := sha256.Sum256(value)
-	return "sha256:" + hex.EncodeToString(digest[:])
-}
-
-func atomicWriteJSON(filename string, value any, permission os.FileMode) error {
-	encoded, err := json.MarshalIndent(value, "", "  ")
-	if err != nil {
-		return err
-	}
-	return atomicWrite(filename, append(encoded, '\n'), permission)
-}
-
-func atomicWrite(filename string, value []byte, permission os.FileMode) (err error) {
-	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
-		return err
-	}
-	temporary, err := os.CreateTemp(filepath.Dir(filename), ".ohneguessr-*.tmp")
-	if err != nil {
-		return err
-	}
-	temporaryName := temporary.Name()
-	defer func() {
-		_ = temporary.Close()
-		if err != nil {
-			_ = os.Remove(temporaryName)
-		}
-	}()
-	if err = temporary.Chmod(permission); err == nil {
-		_, err = temporary.Write(value)
-	}
-	if err == nil {
-		err = temporary.Sync()
-	}
-	if closeErr := temporary.Close(); err == nil {
-		err = closeErr
-	}
-	if err == nil {
-		err = os.Rename(temporaryName, filename)
-	}
-	return err
-}
-
-func removeEmptyMapDirectories(base, root string) {
-	rootPath := filepath.Join(base, filepath.FromSlash(root))
-	info, err := os.Lstat(rootPath)
-	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		return
-	}
-	directories := make([]string, 0)
-	_ = filepath.WalkDir(rootPath, func(filename string, entry os.DirEntry, err error) error {
-		if err == nil && entry.IsDir() && entry.Type()&os.ModeSymlink == 0 {
-			directories = append(directories, filename)
-		}
-		return nil
-	})
-	for index := len(directories) - 1; index >= 0; index-- {
-		_ = os.Remove(directories[index])
-	}
-}
