@@ -8,7 +8,6 @@
   } from './learnable-meta/status.svelte.js';
   import MapMakingAppSettings from './map-making-app/Settings.svelte';
   import {
-    initMapMakingAppStatusSync,
     mapMakingAppPlugin,
     publishMapMakingAppStatus,
     refreshMapMakingAppStatus
@@ -19,7 +18,6 @@
   const learnableEnabled = $derived(Boolean(learnableMetaPlugin.status?.enabled));
 
   onMount(() => {
-    const stopMMA = initMapMakingAppStatusSync();
     void Promise.allSettled([
       refreshMapMakingAppStatus(),
       refreshLearnableMetaStatus()
@@ -37,7 +35,6 @@
         });
       }
     });
-    return stopMMA;
   });
 </script>
 

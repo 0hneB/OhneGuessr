@@ -830,15 +830,6 @@ func (p *partyServer) reset() error {
 	return nil
 }
 
-func (p *partyServer) reveal(round int) (PartyRoundReveal, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if round < 0 || round >= len(p.history) {
-		return PartyRoundReveal{}, errors.New("party round not found")
-	}
-	return p.history[round], nil
-}
-
 func partySameOrigin(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
@@ -982,14 +973,6 @@ func (p *LocalParty) ResetParty(id string) error {
 		return err
 	}
 	return party.reset()
-}
-
-func (p *LocalParty) GetPartyRound(id string, round int) (PartyRoundReveal, error) {
-	party, err := p.activeParty(id)
-	if err != nil {
-		return PartyRoundReveal{}, err
-	}
-	return party.reveal(round)
 }
 
 func (p *LocalParty) StopParty(id string) error {

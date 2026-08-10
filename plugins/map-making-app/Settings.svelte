@@ -148,13 +148,8 @@
   }
 
   onMount(() => {
-    const refresh = () => { void refreshStatus(); };
-    window.addEventListener('ohneguessr:mma-sync-changed', refresh);
     void refreshStatus();
-    return () => {
-      window.removeEventListener('ohneguessr:mma-sync-changed', refresh);
-      window.clearTimeout(pollTimer);
-    };
+    return () => window.clearTimeout(pollTimer);
   });
 </script>
 

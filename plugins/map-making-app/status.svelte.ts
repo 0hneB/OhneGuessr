@@ -19,12 +19,5 @@ export async function refreshMapMakingAppStatus() {
 export async function setMapMakingAppEnabled(enabled: boolean) {
   const status = await setEnabled(enabled);
   publishMapMakingAppStatus(status);
-  window.dispatchEvent(new Event('ohneguessr:mma-sync-changed'));
   return status;
-}
-
-export function initMapMakingAppStatusSync() {
-  const refresh = () => { void refreshMapMakingAppStatus().catch(() => {}); };
-  window.addEventListener('ohneguessr:mma-sync-changed', refresh);
-  return () => window.removeEventListener('ohneguessr:mma-sync-changed', refresh);
 }
