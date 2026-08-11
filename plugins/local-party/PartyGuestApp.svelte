@@ -189,7 +189,7 @@
     </form>
   {:else if party.phase === 'lobby'}
     <section class="party-guest-card party-guest-center">
-      <span class="party-wait-mark" aria-hidden="true"></span>
+      <div class="spinner" aria-hidden="true"></div>
       <h1>You're in</h1>
       <p>Waiting for the host to start.</p>
       <small>{party.playerCount} / {party.capacity} joined</small>

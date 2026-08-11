@@ -949,7 +949,7 @@ a:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .launcher-shell *,
+  .launcher-shell *:not(.spinner),
   .launcher-shell *::before,
   .launcher-shell *::after {
     scroll-behavior: auto !important;

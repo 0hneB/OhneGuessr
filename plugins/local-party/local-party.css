@@ -276,16 +276,6 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
 .party-color-picker button:disabled { opacity: 0.12; cursor: default; }
 .party-join-form .party-primary { width: 100%; }
 
-.party-wait-mark {
-  display: block;
-  width: 52px;
-  height: 52px;
-  border: 3px solid rgba(var(--accent-rgb), 0.25);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 1.2s linear infinite;
-}
-
 .party-persistent-map { position: fixed; z-index: 1; left: 0; right: 0; }
 #partyGuessMap { top: 0; bottom: calc(94px + env(safe-area-inset-bottom)); }
 #partyRevealMap { top: 0; bottom: calc(184px + env(safe-area-inset-bottom)); }
