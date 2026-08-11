@@ -204,7 +204,7 @@ Download the release executable rather than an individual source file. `go tool 
 
 ### An update fails
 
-Check the internet connection and restart OhneGuessr to check again. On Windows, an available version appears in the launcher footer; selecting it opens the update window. OhneGuessr refuses any update whose SHA-256 digest or Ed25519 signature does not match the release metadata.
+Check the internet connection and restart OhneGuessr to check again. On Windows and macOS, an available version appears in the launcher footer; selecting it opens the update window. OhneGuessr refuses any update whose SHA-256 digest or Ed25519 signature does not match the release metadata.
 
 ### Panoramas are missing, blurry, or black
 

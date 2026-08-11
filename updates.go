@@ -26,7 +26,7 @@ type UpdateService struct {
 
 func newUpdateService(app *application.App, currentVersion string) (*UpdateService, error) {
 	service := &UpdateService{}
-	if runtime.GOOS != "windows" || currentVersion == "dev" {
+	if (runtime.GOOS != "windows" && runtime.GOOS != "darwin") || currentVersion == "dev" {
 		return service, nil
 	}
 

@@ -214,84 +214,6 @@ jobs:
           Copy-Item bin/OhneGuessr.exe "release/$env:PORTABLE_NAME"
           Copy-Item bin/OhneGuessr-amd64-installer.exe "release/$env:SETUP_NAME"
           Get-Item "release/$env:PORTABLE_NAME", "release/$env:SETUP_NAME"
-      - name: Sign update hashes and write metadata
-        shell: pwsh
-        env:
-          UPDATE_PRIVATE_KEY: ${{ secrets.OHNEGUESSR_UPDATE_PRIVATE_KEY }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:UPDATE_PRIVATE_KEY)) {
-            throw "OHNEGUESSR_UPDATE_PRIVATE_KEY is not configured"
-          }
-          $openssl = (Get-Command openssl -ErrorAction SilentlyContinue).Source
-          if (-not $openssl) { $openssl = 'C:\Program Files\Git\usr\bin\openssl.exe' }
-          if (-not (Test-Path $openssl)) { throw "OpenSSL is unavailable" }
-          $privateKey = Join-Path $env:RUNNER_TEMP update-private.pem
-          $publicDer = Join-Path $env:RUNNER_TEMP update-public.der
-          [IO.File]::WriteAllText($privateKey, $env:UPDATE_PRIVATE_KEY)
-          & $openssl pkey -in $privateKey -pubout -outform DER -out $publicDer
-          if ($LASTEXITCODE -ne 0) { throw "Invalid updater private key" }
-          $publicBytes = [IO.File]::ReadAllBytes($publicDer)
-          $publicRaw = $publicBytes[($publicBytes.Length - 32)..($publicBytes.Length - 1)]
-          if ([Convert]::ToBase64String($publicRaw) -ne $env:UPDATE_PUBLIC_KEY) {
-            throw "Updater private key does not match the embedded public key"
-          }
-
-          function Sign-Artifact([string]$path) {
-            $hash = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
-            $digest = [Convert]::FromHexString($hash)
-            $digestPath = Join-Path $env:RUNNER_TEMP "$([IO.Path]::GetFileName($path)).digest"
-            $signaturePath = "$digestPath.sig"
-            [IO.File]::WriteAllBytes($digestPath, $digest)
-            & $openssl pkeyutl -sign -rawin -inkey $privateKey -in $digestPath -out $signaturePath
-            if ($LASTEXITCODE -ne 0) { throw "Could not sign $path" }
-            return @{
-              hash = $hash
-              digest = [Convert]::ToBase64String($digest)
-              signature = [Convert]::ToBase64String([IO.File]::ReadAllBytes($signaturePath))
-              size = (Get-Item $path).Length
-            }
-          }
-
-          $setupName = $env:SETUP_NAME
-          $portableName = $env:PORTABLE_NAME
-          $setup = Sign-Artifact "release/$setupName"
-          $portable = Sign-Artifact "release/$portableName"
-          $base = "https://github.com/0hneB/OhneGuessr/releases/download/$env:RELEASE_TAG"
-          $manifest = [ordered]@{
-            schemaVersion = 1
-            version = $env:RELEASE_VERSION
-            # Keep these fields until pre-Wails clients have crossed this release.
-            setup = [ordered]@{
-              url = "$base/$setupName"
-              sha256 = $setup.hash
-              signature = $setup.signature
-            }
-            portable = [ordered]@{
-              url = "$base/$portableName"
-              sha256 = $portable.hash
-              signature = $portable.signature
-            }
-            artifacts = @(
-              [ordered]@{
-                url = "$base/$portableName"
-                filename = $portableName
-                size = $portable.size
-                platform = "windows"
-                arch = "amd64"
-                digestAlgo = "sha256"
-                digest = $portable.digest
-                signatureAlgo = "ed25519"
-                signature = $portable.signature
-              }
-            )
-          }
-          $manifest | ConvertTo-Json -Depth 5 | Set-Content release/latest.json -Encoding utf8
-          @(
-            "$($setup.hash)  $setupName"
-            "$($portable.hash)  $portableName"
-          ) | Set-Content release/SHA256SUMS.txt -Encoding ascii
-          Remove-Item $privateKey, $publicDer -Force
       - uses: actions/upload-artifact@v7
         with:
           name: windows
@@ -305,6 +227,7 @@ jobs:
     env:
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
       DMG_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-macos.dmg
+      UPDATE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-macos-universal.app.tar.gz
     steps:
       - uses: actions/checkout@v7
         with:
@@ -342,6 +265,15 @@ jobs:
           lipo "$mount_point/OhneGuessr.app/Contents/MacOS/OhneGuessr" -verify_arch x86_64 arm64
           hdiutil detach "$mount_point"
           trap - EXIT
+      - name: Build and verify updater archive
+        run: |
+          COPYFILE_DISABLE=1 tar -czf "release/$UPDATE_NAME" -C bin OhneGuessr.app
+          update_dir="$RUNNER_TEMP/ohneguessr-update"
+          mkdir -p "$update_dir"
+          tar -xzf "release/$UPDATE_NAME" -C "$update_dir"
+          test -x "$update_dir/OhneGuessr.app/Contents/MacOS/OhneGuessr"
+          lipo "$update_dir/OhneGuessr.app/Contents/MacOS/OhneGuessr" -verify_arch x86_64 arm64
+          codesign --verify --deep --strict --verbose=2 "$update_dir/OhneGuessr.app"
       - uses: actions/upload-artifact@v7
         with:
           name: macos
@@ -355,18 +287,114 @@ jobs:
     env:
       GH_REPO: ${{ github.repository }}
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      PORTABLE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-windows-x64.exe
+      SETUP_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-windows-x64-setup.exe
+      MAC_UPDATE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-macos-universal.app.tar.gz
     steps:
       - uses: actions/download-artifact@v8
         with:
           pattern: '*'
           path: release
           merge-multiple: true
+      - name: Sign updater artifacts and write release metadata
+        shell: pwsh
+        env:
+          UPDATE_PRIVATE_KEY: ${{ secrets.OHNEGUESSR_UPDATE_PRIVATE_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:UPDATE_PRIVATE_KEY)) {
+            throw "OHNEGUESSR_UPDATE_PRIVATE_KEY is not configured"
+          }
+          $openssl = (Get-Command openssl -ErrorAction Stop).Source
+          $privateKey = Join-Path $env:RUNNER_TEMP update-private.pem
+          $publicDer = Join-Path $env:RUNNER_TEMP update-public.der
+          [IO.File]::WriteAllText($privateKey, $env:UPDATE_PRIVATE_KEY)
+          & $openssl pkey -in $privateKey -pubout -outform DER -out $publicDer
+          if ($LASTEXITCODE -ne 0) { throw "Invalid updater private key" }
+          $publicBytes = [IO.File]::ReadAllBytes($publicDer)
+          $publicRaw = $publicBytes[($publicBytes.Length - 32)..($publicBytes.Length - 1)]
+          if ([Convert]::ToBase64String($publicRaw) -ne $env:UPDATE_PUBLIC_KEY) {
+            throw "Updater private key does not match the embedded public key"
+          }
+
+          function Sign-Artifact([string]$path) {
+            $hash = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            $digest = [Convert]::FromHexString($hash)
+            $digestPath = Join-Path $env:RUNNER_TEMP "$([IO.Path]::GetFileName($path)).digest"
+            $signaturePath = "$digestPath.sig"
+            [IO.File]::WriteAllBytes($digestPath, $digest)
+            & $openssl pkeyutl -sign -rawin -inkey $privateKey -in $digestPath -out $signaturePath
+            if ($LASTEXITCODE -ne 0) { throw "Could not sign $path" }
+            $result = [ordered]@{
+              hash = $hash
+              digest = [Convert]::ToBase64String($digest)
+              signature = [Convert]::ToBase64String([IO.File]::ReadAllBytes($signaturePath))
+              size = (Get-Item $path).Length
+            }
+            Remove-Item $digestPath, $signaturePath -Force
+            return $result
+          }
+
+          $setupName = $env:SETUP_NAME
+          $portableName = $env:PORTABLE_NAME
+          $macUpdateName = $env:MAC_UPDATE_NAME
+          $setup = Sign-Artifact "release/$setupName"
+          $portable = Sign-Artifact "release/$portableName"
+          $macUpdate = Sign-Artifact "release/$macUpdateName"
+          $base = "https://github.com/0hneB/OhneGuessr/releases/download/$env:RELEASE_TAG"
+          $manifest = [ordered]@{
+            schemaVersion = 1
+            version = $env:RELEASE_VERSION
+            # Keep these fields until pre-Wails clients have crossed this release.
+            setup = [ordered]@{
+              url = "$base/$setupName"
+              sha256 = $setup.hash
+              signature = $setup.signature
+            }
+            portable = [ordered]@{
+              url = "$base/$portableName"
+              sha256 = $portable.hash
+              signature = $portable.signature
+            }
+            artifacts = @(
+              [ordered]@{
+                url = "$base/$portableName"
+                filename = $portableName
+                size = $portable.size
+                platform = "windows"
+                arch = "amd64"
+                digestAlgo = "sha256"
+                digest = $portable.digest
+                signatureAlgo = "ed25519"
+                signature = $portable.signature
+              }
+              [ordered]@{
+                url = "$base/$macUpdateName"
+                filename = $macUpdateName
+                size = $macUpdate.size
+                platform = "darwin"
+                digestAlgo = "sha256"
+                digest = $macUpdate.digest
+                signatureAlgo = "ed25519"
+                signature = $macUpdate.signature
+              }
+            )
+          }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content release/latest.json -Encoding utf8
+          Get-ChildItem release -File |
+            Sort-Object Name |
+            ForEach-Object {
+              $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              "$hash  $($_.Name)"
+            } |
+            Set-Content release/SHA256SUMS.txt -Encoding ascii
+          Remove-Item $privateKey, $publicDer -Force
       - name: Validate release files
         run: |
           expected=(
             "OhneGuessr-$RELEASE_VERSION-linux-x64.AppImage"
             "OhneGuessr-$RELEASE_VERSION-linux-x64.deb"
             "OhneGuessr-$RELEASE_VERSION-macos.dmg"
+            "OhneGuessr-$RELEASE_VERSION-macos-universal.app.tar.gz"
             "OhneGuessr-$RELEASE_VERSION-windows-x64-setup.exe"
             "OhneGuessr-$RELEASE_VERSION-windows-x64.exe"
             "SHA256SUMS.txt"
@@ -386,6 +414,7 @@ jobs:
             "release/OhneGuessr-$RELEASE_VERSION-linux-x64.AppImage" \
             "release/OhneGuessr-$RELEASE_VERSION-linux-x64.deb" \
             "release/OhneGuessr-$RELEASE_VERSION-macos.dmg" \
+            "release/OhneGuessr-$RELEASE_VERSION-macos-universal.app.tar.gz" \
             "release/OhneGuessr-$RELEASE_VERSION-windows-x64-setup.exe" \
             "release/OhneGuessr-$RELEASE_VERSION-windows-x64.exe" \
             release/SHA256SUMS.txt \
@@ -394,4 +423,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          test "$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length')" = "7"
+          test "$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length')" = "8"
