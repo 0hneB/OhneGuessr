@@ -141,7 +141,7 @@ Gameplay bindings are rebindable under **Controls** in the launcher.
 
 ## Development
 
-Backend: Go 1.26 and Wails v3.0.0-alpha2.117. Frontend: Svelte 5, Vite, and TypeScript.
+Backend: Go 1.26 and Wails v3.0.0-beta.6. Frontend: Svelte 5, Vite, and TypeScript.
 
 Install Go 1.26 and Node.js 20.19+, 22.12+, or 24+. The Wails CLI is tracked in `go.mod`, so no global installation is needed.
 
