@@ -1,6 +1,11 @@
 version: '3'
 
 tasks:
+  generate:bindings:
+    run: once
+    cmds:
+      - go tool wails3 generate bindings -ts -i -noevents ./...
+
   install:frontend:
     run: once
     dir: frontend
@@ -16,6 +21,7 @@ tasks:
     run: once
     dir: frontend
     deps:
+      - generate:bindings
       - install:frontend
     cmds:
       - npm run {{if eq .DEV "true"}}build:dev{{else}}build{{end}}

@@ -8,8 +8,8 @@ export const partyHost = $state({
 });
 
 export function partyRevealResults(reveal: PartyRoundReveal): RevealResult[] {
-  const colors = new Map(partyHost.state?.players.map((player) => [player.id, player.color]));
-  return reveal.results.map((result) => ({
+  const colors = new Map(partyHost.state?.players?.map((player) => [player.id, player.color]));
+  return (reveal.results || []).map((result) => ({
     guess: result.guess ? { ...result.guess } : null,
     actual: { ...reveal.actual },
     color: colors.get(result.playerId)
@@ -17,7 +17,7 @@ export function partyRevealResults(reveal: PartyRoundReveal): RevealResult[] {
 }
 
 export function partyRoundScores(players: PartyHostPlayer[], reveal?: PartyRoundReveal) {
-  const points = new Map(reveal?.results.map((result) => [result.playerId, result.points]));
+  const points = new Map(reveal?.results?.map((result) => [result.playerId, result.points]));
   return players
     .map((player) => ({ ...player, points: points.get(player.id) ?? 0 }))
     .sort((left, right) => right.points - left.points);

@@ -28,6 +28,11 @@ jobs:
         with:
           go-version: '1.26.x'
           cache: false
+      - name: Check generated bindings
+        run: |
+          go tool wails3 generate bindings -ts -i -noevents ./...
+          git diff --exit-code -- frontend/bindings
+          test -z "$(git ls-files --others --exclude-standard frontend/bindings)"
       - name: Check Go formatting
         run: test -z "$(gofmt -l $(git ls-files '*.go'))"
       - run: go vet ./...

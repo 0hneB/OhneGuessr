@@ -1,17 +1,10 @@
-import {
-  callService,
-  desktopRuntimeAvailable,
-  onDesktopEvent
-} from '../../frontend/src/desktop.js';
+import { Service as ChallengeService } from '../../frontend/bindings/github.com/0hneB/OhneGuessr/plugins/challenges/index.js';
+import { desktopRuntimeAvailable, onDesktopEvent } from '../../frontend/src/desktop.js';
 import type { Challenge } from './types.js';
-
-const SERVICE = 'github.com/0hneB/OhneGuessr/plugins/challenges.Service.';
-const challengeCall = <T>(method: string, ...args: unknown[]) =>
-  callService<T>(SERVICE, method, ...args);
 
 export async function launchChallenge(challenge: Challenge, contents: string) {
   if (desktopRuntimeAvailable()) {
-    await challengeCall<void>('LaunchChallenge', challenge.id, contents);
+    await ChallengeService.LaunchChallenge(challenge.id, contents);
   } else {
     sessionStorage.setItem(`ohneguessr.challenge.${challenge.id}`, contents);
     location.assign(`/?view=game&challenge=${encodeURIComponent(challenge.id)}`);
@@ -19,7 +12,7 @@ export async function launchChallenge(challenge: Challenge, contents: string) {
 }
 
 export function getActiveChallenge(id: string) {
-  if (desktopRuntimeAvailable()) return challengeCall<string>('GetActiveChallenge', id);
+  if (desktopRuntimeAvailable()) return ChallengeService.GetActiveChallenge(id);
   const contents = sessionStorage.getItem(`ohneguessr.challenge.${id}`);
   return contents
     ? Promise.resolve(contents)
@@ -28,7 +21,7 @@ export function getActiveChallenge(id: string) {
 
 export function takePendingChallenge() {
   return desktopRuntimeAvailable()
-    ? challengeCall<string>('TakePendingChallenge')
+    ? ChallengeService.TakePendingChallenge()
     : Promise.resolve('');
 }
 
@@ -37,7 +30,7 @@ export function onChallengeFileOpened(listener: () => void) {
 }
 
 export async function saveChallenge(name: string, contents: string) {
-  if (desktopRuntimeAvailable()) return challengeCall<boolean>('SaveChallenge', name, contents);
+  if (desktopRuntimeAvailable()) return ChallengeService.SaveChallenge(name, contents);
   const href = URL.createObjectURL(new Blob([contents], { type: 'application/json' }));
   const link = document.createElement('a');
   link.href = href;

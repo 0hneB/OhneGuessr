@@ -12,6 +12,7 @@ describe('partyRevealResults', () => {
       mapId: 'map',
       phase: 'result',
       url: '',
+      urls: [],
       qrCode: '',
       rosterLocked: true,
       round: 0,

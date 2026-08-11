@@ -1,28 +1,21 @@
-import {
-  callService,
-  desktopRuntimeAvailable,
-  onDesktopEvent
-} from '../../frontend/src/desktop.js';
+import { LocalParty } from '../../frontend/bindings/github.com/0hneB/OhneGuessr/plugins/local-party/index.js';
+import { desktopRuntimeAvailable, onDesktopEvent } from '../../frontend/src/desktop.js';
 import type { LauncherTheme } from '../../frontend/src/types.js';
-import type { PartyHostPlayer, PartyHostState, PartyRoundReveal } from './types.js';
-
-const SERVICE = 'github.com/0hneB/OhneGuessr/plugins/local-party.LocalParty.';
-const partyCall = <T>(method: string, ...args: unknown[]) =>
-  callService<T>(SERVICE, method, ...args);
+import type { PartyRoundReveal } from './types.js';
 
 export function launchParty(mapID: string, theme: LauncherTheme, accentColor: string) {
   if (!desktopRuntimeAvailable()) {
     return Promise.reject(new Error('Local Party requires the desktop app.'));
   }
-  return partyCall<PartyHostState>('LaunchParty', mapID, theme, accentColor);
+  return LocalParty.LaunchParty(mapID, theme, accentColor);
 }
 
 export function getPartyHostState(id: string) {
-  return partyCall<PartyHostState>('GetPartyHostState', id);
+  return LocalParty.GetPartyHostState(id);
 }
 
 export function lockPartyRoster(id: string) {
-  return partyCall<PartyHostState>('LockPartyRoster', id);
+  return LocalParty.LockPartyRoster(id);
 }
 
 export function beginPartyRound(
@@ -32,23 +25,23 @@ export function beginPartyRound(
   deadline: number,
   mapStyle: string
 ) {
-  return partyCall<void>('BeginPartyRound', id, round, rounds, deadline, mapStyle);
+  return LocalParty.BeginPartyRound(id, round, rounds, deadline, mapStyle);
 }
 
-export function closePartyRound(id: string, round: number) {
-  return partyCall<PartyHostPlayer[]>('ClosePartyRound', id, round);
+export async function closePartyRound(id: string, round: number) {
+  return (await LocalParty.ClosePartyRound(id, round)) ?? [];
 }
 
 export function publishPartyReveal(id: string, reveal: PartyRoundReveal) {
-  return partyCall<void>('PublishPartyReveal', id, reveal);
+  return LocalParty.PublishPartyReveal(id, reveal);
 }
 
 export function finishParty(id: string) {
-  return partyCall<PartyHostState>('FinishParty', id);
+  return LocalParty.FinishParty(id);
 }
 
 export function resetParty(id: string) {
-  return partyCall<void>('ResetParty', id);
+  return LocalParty.ResetParty(id);
 }
 
 export function onPartyChanged(listener: (id: string) => void) {

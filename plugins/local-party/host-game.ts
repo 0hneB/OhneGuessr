@@ -57,7 +57,7 @@ function createLocalPartyMode(id: string): GameMode {
       partyHost.rounds = [];
     },
     async start(startGame) {
-      if (!partyHost.state?.players.length) return;
+      if (!partyHost.state?.players?.length) return;
       if (!partyHost.state.rosterLocked) partyHost.state = await lockPartyRoster(id);
       partyHost.rounds = [];
       await startGame();
