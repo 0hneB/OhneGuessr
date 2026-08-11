@@ -20,14 +20,6 @@
   width: min(820px, 100%);
 }
 
-.party-eyebrow {
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 .party-lobby-heading h1 { margin: 0 0 7px; font-size: clamp(30px, 4vw, 40px); }
 .party-lobby-heading p { margin: 0; color: var(--launcher-text-muted); font-size: 14px; }
 .party-qr { width: 270px; padding: 10px; border-radius: 4px; background: #fff; }
