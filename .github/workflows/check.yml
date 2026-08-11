@@ -49,11 +49,6 @@ jobs:
           cache: false
       - run: npm ci
         working-directory: frontend
-      - name: Install pinned Wails CLI
-        shell: pwsh
-        run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.117
-          "$(go env GOPATH)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
       - name: Install NSIS
         shell: pwsh
         run: |
@@ -62,7 +57,7 @@ jobs:
       - name: Build portable app and installer
         shell: pwsh
         run: |
-          wails3 task windows:package VERSION=0.0.0
+          go tool wails3 task windows:package VERSION=0.0.0
           Get-Item bin/OhneGuessr.exe, bin/OhneGuessr-amd64-installer.exe
       - run: go test ./...
       - uses: actions/upload-artifact@v7

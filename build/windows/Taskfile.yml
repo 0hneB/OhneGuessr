@@ -26,7 +26,7 @@ tasks:
   generate:syso:
     dir: build
     cmds:
-      - wails3 generate syso -arch {{.ARCH}} -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../wails_windows_{{.ARCH}}.syso
+      - go tool wails3 generate syso -arch {{.ARCH}} -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../wails_windows_{{.ARCH}}.syso
     vars:
       ARCH: '{{.ARCH | default ARCH}}'
 
@@ -38,7 +38,7 @@ tasks:
           ARCH: amd64
           VERSION: '{{.VERSION}}'
     cmds:
-      - wails3 generate webview2bootstrapper -dir .
+      - go tool wails3 generate webview2bootstrapper -dir .
       - makensis -DINFO_PRODUCTVERSION={{.VERSION}} -DARG_WAILS_AMD64_BINARY="{{.ROOT_DIR}}\{{.BIN_DIR}}\{{.APP_NAME}}.exe" project.nsi
     vars:
       VERSION: '{{.VERSION | default "0.0.0"}}'

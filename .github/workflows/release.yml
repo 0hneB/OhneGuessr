@@ -62,12 +62,8 @@ jobs:
           sudo apt-get install --yes build-essential desktop-file-utils imagemagick libfuse2 libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
       - run: npm ci
         working-directory: frontend
-      - name: Install pinned Wails CLI
-        run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.117
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Build Linux app
-        run: wails3 build VERSION="$RELEASE_VERSION"
+        run: go tool wails3 build VERSION="$RELEASE_VERSION"
       - name: Stage Linux packages
         run: |
           mkdir -p release package/DEBIAN AppDir
@@ -204,11 +200,6 @@ jobs:
       - run: npm ci
         working-directory: frontend
       - run: go vet ./internal/app
-      - name: Install pinned Wails CLI
-        shell: pwsh
-        run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.117
-          "$(go env GOPATH)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
       - name: Install NSIS
         shell: pwsh
         run: |
@@ -217,7 +208,7 @@ jobs:
       - name: Build Windows packages
         shell: pwsh
         run: |
-          wails3 task windows:package VERSION=$env:RELEASE_VERSION
+          go tool wails3 task windows:package VERSION=$env:RELEASE_VERSION
           go test ./...
           New-Item -ItemType Directory -Path release | Out-Null
           Copy-Item bin/OhneGuessr.exe "release/$env:PORTABLE_NAME"
@@ -327,13 +318,9 @@ jobs:
         with:
           go-version: '1.26.x'
           cache: false
-      - name: Install pinned Wails CLI
-        run: |
-          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.117
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Build universal macOS app
         run: |
-          wails3 task darwin:package:universal VERSION="$RELEASE_VERSION"
+          go tool wails3 task darwin:package:universal VERSION="$RELEASE_VERSION"
           app=bin/OhneGuessr.app
           binary="$app/Contents/MacOS/OhneGuessr"
           test -x "$binary"

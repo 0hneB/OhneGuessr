@@ -143,16 +143,12 @@ Gameplay bindings are rebindable under **Controls** in the launcher.
 
 Backend: Go 1.26 and Wails v3.0.0-alpha2.117. Frontend: Svelte 5, Vite, and TypeScript.
 
-Install Go 1.26, Node.js 20.19+, 22.12+, or 24+, then install Wails:
-
-```powershell
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-alpha2.117
-```
+Install Go 1.26 and Node.js 20.19+, 22.12+, or 24+. The Wails CLI is tracked in `go.mod`, so no global installation is needed.
 
 Start the development app with:
 
 ```powershell
-wails3 dev
+go tool wails3 dev
 ```
 
 Development uses `%LOCALAPPDATA%\OhneGuessr` on Windows.
@@ -160,13 +156,13 @@ Development uses `%LOCALAPPDATA%\OhneGuessr` on Windows.
 Build the portable EXE with:
 
 ```powershell
-wails3 build
+go tool wails3 build
 ```
 
 For the Setup EXE, install [NSIS](https://nsis.sourceforge.io/) and run:
 
 ```powershell
-wails3 task windows:package VERSION=0.0.2
+go tool wails3 task windows:package VERSION=0.0.2
 ```
 
 Builds go to `bin/`. To build only the frontend, run:
@@ -204,7 +200,7 @@ The release is unsigned. Verify that it came from this repository, optionally co
 
 ### The app window is blank
 
-Download the release executable rather than an individual source file. `wails3 dev` and `wails3 build` generate `frontend/dist/` automatically; build it first with `npm --prefix frontend run build` only when running Go directly. Windows 10 also needs the Microsoft WebView2 Runtime; the installer includes its official bootstrapper and offers to install it when missing.
+Download the release executable rather than an individual source file. `go tool wails3 dev` and `go tool wails3 build` generate `frontend/dist/` automatically; build it first with `npm --prefix frontend run build` only when running Go directly. Windows 10 also needs the Microsoft WebView2 Runtime; the installer includes its official bootstrapper and offers to install it when missing.
 
 ### An update fails
 
