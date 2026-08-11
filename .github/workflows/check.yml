@@ -20,6 +20,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
+      - run: npm test
+        working-directory: frontend
       - run: npm run build
         working-directory: frontend
       - uses: actions/setup-go@v6
@@ -28,8 +30,8 @@ jobs:
           cache: false
       - name: Check Go formatting
         run: test -z "$(gofmt -l $(git ls-files '*.go'))"
-      - run: go vet ./internal/app
-      - run: go test -race ./internal/app
+      - run: go vet ./...
+      - run: go test -race ./...
 
   windows-package:
     if: github.event_name == 'workflow_dispatch'
