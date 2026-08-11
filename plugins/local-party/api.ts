@@ -3,17 +3,18 @@ import {
   desktopRuntimeAvailable,
   onDesktopEvent
 } from '../../frontend/src/desktop.js';
+import type { LauncherTheme } from '../../frontend/src/types.js';
 import type { PartyHostPlayer, PartyHostState, PartyRoundReveal } from './types.js';
 
 const SERVICE = 'github.com/0hneB/OhneGuessr/plugins/local-party.LocalParty.';
 const partyCall = <T>(method: string, ...args: unknown[]) =>
   callService<T>(SERVICE, method, ...args);
 
-export function launchParty(mapID: string) {
+export function launchParty(mapID: string, theme: LauncherTheme, accentColor: string) {
   if (!desktopRuntimeAvailable()) {
     return Promise.reject(new Error('Local Party requires the desktop app.'));
   }
-  return partyCall<PartyHostState>('LaunchParty', mapID);
+  return partyCall<PartyHostState>('LaunchParty', mapID, theme, accentColor);
 }
 
 export function getPartyHostState(id: string) {

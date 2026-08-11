@@ -35,7 +35,7 @@ if (route.view === 'game' || challengeID) {
   const { default: GameApp } = await import('./GameApp.svelte');
   mount(GameApp, { target });
 } else if (route.view === 'party') {
-  await import('./app.css');
+  await Promise.all([import('./app.css'), import('./launcher.css')]);
   document.title = '';
   document.querySelector('link[rel~="icon"]')?.remove();
   const { default: PartyGuestApp } = await import('../../plugins/local-party/PartyGuestApp.svelte');

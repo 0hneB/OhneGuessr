@@ -8,5 +8,7 @@
 
 <div id="partyRoundStatus" class="hud-pill party-round-status">
   <b>{guessed}</b> / {players.length} guessed
-  <button type="button" disabled={busy} onclick={oncomplete}>Reveal now</button>
+  <button type="button" disabled={busy} aria-label="Reveal now" title="Reveal now" onclick={oncomplete}>
+    <span class="svg-icon party-reveal-icon" aria-hidden="true"></span>
+  </button>
 </div>

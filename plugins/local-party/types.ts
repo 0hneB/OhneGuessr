@@ -1,4 +1,4 @@
-import type { Point } from '../../frontend/src/types.js';
+import type { LauncherTheme, Point } from '../../frontend/src/types.js';
 
 export type PartyPhase = 'lobby' | 'guessing' | 'scoring' | 'result' | 'final' | 'closed';
 
@@ -54,6 +54,8 @@ export interface PartyGuestResult {
 
 export interface PartyGuestState {
   phase: PartyPhase;
+  theme: LauncherTheme;
+  accentColor: string;
   joined: boolean;
   capacity: number;
   playerCount: number;

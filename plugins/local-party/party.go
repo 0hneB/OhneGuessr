@@ -98,6 +98,8 @@ type PartyGuestResult struct {
 
 type PartyGuestState struct {
 	Phase       string             `json:"phase"`
+	Theme       string             `json:"theme"`
+	AccentColor string             `json:"accentColor"`
 	Joined      bool               `json:"joined"`
 	Capacity    int                `json:"capacity"`
 	PlayerCount int                `json:"playerCount"`
@@ -144,6 +146,8 @@ type partyServer struct {
 	rounds       int
 	deadline     int64
 	mapStyle     string
+	theme        string
+	accentColor  string
 	players      []*partyPlayer
 	byToken      map[string]*partyPlayer
 	history      []PartyRoundReveal
@@ -172,7 +176,7 @@ func New(
 	}
 }
 
-func newPartyServer(frontend fs.FS, mapID string, changed func(string)) (*partyServer, error) {
+func newPartyServer(frontend fs.FS, mapID, theme, accentColor string, changed func(string)) (*partyServer, error) {
 	id, err := partyToken(12)
 	if err != nil {
 		return nil, err
@@ -200,6 +204,8 @@ func newPartyServer(frontend fs.FS, mapID string, changed func(string)) (*partyS
 		id:          id,
 		secret:      secret,
 		mapID:       mapID,
+		theme:       theme,
+		accentColor: accentColor,
 		frontend:    frontend,
 		listener:    listener,
 		url:         urls[0],
@@ -561,6 +567,8 @@ func (p *partyServer) playerFromRequestLocked(r *http.Request) *partyPlayer {
 func (p *partyServer) guestStateLocked(player *partyPlayer) PartyGuestState {
 	state := PartyGuestState{
 		Phase:       p.phase,
+		Theme:       p.theme,
+		AccentColor: p.accentColor,
 		Joined:      player != nil,
 		Capacity:    partyCapacity,
 		PlayerCount: len(p.players),
@@ -879,7 +887,7 @@ func (p *LocalParty) Active() bool {
 	return p.party != nil
 }
 
-func (p *LocalParty) LaunchParty(mapID string) (PartyHostState, error) {
+func (p *LocalParty) LaunchParty(mapID, theme, accentColor string) (PartyHostState, error) {
 	mapID = strings.TrimSpace(mapID)
 	if mapID == "" || p.mapExists == nil || !p.mapExists(mapID) {
 		return PartyHostState{}, errors.New("map not found")
@@ -889,7 +897,7 @@ func (p *LocalParty) LaunchParty(mapID string) (PartyHostState, error) {
 		p.mu.Unlock()
 		return PartyHostState{}, errors.New("end the current party first")
 	}
-	party, err := newPartyServer(p.frontend, mapID, p.changed)
+	party, err := newPartyServer(p.frontend, mapID, theme, accentColor, p.changed)
 	if err != nil {
 		p.mu.Unlock()
 		return PartyHostState{}, err

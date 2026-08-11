@@ -32,7 +32,7 @@ func TestLocalPartyService(t *testing.T) {
 		func(url, _ string) error { target = url; return nil },
 		nil,
 	)
-	state, err := party.LaunchParty("map-one")
+	state, err := party.LaunchParty("map-one", "ayu-light", "#3b9ee5")
 	if err != nil || state.ID == "" || target == "" || !party.Active() {
 		t.Fatalf("launch = %#v, %q, %v", state, target, err)
 	}
@@ -44,7 +44,7 @@ func TestLocalPartyService(t *testing.T) {
 func TestPartyLifecycle(t *testing.T) {
 	party, err := newPartyServer(fstest.MapFS{
 		"index.html": {Data: []byte("party")},
-	}, "map-one", nil)
+	}, "map-one", "ayu-light", "#3b9ee5", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,11 @@ func TestPartyLifecycle(t *testing.T) {
 	if !guessing.AllLocked || !samePartyPoint(guessing.Players[0].Guess, &adaGuess) {
 		t.Fatal("all players should be locked")
 	}
-	guestJSON, _ := json.Marshal(partyState(t, party, ada))
+	guestState := partyState(t, party, ada)
+	if guestState.Theme != "ayu-light" || guestState.AccentColor != "#3b9ee5" {
+		t.Fatalf("guest appearance = %q, %q", guestState.Theme, guestState.AccentColor)
+	}
+	guestJSON, _ := json.Marshal(guestState)
 	if bytes.Contains(guestJSON, []byte("Ada")) || bytes.Contains(guestJSON, []byte("Bob")) ||
 		bytes.Contains(guestJSON, []byte(`"actual"`)) {
 		t.Fatalf("guessing state leaked private host data: %s", guestJSON)

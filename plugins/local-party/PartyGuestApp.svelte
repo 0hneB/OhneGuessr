@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte';
   import { formatDistance } from '../../frontend/src/game/scoring.js';
   import { GuessMap, createRevealMaps } from '../../frontend/src/maps/map.js';
+  import { applyAccentColor, normalizeLauncherTheme } from '../../frontend/src/settings/settings.js';
   import type { Point } from '../../frontend/src/types.js';
   import type { PartyGuestState } from './types.js';
   import './local-party.css';
@@ -22,6 +23,7 @@
   let resultRound = -2;
 
   const availableColors = $derived(party?.colors?.filter((item) => item.available) || []);
+  const theme = $derived(normalizeLauncherTheme(party?.theme));
   const remaining = $derived(party?.deadline
     ? Math.max(0, Math.ceil((party.deadline - now) / 1000))
     : 0);
@@ -46,6 +48,7 @@
   }
 
   async function applyState(next: PartyGuestState) {
+    applyAccentColor(next.accentColor);
     party = next;
     if (next.phase === 'lobby') {
       mapRound = -2;
@@ -149,7 +152,7 @@
   });
 </script>
 
-<main class="party-guest">
+<main class="party-guest launcher-shell" data-theme={theme}>
   {#if !party}
     <section class="party-guest-card party-guest-center">
       <div class="spinner"></div>
@@ -157,7 +160,6 @@
     </section>
   {:else if !party.joined}
     <form class="party-guest-card party-join-form" onsubmit={(event) => { event.preventDefault(); void joinParty(); }}>
-      <p class="party-eyebrow">Local Party</p>
       <h1>Join the game</h1>
       {#if party.message}
         <p class="party-error" role="alert">{party.message}</p>

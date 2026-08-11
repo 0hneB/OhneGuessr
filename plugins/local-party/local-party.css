@@ -53,15 +53,6 @@
   white-space: nowrap;
 }
 
-.party-round-status button {
-  padding: 7px 11px;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.08);
-  cursor: pointer;
-}
-
 .party-icon-button {
   display: inline-flex;
   align-items: center;
@@ -156,8 +147,19 @@
 .party-lobby .party-error { color: var(--launcher-error); }
 
 .party-round-status { right: 14px; padding-right: 6px; }
-.party-round-status button { height: 26px; padding-block: 3px; font-size: 11px; }
+.party-round-status button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
 .party-round-status button:disabled { opacity: 0.5; }
+.party-reveal-icon { --icon-url: url("./icon/reveal-now.svg"); width: 20px; height: 20px; }
 body.game-mode-host #nextBtn:disabled { opacity: 0.5; cursor: wait; }
 
 #resultPanel:has(.party-round-leaderboard) {
@@ -211,13 +213,13 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
 .game-mode-final-close .svg-icon { width: 16px; height: 16px; }
 
 /* Phone guest */
-.party-guest {
+.party-guest.launcher-shell {
   position: fixed;
   inset: 0;
+  display: block;
   min-height: 100dvh;
   overflow: hidden;
-  background: #0d0f12;
-  color: #f6f7f9;
+  background: var(--launcher-main);
 }
 
 .party-guest-card {
@@ -230,28 +232,29 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
   padding: 28px;
   overflow-y: auto;
   transform: translate(-50%, -50%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--launcher-border);
   border-radius: 18px;
-  background: #171a1f;
+  background: var(--launcher-surface);
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
 }
 .party-guest-card h1 { margin: 7px 0 9px; font-size: 27px; }
 .party-guest-center { display: grid; justify-items: center; gap: 8px; text-align: center; }
-.party-guest-center p { color: #aeb6c2; }
-.party-guest-center small { color: #858f9d; }
+.party-guest-center p,
+.party-guest-center small { color: var(--launcher-text-muted); }
+.party-guest .party-error { color: var(--launcher-error); }
 
 .party-join-form label { display: grid; gap: 7px; margin-top: 24px; }
 .party-join-form label span,
-.party-join-form legend { color: #b8c0cb; font-size: 13px; font-weight: 700; }
+.party-join-form legend { color: var(--launcher-control-text); font-size: 13px; font-weight: 700; }
 .party-join-form input {
   width: 100%;
   padding: 12px 13px;
-  color: #fff;
+  color: var(--launcher-text);
   font: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--launcher-field-border);
   border-radius: 9px;
   outline: none;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--launcher-field);
 }
 .party-join-form input:focus { border-color: var(--accent); }
 .party-join-form fieldset { margin: 18px 0; border: 0; }
@@ -269,11 +272,12 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
   background: var(--player-color);
   cursor: pointer;
 }
-.party-color-picker button.selected { border-color: #fff; outline-color: var(--player-color); }
+.party-color-picker button.selected { border-color: var(--launcher-text); outline-color: var(--player-color); }
 .party-color-picker button:disabled { opacity: 0.12; cursor: default; }
 .party-join-form .party-primary { width: 100%; }
 
 .party-wait-mark {
+  display: block;
   width: 52px;
   height: 52px;
   border: 3px solid rgba(var(--accent-rgb), 0.25);
@@ -299,13 +303,13 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
   padding: 8px 12px;
   transform: translateX(-50%);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.7);
+  background: color-mix(in srgb, var(--launcher-surface) 90%, transparent);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   font-size: 12px;
   white-space: nowrap;
 }
 .party-phone-round b { font-variant-numeric: tabular-nums; }
-.party-phone-round b.low { color: #fb7185; }
+.party-phone-round b.low { color: var(--launcher-error); }
 
 .party-phone-actions {
   position: fixed;
@@ -317,7 +321,7 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
   align-content: center;
   height: calc(94px + env(safe-area-inset-bottom));
   padding: 12px 16px calc(10px + env(safe-area-inset-bottom));
-  background: #0d0f12;
+  background: var(--launcher-main);
   pointer-events: auto;
   text-align: center;
 }
@@ -341,13 +345,13 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
   display: grid;
   place-content: center;
   gap: 4px;
-  background: rgba(5, 7, 9, 0.42);
+  background: color-mix(in srgb, var(--launcher-main) 72%, transparent);
   backdrop-filter: blur(2px);
   pointer-events: auto;
   text-align: center;
 }
 .party-map-lock b { font-size: 20px; }
-.party-map-lock span { color: #c0c7d0; font-size: 12px; }
+.party-map-lock span { color: var(--launcher-text-muted); font-size: 12px; }
 
 .party-phone-result-card {
   position: fixed;
@@ -360,15 +364,15 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
   align-content: center;
   height: calc(184px + env(safe-area-inset-bottom));
   padding: 20px 24px calc(20px + env(safe-area-inset-bottom));
-  background: #111419;
+  background: var(--launcher-main);
   pointer-events: auto;
 }
 .party-phone-result-card strong { color: var(--accent); font-size: 42px; line-height: 1; }
-.party-phone-result-card > span { align-self: end; margin: 0 0 4px 7px; color: #aeb6c2; }
+.party-phone-result-card > span { align-self: end; margin: 0 0 4px 7px; color: var(--launcher-text-muted); }
 .party-phone-result-card small,
 .party-phone-result-card p { grid-column: 1 / -1; }
 .party-phone-result-card small { margin-top: 10px; font-size: 15px; }
-.party-phone-result-card p { margin-top: 6px; color: #8993a0; font-size: 12px; }
+.party-phone-result-card p { margin-top: 6px; color: var(--launcher-text-muted); font-size: 12px; }
 
 .party-phone-final > strong { color: var(--accent); font-size: 72px; line-height: 1; }
 .party-phone-final h1 { margin-top: 0; }
@@ -381,12 +385,16 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
   padding: 8px 12px;
   transform: translateX(-50%);
   border-radius: 999px;
-  background: #262a31;
+  background: var(--launcher-elevated);
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
   font-size: 11px;
   white-space: nowrap;
 }
-.party-floating-error { bottom: calc(104px + env(safe-area-inset-bottom)); color: #fecdd3; background: #621b2a; }
+.party-floating-error {
+  bottom: calc(104px + env(safe-area-inset-bottom));
+  color: var(--launcher-error);
+  background: color-mix(in srgb, var(--launcher-error) 16%, var(--launcher-surface));
+}
 
 @media (max-width: 760px) {
   .party-lobby-card { grid-template-columns: 1fr; }
