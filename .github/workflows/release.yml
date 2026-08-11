@@ -44,15 +44,15 @@ jobs:
       APPIMAGE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-linux-x64.AppImage
       DEB_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-linux-x64.deb
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag }}
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.26.x'
           cache: false
@@ -175,7 +175,7 @@ jobs:
       PORTABLE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-windows-x64.exe
       SETUP_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-windows-x64-setup.exe
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag }}
       - name: Set Windows product version
@@ -188,12 +188,12 @@ jobs:
           [xml]$manifest = Get-Content build/windows/wails.exe.manifest -Raw
           $manifest.assembly.assemblyIdentity.SetAttribute('version', "$env:RELEASE_VERSION.0")
           $manifest.Save((Resolve-Path build/windows/wails.exe.manifest).Path)
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.26.x'
           cache: false
@@ -306,15 +306,15 @@ jobs:
       RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
       DMG_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-macos.dmg
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag }}
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.26.x'
           cache: false
