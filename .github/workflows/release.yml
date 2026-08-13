@@ -344,6 +344,7 @@ jobs:
           $manifest = [ordered]@{
             schemaVersion = 1
             version = $env:RELEASE_VERSION
+            notes = "[Check release notes on GitHub](https://github.com/0hneB/OhneGuessr/releases/tag/$env:RELEASE_TAG)"
             # Keep these fields until pre-Wails clients have crossed this release.
             setup = [ordered]@{
               url = "$base/$setupName"
