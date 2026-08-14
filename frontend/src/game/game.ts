@@ -28,6 +28,7 @@ import {
   resetLearnableMetaClues,
   selectLearnableMetaFinalRound,
   selectLearnableMetaMap,
+  setupLearnableMeta,
   showLearnableMetaResult,
   startLearnableMetaRound
 } from '../../../plugins/learnable-meta/index.js';
@@ -783,7 +784,7 @@ function applyLiveSettings(next: Settings, previous: Settings) {
   keybindings.rebuild();
 }
 
-async function loadRequestedGame() {
+async function loadRequestedGameData() {
   const mode = gameMode.current;
   const loaded = await mode?.load?.();
   let map: MapItem;
@@ -800,6 +801,14 @@ async function loadRequestedGame() {
     locations = normalizeLocations(await getLocations(map));
   }
 
+  return { mode, map, locations };
+}
+
+async function activateRequestedGame({
+  mode,
+  map,
+  locations
+}: Awaited<ReturnType<typeof loadRequestedGameData>>) {
   state.map = map;
   selectLearnableMetaMap(currentMapItem());
   setLoading(true, `Loading ${map.name}…`);
@@ -822,6 +831,12 @@ async function loadRequestedGame() {
   if (!await tryResume()) await startGame();
 }
 
+function showGameLoadError(error: unknown) {
+  state.phase = GAME_PHASE.ERROR;
+  const message = error instanceof Error ? error.message : String(error);
+  setLoading(true, `Could not load game: ${message}. Return to the launcher and choose another map or file.`);
+}
+
 async function refreshGameMode() {
   const mode = gameMode.current;
   if (!mode?.refresh) return;
@@ -833,10 +848,24 @@ async function refreshGameMode() {
 }
 
 export async function init() {
+  const startup = Promise.all([
+    loadRequestedGameData(),
+    loadOpenSV(),
+    setupLearnableMeta().catch((error) => {
+      console.warn('Learnable Meta plugin unavailable:', error);
+      return null;
+    })
+  ]);
   const compassCanvas = $<HTMLCanvasElement>('compass-hud');
   const classicCompass = $('classicCompass');
   compass = new CompassHUD(compassCanvas, $('classicCompassNeedle'), settings.compassStyle);
-  await loadOpenSV();
+  let requestedGame: Awaited<ReturnType<typeof loadRequestedGameData>>;
+  try {
+    [requestedGame] = await startup;
+  } catch (error) {
+    showGameLoadError(error);
+    return;
+  }
   viewer = new OpenSvViewer($('pano'));
   const faceNorth = () => {
     if (canInteractWithGuess()) viewer.faceNorth();
@@ -872,10 +901,8 @@ export async function init() {
   });
 
   try {
-    await loadRequestedGame();
-  } catch (err) {
-    state.phase = GAME_PHASE.ERROR;
-    const message = err instanceof Error ? err.message : String(err);
-    setLoading(true, `Could not load game: ${message}. Return to the launcher and choose another map or file.`);
+    await activateRequestedGame(requestedGame);
+  } catch (error) {
+    showGameLoadError(error);
   }
 }

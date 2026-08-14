@@ -16,14 +16,7 @@ async function setupMapSources() {
 }
 
 if (route.view === 'game' || challengeID) {
-  await import('./app.css');
-  await setupMapSources();
-  try {
-    const { setupLearnableMeta } = await import('../../plugins/learnable-meta/index.js');
-    await setupLearnableMeta();
-  } catch (error) {
-    console.warn('Learnable Meta plugin unavailable:', error);
-  }
+  await Promise.all([import('./app.css'), setupMapSources()]);
   const { setupChallengeGame } = await import('../../plugins/challenges/setup.js');
   const partyID = params.get('party')?.trim();
   setupChallengeGame(partyID ? '' : challengeID);
