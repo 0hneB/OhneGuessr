@@ -25,7 +25,6 @@ function createChallengeMode(id: string): GameMode {
     id: 'challenge',
     movement: 'moving',
     allowsGuess: true,
-    persist: true,
     fixedDeck: true,
     autoStart: true,
     startZoomedOut: false,

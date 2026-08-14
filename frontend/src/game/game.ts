@@ -9,7 +9,6 @@ import { GAME_PHASE, state, settings } from './state.svelte.js';
 import { RoundTimer } from './timer.js';
 import { Keybindings } from '../settings/keybindings.js';
 import { createGuessPanel } from '../maps/guess-panel.js';
-import { saveGame, loadGame } from './persistence.js';
 import {
   initSettingsSync,
   onSettingsChanged,
@@ -33,7 +32,6 @@ import {
 } from '../../../plugins/learnable-meta/index.js';
 import type {
   GamePhase,
-  GameSnapshot,
   GuessMapSize,
   Location,
   MapItem,
@@ -410,135 +408,6 @@ export function endModeGame() {
   gameMode.current?.close?.();
 }
 
-// Snapshot the game so a refresh restores its active or completed screen.
-function saveProgress({ resultTrail }: { resultTrail?: Trail } = {}) {
-  if (gameMode.current?.persist === false) return;
-  if (!state.map || !state.deck.length) return;
-  const snapshot: GameSnapshot = {
-    map: state.map.id,
-    deck: state.deck,
-    round: state.round,
-    total: state.total,
-    results: state.results,
-    unlimited: state.unlimited,
-    rounds: state.unlimited ? null : state.rounds,
-    phase: state.phase
-  };
-  if (sampledMap) {
-    snapshot.deckIndexes = deckIndexes.slice(0, state.deck.length);
-    snapshot.deckCycleStart = deckCycleStart;
-  }
-  // A settings change can rewrite a result snapshot after its panorama trail
-  // has been preloaded away, so retain the trail already saved for this round.
-  if (resultTrail === undefined && state.phase === GAME_PHASE.RESULT) {
-    const previous = loadGame<GameSnapshot>();
-    if (previous?.map === snapshot.map && previous.round === snapshot.round) {
-      resultTrail = previous.resultTrail;
-    }
-  }
-  if (resultTrail) snapshot.resultTrail = resultTrail;
-  saveGame(snapshot);
-}
-
-const isPoint = (point: unknown): point is Point => {
-  const value = point as Partial<Point> | null;
-  return Number.isFinite(value?.lat) && Number.isFinite(value?.lng);
-};
-
-const isSavedResult = (result: unknown): result is RoundResult => {
-  const value = result as Partial<RoundResult> | null;
-  return Boolean(value &&
-    isPoint(value.actual) &&
-    (!value.guess || isPoint(value.guess)) &&
-    (value.distKm == null || Number.isFinite(value.distKm)) &&
-    Number.isFinite(value.points));
-};
-
-function cleanSavedTrail(value: unknown): Trail | null {
-  if (!Array.isArray(value)) return null;
-  const trail = value
-    .filter(Array.isArray)
-    .map((segment) => segment
-      .filter(isPoint)
-      .map((point) => ({ lat: point.lat, lng: point.lng })))
-    .filter((segment) => segment.length);
-  return trail.length ? trail : null;
-}
-
-function restoreSampleTracking(snapshot: GameSnapshot) {
-  if (!sampledMap) return;
-  sampleGeneration++;
-  pendingSample = null;
-  fallbackLocations = [];
-  deckGrowth = null;
-  const saved = Array.isArray(snapshot.deckIndexes) ? snapshot.deckIndexes : [];
-  deckIndexes = state.deck.map((_, index) => {
-    const value = saved[index];
-    return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : -1;
-  });
-  const start = typeof snapshot.deckCycleStart === 'number' && Number.isInteger(snapshot.deckCycleStart)
-    ? snapshot.deckCycleStart
-    : 0;
-  deckCycleStart = Math.max(0, Math.min(state.deck.length, start));
-  sampledIndexes = new Set(
-    deckIndexes.slice(deckCycleStart).filter((index) => index >= 0)
-  );
-}
-
-// Restore a saved game for the loaded map and show its active or completed screen.
-// False means there is nothing valid to resume and the caller should start fresh.
-async function tryResume() {
-  cancelRoundPreload();
-  const snap = loadGame<GameSnapshot>();
-  if (!snap || snap.map !== state.map?.id) return false;
-  if (!Array.isArray(snap.deck) || !snap.deck.length) return false;
-  const unlimited = !!snap.unlimited;
-  const rounds = unlimited ? Infinity : (Number(snap.rounds) || 0);
-  const round = snap.round | 0;
-  if (round < 0) return false;
-  if (!unlimited && (round >= rounds || round >= snap.deck.length)) return false; // done / out of range
-
-  state.unlimited = unlimited;
-  state.deck = snap.deck;
-  state.rounds = rounds;
-  state.round = round;
-  state.total = Number(snap.total) || 0;
-  state.results = Array.isArray(snap.results)
-    ? snap.results.map((result) => isSavedResult(result) ? { ...result } : result)
-    : [];
-  restoreSampleTracking(snap);
-  state.results.forEach((result, index) => {
-    if (isSavedResult(result)) recordModeResult(index, result);
-  });
-  state.phase = GAME_PHASE.LOADING;
-  setHidden('final', true);
-
-  if (snap.phase === GAME_PHASE.FINAL) {
-    const validFinal = state.results.length === round + 1 &&
-      state.results.every(isSavedResult);
-    if (!validFinal) return false;
-    state.current = state.deck[round] || state.results.at(-1)!.actual;
-    showFinal();
-    return true;
-  }
-
-  const savedResult = snap.phase === GAME_PHASE.RESULT ? state.results[round] : null;
-  if (savedResult && isSavedResult(savedResult)) {
-    state.phase = GAME_PHASE.RESULT;
-    state.current = state.deck[round] || savedResult.actual;
-    guessPanel.setFullscreen(false);
-    guessPanel.setPinned(false);
-    roundTimer.stop();
-    showRoundResult(savedResult, cleanSavedTrail(snap.resultTrail));
-    return true;
-  }
-  if (snap.phase === GAME_PHASE.RESULT) return false;
-  if (snap.phase !== GAME_PHASE.LOADING && snap.phase !== GAME_PHASE.GUESSING) return false;
-
-  await loadRound();
-  return true;
-}
-
 // Apply a rounds-per-game change. Outside a game it restarts; mid-game it grows or
 // trims the upcoming deck in place, keeping the played and current rounds.
 async function applyRoundLimitChange() {
@@ -569,7 +438,6 @@ async function applyRoundLimitChange() {
     state.rounds = state.deck.length;
   }
 
-  saveProgress();
   // Result screen open: its available actions may have changed.
   if (state.phase === GAME_PHASE.RESULT) {
     updateResultActions();
@@ -586,7 +454,6 @@ async function loadRound(preparation: RoundPreparation | null = null) {
   ui.hasGuess = false;
   gmap.reset();
   gmap.resize();
-  saveProgress(); // commit the transition before panorama loading can be interrupted
 
   let prepared = preparation;
   if (!prepared || !preparationMatches(prepared, state.round)) prepared = prepareRound(state.round);
@@ -624,7 +491,6 @@ async function loadRound(preparation: RoundPreparation | null = null) {
     state.phase = GAME_PHASE.GUESSING;
   }
   setLoading(false);
-  saveProgress(); // persist the (resolved) round so a refresh resumes here
   roundTimer.start(); // start after load so loading time isn't counted
   startLearnableMetaRound(currentMapItem(), { ...state.current });
   if (completeImmediately) void completeModeRound();
@@ -760,7 +626,6 @@ async function finishRound() {
   };
   recordModeResult(state.round, result);
   state.results.push(result);
-  saveProgress({ resultTrail: trail });
   showRoundResult(result, trail);
 }
 
@@ -884,7 +749,6 @@ function showFinal() {
   roundTimer.stop();
   state.phase = GAME_PHASE.FINAL;
   ui.selectedFinalRound = gameMode.current?.initialFinalRound() ?? null;
-  saveProgress();
   setLoading(false);
   setHidden('resultScreen', true);
   setHidden('final', false);
@@ -964,14 +828,14 @@ async function activateRequestedGame({
     viewer.setMode(movementForGame());
     viewer.setStartZoomedOut(mode.startZoomedOut ?? settings.streetViewZoomedOut);
     if (mode.autoStart) {
-      if (!await tryResume()) await startGame();
+      await startGame();
       return;
     }
     state.phase = GAME_PHASE.EMPTY;
     setLoading(false);
     return;
   }
-  if (!await tryResume()) await startGame();
+  await startGame();
 }
 
 function showGameLoadError(error: unknown) {

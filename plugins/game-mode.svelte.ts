@@ -40,7 +40,6 @@ export interface GameMode {
   id: string;
   movement: MovementMode;
   allowsGuess: boolean;
-  persist: boolean;
   fixedDeck?: boolean;
   autoStart?: boolean;
   startZoomedOut?: boolean;

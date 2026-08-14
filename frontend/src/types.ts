@@ -79,20 +79,6 @@ export interface GameState {
 
 export type Trail = Point[][];
 
-export interface GameSnapshot {
-  map: string;
-  deck: Location[];
-  deckIndexes?: number[];
-  deckCycleStart?: number;
-  round: number;
-  total: number;
-  results: RoundResult[];
-  unlimited: boolean;
-  rounds: number | null;
-  phase: GamePhase;
-  resultTrail?: Trail;
-}
-
 export interface TileOptions {
   maxZoom: number;
   minZoom?: number;

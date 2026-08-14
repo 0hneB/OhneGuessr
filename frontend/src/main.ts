@@ -1,6 +1,8 @@
 import { mount } from 'svelte';
 import { parseRoute } from './route.js';
 
+try { localStorage.removeItem('ohneguessr.game'); } catch { /* storage unavailable */ }
+
 const route = parseRoute(location.search);
 const target = document.getElementById('app')!;
 const params = new URLSearchParams(location.search);

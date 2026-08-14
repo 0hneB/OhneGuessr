@@ -41,7 +41,6 @@ function createLocalPartyMode(id: string): GameMode {
     id: 'local-party',
     movement: 'nmpz',
     allowsGuess: false,
-    persist: false,
     restartLabel: 'Rematch',
     closeLabel: 'End party',
     components: {
