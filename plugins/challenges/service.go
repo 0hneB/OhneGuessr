@@ -47,15 +47,11 @@ func HandleSecondInstance(service *Service, data application.SecondInstanceData)
 			filename = filepath.Join(data.WorkingDir, filename)
 		}
 		if IsFile(filename) {
-			queueFile(service, filename)
+			QueueFile(service, filename)
 			return true
 		}
 	}
 	return false
-}
-
-func QueueFile(service *Service, filename string) {
-	queueFile(service, filename)
 }
 
 func (s *Service) LaunchChallenge(id, contents string) error {
@@ -136,7 +132,7 @@ func (s *Service) SaveChallenge(suggestedName, contents string) (bool, error) {
 	return true, nil
 }
 
-func queueFile(s *Service, filename string) {
+func QueueFile(s *Service, filename string) {
 	s.mu.Lock()
 	s.pending = filename
 	s.mu.Unlock()
