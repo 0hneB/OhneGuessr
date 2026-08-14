@@ -16,6 +16,8 @@ export interface PluginInfo {
     "apiVersion": number;
     "main": string;
     "experimental"?: boolean;
+    "settings"?: PluginSetting[] | null;
+    "configured"?: string[] | null;
     "enabled": boolean;
 }
 
@@ -28,10 +30,17 @@ export interface PluginManifest {
     "apiVersion": number;
     "main": string;
     "experimental"?: boolean;
+    "settings"?: PluginSetting[] | null;
     "sha256"?: string;
 }
 
 export interface PluginModule {
     "manifest": PluginManifest;
     "source": string;
+}
+
+export interface PluginSetting {
+    "key": string;
+    "label": string;
+    "type": string;
 }

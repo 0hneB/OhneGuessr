@@ -15,6 +15,7 @@ func testPluginManifest() PluginManifest {
 		ID: "example", Name: "Example", Description: "Example plugin.",
 		Icon: "M1 1L2 2", Version: "1.0.0", APIVersion: 1,
 		Main: "index.js", Experimental: true,
+		Settings: []PluginSetting{{Key: "apiKey", Label: "API key", Type: "password"}},
 	}
 }
 
@@ -60,6 +61,20 @@ func TestPluginServiceInstallLifecycle(t *testing.T) {
 	if err != nil || len(modules) != 1 || modules[0].Source != source {
 		t.Fatalf("modules = %#v, err = %v", modules, err)
 	}
+	saved, err := service.SetSetting("example", "apiKey", " secret ")
+	if err != nil || len(saved.Configured) != 1 || saved.Configured[0] != "apiKey" {
+		t.Fatalf("saved setting = %#v, err = %v", saved, err)
+	}
+	if secret, err := service.Setting("example", "apiKey"); err != nil || secret != "secret" {
+		t.Fatalf("setting = %q, err = %v", secret, err)
+	}
+	encoded, err := json.Marshal(saved)
+	if err != nil || strings.Contains(string(encoded), "secret") {
+		t.Fatalf("plugin info exposed secret: %s, err = %v", encoded, err)
+	}
+	if _, err := service.SetSetting("example", "unknown", "secret"); err == nil {
+		t.Fatal("undeclared setting was accepted")
+	}
 
 	if _, err := service.SetEnabled("example", false); err != nil {
 		t.Fatal(err)
@@ -70,8 +85,11 @@ func TestPluginServiceInstallLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Enabled || updated.Version != "1.1.0" {
+	if updated.Enabled || updated.Version != "1.1.0" || len(updated.Configured) != 1 {
 		t.Fatalf("updated = %#v", updated)
+	}
+	if secret, err := service.Setting("example", "apiKey"); err != nil || secret != "secret" {
+		t.Fatalf("setting after update = %q, err = %v", secret, err)
 	}
 	modules, err = service.EnabledModules()
 	if err != nil || len(modules) != 0 {
@@ -91,6 +109,13 @@ func TestPluginServiceInstallLifecycle(t *testing.T) {
 	plugins, err := service.Installed()
 	if err != nil || len(plugins) != 0 {
 		t.Fatalf("installed after uninstall = %#v, err = %v", plugins, err)
+	}
+	if _, err := service.Setting("example", "apiKey"); err == nil {
+		t.Fatal("setting remained readable after uninstall")
+	}
+	state, err := os.ReadFile(service.statePath())
+	if err != nil || strings.Contains(string(state), "secret") {
+		t.Fatalf("uninstall left the secret in plugin state: %s, err = %v", state, err)
 	}
 }
 
@@ -127,5 +152,10 @@ func TestPluginValidationRejectsUnsafePaths(t *testing.T) {
 	manifest.Main = "../index.js"
 	if validatePluginManifest(manifest, manifest.ID, false) == nil {
 		t.Fatal("unsafe main path was accepted")
+	}
+	manifest = testPluginManifest()
+	manifest.Settings[0].Type = "text"
+	if validatePluginManifest(manifest, manifest.ID, false) == nil {
+		t.Fatal("unsupported setting type was accepted")
 	}
 }

@@ -1,4 +1,8 @@
-import type { PluginInfo, PluginManifest } from '../../bindings/github.com/0hneB/OhneGuessr/index.js';
+import type {
+  PluginInfo,
+  PluginManifest,
+  PluginSetting
+} from '../../bindings/github.com/0hneB/OhneGuessr/index.js';
 
 export interface PluginCardEntry {
   id: string;
@@ -12,6 +16,8 @@ export interface PluginCardEntry {
   enabled: boolean;
   updatable: boolean;
   available: boolean;
+  settings: PluginSetting[];
+  configured: string[];
 }
 
 export function mergePluginEntries(
@@ -36,7 +42,9 @@ export function mergePluginEntries(
       installed: Boolean(current),
       enabled: Boolean(current?.enabled),
       updatable: Boolean(current && latest && current.version !== latest.version),
-      available: Boolean(latest)
+      available: Boolean(latest),
+      settings: current?.settings || latest?.settings || [],
+      configured: current?.configured || []
     };
   }).sort((left, right) => left.name.localeCompare(right.name));
 }

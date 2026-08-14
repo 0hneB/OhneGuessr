@@ -21,6 +21,7 @@
   let busy = $state('');
   let catalog = $state<PluginManifest[]>([]);
   let installed = $state<PluginInfo[]>([]);
+  let settingValues = $state<Record<string, string>>({});
   const additional = $derived(mergePluginEntries(catalog, installed));
 
   const errorText = (value: unknown) => value instanceof Error ? value.message : String(value);
@@ -51,10 +52,21 @@
     try {
       await action();
       await refreshInstalled();
+      return true;
     } catch (next) {
       error = errorText(next);
+      return false;
     } finally {
       busy = '';
+    }
+  }
+
+  async function saveSetting(pluginID: string, settingKey: string) {
+    const field = `${pluginID}:${settingKey}`;
+    const value = settingValues[field]?.trim();
+    if (!value) return;
+    if (await run(pluginID, () => PluginService.SetSetting(pluginID, settingKey, value))) {
+      settingValues[field] = '';
     }
   }
 
@@ -118,6 +130,30 @@
                 </button>
               {/if}
             </span>
+            {#if plugin.installed && plugin.settings.length}
+              <div class="plugin-settings">
+                {#each plugin.settings as setting (setting.key)}
+                  {@const field = `${plugin.id}:${setting.key}`}
+                  {@const configured = plugin.configured.includes(setting.key)}
+                  <div class="plugin-setting">
+                    <label for={field}>{setting.label}</label>
+                    <div class="plugin-setting-controls">
+                      <input id={field} type="password" autocomplete="off" spellcheck="false"
+                             placeholder={configured ? 'API key saved' : 'Enter API key'}
+                             value={settingValues[field] || ''}
+                             oninput={(event) => { settingValues[field] = event.currentTarget.value; }} />
+                      <button type="button" disabled={Boolean(busy) || !settingValues[field]?.trim()}
+                              onclick={() => saveSetting(plugin.id, setting.key)}>Save</button>
+                      {#if configured}
+                        <button type="button" class="plugin-remove" disabled={Boolean(busy)}
+                                onclick={() => run(plugin.id, () =>
+                                  PluginService.SetSetting(plugin.id, setting.key, ''))}>Forget</button>
+                      {/if}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </article>
         {/each}
       {/if}

@@ -14,5 +14,6 @@ export type {
     GameWindowState,
     PluginInfo,
     PluginManifest,
-    PluginModule
+    PluginModule,
+    PluginSetting
 } from "./models.js";

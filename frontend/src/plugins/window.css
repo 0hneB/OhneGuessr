@@ -1,0 +1,34 @@
+.plugin-window {
+  --settings-bg: #181818;
+  position: fixed;
+  z-index: 840;
+  display: flex;
+  min-width: 280px;
+  min-height: 220px;
+  overflow: hidden;
+  resize: both;
+  color: #eef1f6;
+  background: var(--settings-bg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  flex-direction: column;
+}
+.plugin-window-header {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 5px 3px 10px;
+  background: var(--settings-bg);
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}
+.plugin-window-header::after { position: absolute; right: 12px; bottom: 0; left: 12px; height: 1px; background: rgba(255, 255, 255, 0.1); content: ''; }
+.plugin-window-header h2 { margin: 0; font-size: 18px; letter-spacing: 0.01em; }
+.plugin-window-header-actions { display: flex; align-items: center; gap: 2px; }
+.plugin-window-action { width: 26px; height: 26px; }
+.plugin-window-action .close-icon { width: 19px; height: 19px; }
+.plugin-window-content { flex: 1; min-height: 0; padding: 6px 12px 10px; overflow: auto; background: var(--settings-bg); font-size: 16px; line-height: 1.5; }

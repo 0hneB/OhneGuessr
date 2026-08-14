@@ -29,6 +29,14 @@ export function SetEnabled(id: string, enabled: boolean): $CancellablePromise<$m
     return $Call.ByID(1774562395, id, enabled);
 }
 
+export function SetSetting(id: string, key: string, value: string): $CancellablePromise<$models.PluginInfo> {
+    return $Call.ByID(51032698, id, key, value);
+}
+
+export function Setting(id: string, key: string): $CancellablePromise<string> {
+    return $Call.ByID(3154142674, id, key);
+}
+
 export function Uninstall(id: string): $CancellablePromise<void> {
     return $Call.ByID(1118432000, id);
 }

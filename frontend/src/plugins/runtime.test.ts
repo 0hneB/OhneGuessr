@@ -18,12 +18,24 @@ describe('external plugin runtime', () => {
       position: { lat: 1, lng: 2 }, heading: 3, pitch: 4, zoom: 1, width: 800, height: 600
     };
     const removeLayer = vi.fn();
+    const removeWindow = vi.fn();
     const layer = { remove: removeLayer } as unknown as HTMLElement;
+    const createWindow = vi.fn().mockReturnValue({
+      content: {} as HTMLDivElement,
+      show: vi.fn(),
+      hide: vi.fn(),
+      resetLayout: vi.fn(),
+      remove: removeWindow
+    });
     const stop = vi.fn();
     const host: PanoramaPluginHost = {
       getView: () => view,
+      captureViewport: vi.fn().mockResolvedValue({
+        blob: new Blob(), panoId: 'pano', width: 800, height: 600
+      }),
       onViewChange(listener) { listener(view); return stop; },
-      createLayer: () => layer
+      createLayer: () => layer,
+      createWindow
     };
     const cleanup = vi.fn();
     const click = vi.fn();
@@ -34,9 +46,11 @@ describe('external plugin runtime', () => {
     });
     registerPlugin({
       activate(api) {
+        void api.panorama.captureViewport();
         api.panorama.createLayer();
         api.panorama.onViewChange(() => {});
         api.hud.addButton({ label: 'Test action', pressed: true, onClick: click });
+        api.ui.createWindow({ title: 'Test window' });
         return cleanup;
       }
     });
@@ -45,6 +59,10 @@ describe('external plugin runtime', () => {
 
     expect(pluginHudButtons).toHaveLength(1);
     expect(pluginHudButtons[0].pressed).toBe(true);
+    expect(createWindow).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Test window',
+      layoutKey: 'ohneguessr.plugin.runtime-test.window.layout'
+    }));
     pluginHudButtons[0].onClick();
     expect(click).toHaveBeenCalledOnce();
 
@@ -52,6 +70,7 @@ describe('external plugin runtime', () => {
     expect(cleanup).toHaveBeenCalledOnce();
     expect(stop).toHaveBeenCalledOnce();
     expect(removeLayer).toHaveBeenCalledOnce();
+    expect(removeWindow).toHaveBeenCalledOnce();
     expect(pluginHudButtons).toHaveLength(0);
   });
 });

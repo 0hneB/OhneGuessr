@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -28,28 +30,37 @@ const (
 	maxPluginSource     = 2 << 20
 )
 
+type PluginSetting struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Type  string `json:"type"`
+}
+
 type PluginManifest struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Description  string `json:"description"`
-	Icon         string `json:"icon"`
-	Version      string `json:"version"`
-	APIVersion   int    `json:"apiVersion"`
-	Main         string `json:"main"`
-	Experimental bool   `json:"experimental,omitempty"`
-	SHA256       string `json:"sha256,omitempty"`
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description"`
+	Icon         string          `json:"icon"`
+	Version      string          `json:"version"`
+	APIVersion   int             `json:"apiVersion"`
+	Main         string          `json:"main"`
+	Experimental bool            `json:"experimental,omitempty"`
+	Settings     []PluginSetting `json:"settings,omitempty"`
+	SHA256       string          `json:"sha256,omitempty"`
 }
 
 type PluginInfo struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Description  string `json:"description"`
-	Icon         string `json:"icon"`
-	Version      string `json:"version"`
-	APIVersion   int    `json:"apiVersion"`
-	Main         string `json:"main"`
-	Experimental bool   `json:"experimental,omitempty"`
-	Enabled      bool   `json:"enabled"`
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description"`
+	Icon         string          `json:"icon"`
+	Version      string          `json:"version"`
+	APIVersion   int             `json:"apiVersion"`
+	Main         string          `json:"main"`
+	Experimental bool            `json:"experimental,omitempty"`
+	Settings     []PluginSetting `json:"settings,omitempty"`
+	Configured   []string        `json:"configured,omitempty"`
+	Enabled      bool            `json:"enabled"`
 }
 
 type PluginModule struct {
@@ -58,8 +69,9 @@ type PluginModule struct {
 }
 
 type pluginState struct {
-	Version int      `json:"version"`
-	Enabled []string `json:"enabled"`
+	Version  int                          `json:"version"`
+	Enabled  []string                     `json:"enabled"`
+	Settings map[string]map[string]string `json:"settings,omitempty"`
 }
 
 type PluginService struct {
@@ -150,12 +162,12 @@ func (s *PluginService) Install(id string) (PluginInfo, error) {
 		return PluginInfo{}, err
 	}
 	if !wasInstalled {
-		state[id] = true
+		setPluginEnabled(&state, id, true)
 	}
 	if err := s.saveStateLocked(state); err != nil {
 		return PluginInfo{}, err
 	}
-	return pluginInfo(manifest, state[id]), nil
+	return pluginInfo(manifest, pluginEnabled(state, id), configuredPluginSettings(manifest, state.Settings[id])), nil
 }
 
 func (s *PluginService) SetEnabled(id string, enabled bool) (PluginInfo, error) {
@@ -176,15 +188,86 @@ func (s *PluginService) SetEnabled(id string, enabled bool) (PluginInfo, error) 
 	if err != nil {
 		return PluginInfo{}, err
 	}
-	if enabled {
-		state[id] = true
+	setPluginEnabled(&state, id, enabled)
+	if err := s.saveStateLocked(state); err != nil {
+		return PluginInfo{}, err
+	}
+	return pluginInfo(manifest, enabled, configuredPluginSettings(manifest, state.Settings[id])), nil
+}
+
+func (s *PluginService) SetSetting(id, key, value string) (PluginInfo, error) {
+	if err := validatePluginID(id); err != nil {
+		return PluginInfo{}, err
+	}
+	if err := validatePluginSettingKey(key); err != nil {
+		return PluginInfo{}, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	manifest, err := s.readInstalledManifest(filepath.Join(s.pluginsDir(), id), id)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return PluginInfo{}, errors.New("plugin is not installed")
+		}
+		return PluginInfo{}, err
+	}
+	if !pluginDeclaresSetting(manifest, key) {
+		return PluginInfo{}, errors.New("plugin setting is not declared")
+	}
+	value = strings.TrimSpace(value)
+	if len(value) > 4096 {
+		return PluginInfo{}, errors.New("plugin setting is too long")
+	}
+	state, err := s.loadStateLocked()
+	if err != nil {
+		return PluginInfo{}, err
+	}
+	if value == "" {
+		delete(state.Settings[id], key)
+		if len(state.Settings[id]) == 0 {
+			delete(state.Settings, id)
+		}
 	} else {
-		delete(state, id)
+		if state.Settings == nil {
+			state.Settings = make(map[string]map[string]string)
+		}
+		if state.Settings[id] == nil {
+			state.Settings[id] = make(map[string]string)
+		}
+		state.Settings[id][key] = value
 	}
 	if err := s.saveStateLocked(state); err != nil {
 		return PluginInfo{}, err
 	}
-	return pluginInfo(manifest, enabled), nil
+	return pluginInfo(manifest, pluginEnabled(state, id), configuredPluginSettings(manifest, state.Settings[id])), nil
+}
+
+func (s *PluginService) Setting(id, key string) (string, error) {
+	if err := validatePluginID(id); err != nil {
+		return "", err
+	}
+	if err := validatePluginSettingKey(key); err != nil {
+		return "", err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	manifest, err := s.readInstalledManifest(filepath.Join(s.pluginsDir(), id), id)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", errors.New("plugin is not installed")
+		}
+		return "", err
+	}
+	if !pluginDeclaresSetting(manifest, key) {
+		return "", errors.New("plugin setting is not declared")
+	}
+	state, err := s.loadStateLocked()
+	if err != nil {
+		return "", err
+	}
+	return state.Settings[id][key], nil
 }
 
 func (s *PluginService) Uninstall(id string) error {
@@ -209,7 +292,8 @@ func (s *PluginService) Uninstall(id string) error {
 	if err != nil {
 		return err
 	}
-	delete(state, id)
+	setPluginEnabled(&state, id, false)
+	delete(state.Settings, id)
 	return s.saveStateLocked(state)
 }
 
@@ -227,7 +311,7 @@ func (s *PluginService) EnabledModules() ([]PluginModule, error) {
 	}
 	modules := make([]PluginModule, 0, len(installed))
 	for _, manifest := range installed {
-		if !state[manifest.ID] {
+		if !pluginEnabled(state, manifest.ID) {
 			continue
 		}
 		source, err := readFileLimited(
@@ -296,7 +380,11 @@ func (s *PluginService) installedLocked() ([]PluginInfo, error) {
 	}
 	result := make([]PluginInfo, 0, len(manifests))
 	for _, manifest := range manifests {
-		result = append(result, pluginInfo(manifest, state[manifest.ID]))
+		result = append(result, pluginInfo(
+			manifest,
+			pluginEnabled(state, manifest.ID),
+			configuredPluginSettings(manifest, state.Settings[manifest.ID]),
+		))
 	}
 	return result, nil
 }
@@ -382,17 +470,17 @@ func (s *PluginService) stagePluginLocked(target string, manifest PluginManifest
 	return nil
 }
 
-func (s *PluginService) loadStateLocked() (map[string]bool, error) {
+func (s *PluginService) loadStateLocked() (pluginState, error) {
 	contents, err := os.ReadFile(s.statePath())
 	if os.IsNotExist(err) {
-		return map[string]bool{}, nil
+		return pluginState{Version: 1, Enabled: []string{}}, nil
 	}
 	if err != nil {
-		return nil, err
+		return pluginState{}, err
 	}
 	var stored pluginState
 	if err := json.Unmarshal(contents, &stored); err != nil || stored.Version != 1 {
-		return nil, errors.New("plugin state is invalid")
+		return pluginState{}, errors.New("plugin state is invalid")
 	}
 	enabled := make(map[string]bool, len(stored.Enabled))
 	for _, id := range stored.Enabled {
@@ -400,18 +488,37 @@ func (s *PluginService) loadStateLocked() (map[string]bool, error) {
 			enabled[id] = true
 		}
 	}
-	return enabled, nil
-}
-
-func (s *PluginService) saveStateLocked(enabled map[string]bool) error {
-	ids := make([]string, 0, len(enabled))
-	for id, value := range enabled {
-		if value {
-			ids = append(ids, id)
+	stored.Enabled = stored.Enabled[:0]
+	for id := range enabled {
+		stored.Enabled = append(stored.Enabled, id)
+	}
+	sort.Strings(stored.Enabled)
+	settings := make(map[string]map[string]string)
+	for id, values := range stored.Settings {
+		if validatePluginID(id) != nil {
+			continue
+		}
+		for key, value := range values {
+			if validatePluginSettingKey(key) != nil || value == "" || len(value) > 4096 {
+				continue
+			}
+			if settings[id] == nil {
+				settings[id] = make(map[string]string)
+			}
+			settings[id][key] = value
 		}
 	}
-	sort.Strings(ids)
-	return mapfile.WriteJSON(s.statePath(), pluginState{Version: 1, Enabled: ids}, 0o600)
+	if len(settings) == 0 {
+		settings = nil
+	}
+	stored.Settings = settings
+	return stored, nil
+}
+
+func (s *PluginService) saveStateLocked(state pluginState) error {
+	state.Version = 1
+	sort.Strings(state.Enabled)
+	return mapfile.WriteJSON(s.statePath(), state, 0o600)
 }
 
 func (s *PluginService) pluginsDir() string { return filepath.Join(s.dataDir, "plugins") }
@@ -427,6 +534,23 @@ func validatePluginID(id string) error {
 		}
 	}
 	return nil
+}
+
+func validatePluginSettingKey(key string) error {
+	if len(key) == 0 || len(key) > 64 || !asciiLetter(key[0]) {
+		return errors.New("invalid plugin setting key")
+	}
+	for index := 1; index < len(key); index++ {
+		char := key[index]
+		if !asciiLetter(char) && (char < '0' || char > '9') && char != '-' && char != '_' {
+			return errors.New("invalid plugin setting key")
+		}
+	}
+	return nil
+}
+
+func asciiLetter(char byte) bool {
+	return char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z'
 }
 
 func validatePluginManifest(manifest PluginManifest, expectedID string, requireHash bool) error {
@@ -448,6 +572,19 @@ func validatePluginManifest(manifest PluginManifest, expectedID string, requireH
 	if manifest.Main != "index.js" {
 		return errors.New("plugin entry point must be index.js")
 	}
+	if len(manifest.Settings) > 16 {
+		return errors.New("plugin manifest has too many settings")
+	}
+	seenSettings := make(map[string]bool, len(manifest.Settings))
+	for _, setting := range manifest.Settings {
+		if validatePluginSettingKey(setting.Key) != nil || seenSettings[setting.Key] {
+			return errors.New("plugin manifest has an invalid setting key")
+		}
+		if label := strings.TrimSpace(setting.Label); label == "" || len(label) > 80 || setting.Type != "password" {
+			return errors.New("plugin manifest has an invalid setting")
+		}
+		seenSettings[setting.Key] = true
+	}
 	if requireHash && !validPluginChecksum(manifest.SHA256) {
 		return errors.New("plugin manifest has an invalid checksum")
 	}
@@ -457,7 +594,7 @@ func validatePluginManifest(manifest PluginManifest, expectedID string, requireH
 func samePluginManifest(left, right PluginManifest) bool {
 	left.SHA256 = ""
 	right.SHA256 = ""
-	return left == right
+	return reflect.DeepEqual(left, right)
 }
 
 func pluginChecksum(contents []byte) string {
@@ -473,11 +610,39 @@ func validPluginChecksum(value string) bool {
 	return err == nil
 }
 
-func pluginInfo(manifest PluginManifest, enabled bool) PluginInfo {
+func pluginEnabled(state pluginState, id string) bool {
+	return slices.Contains(state.Enabled, id)
+}
+
+func setPluginEnabled(state *pluginState, id string, enabled bool) {
+	index := slices.Index(state.Enabled, id)
+	if enabled && index < 0 {
+		state.Enabled = append(state.Enabled, id)
+	} else if !enabled && index >= 0 {
+		state.Enabled = slices.Delete(state.Enabled, index, index+1)
+	}
+}
+
+func pluginDeclaresSetting(manifest PluginManifest, key string) bool {
+	return slices.ContainsFunc(manifest.Settings, func(setting PluginSetting) bool { return setting.Key == key })
+}
+
+func configuredPluginSettings(manifest PluginManifest, values map[string]string) []string {
+	configured := make([]string, 0, len(manifest.Settings))
+	for _, setting := range manifest.Settings {
+		if values[setting.Key] != "" {
+			configured = append(configured, setting.Key)
+		}
+	}
+	return configured
+}
+
+func pluginInfo(manifest PluginManifest, enabled bool, configured []string) PluginInfo {
 	return PluginInfo{
 		ID: manifest.ID, Name: manifest.Name, Description: manifest.Description,
 		Icon: manifest.Icon, Version: manifest.Version, APIVersion: manifest.APIVersion,
-		Main: manifest.Main, Experimental: manifest.Experimental, Enabled: enabled,
+		Main: manifest.Main, Experimental: manifest.Experimental, Settings: manifest.Settings,
+		Configured: configured, Enabled: enabled,
 	}
 }
 

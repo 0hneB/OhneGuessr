@@ -4,6 +4,8 @@ import {
   type PluginModule
 } from '../../bindings/github.com/0hneB/OhneGuessr/index.js';
 import { desktopRuntimeAvailable } from '../desktop.js';
+import type { PanoramaCapture } from '../game/panorama-capture.js';
+import type { PluginWindowHandle, PluginWindowOptions } from './window.js';
 
 export interface PanoramaView {
   position: { lat: number; lng: number };
@@ -16,20 +18,23 @@ export interface PanoramaView {
 
 export interface PanoramaPluginHost {
   getView(): PanoramaView | null;
+  captureViewport(): Promise<PanoramaCapture>;
   onViewChange(listener: (view: PanoramaView) => void): () => void;
   createLayer(): HTMLElement;
+  createWindow(options: PluginWindowOptions): PluginWindowHandle;
 }
 
 interface PluginButtonOptions {
   icon?: string;
   label: string;
   pressed?: boolean;
-  onClick(): void;
+  onClick(): void | Promise<void>;
 }
 
 interface PluginAPI {
   panorama: {
     getView(): PanoramaView | null;
+    captureViewport(): Promise<PanoramaCapture>;
     onViewChange(listener: (view: PanoramaView) => void): () => void;
     createLayer(): HTMLElement;
   };
@@ -38,6 +43,12 @@ interface PluginAPI {
       setPressed(pressed: boolean): void;
       remove(): void;
     };
+  };
+  ui: {
+    createWindow(options: Omit<PluginWindowOptions, 'layoutKey'>): PluginWindowHandle;
+  };
+  settings: {
+    get(key: string): Promise<string>;
   };
 }
 
@@ -157,6 +168,7 @@ function createPluginAPI(
   return {
     panorama: {
       getView: () => host.getView(),
+      captureViewport: () => host.captureViewport(),
       onViewChange(listener) {
         const stop = host.onViewChange((view) => {
           try { listener(view); }
@@ -183,7 +195,11 @@ function createPluginAPI(
           label: options.label,
           pressed: options.pressed ?? false,
           onClick() {
-            try { options.onClick(); }
+            try {
+              void Promise.resolve(options.onClick()).catch((error) => {
+                console.error(`[plugin] HUD action failed for "${manifest.id}":`, error);
+              });
+            }
             catch (error) { console.error(`[plugin] HUD action failed for "${manifest.id}":`, error); }
           }
         });
@@ -198,6 +214,30 @@ function createPluginAPI(
           remove
         };
       }
+    },
+    ui: {
+      createWindow(options) {
+        const title = typeof options?.title === 'string' ? options.title.trim() : '';
+        if (!title) throw new Error('plugin windows require a title');
+        if (options.link && (!options.link.href || !options.link.label)) {
+          throw new Error('plugin window links require an address and label');
+        }
+        const onClose = options.onClose;
+        const handle = host.createWindow({
+          ...options,
+          title,
+          layoutKey: `ohneguessr.plugin.${manifest.id}.window.layout`,
+          onClose: onClose ? () => {
+            try { onClose(); }
+            catch (error) { console.error(`[plugin] window callback failed for "${manifest.id}":`, error); }
+          } : undefined
+        });
+        disposables.push(() => handle.remove());
+        return handle;
+      }
+    },
+    settings: {
+      get: (key) => PluginService.Setting(manifest.id, key)
     }
   };
 }

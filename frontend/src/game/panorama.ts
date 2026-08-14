@@ -6,7 +6,12 @@
 
 import { publicAsset } from '../config.js';
 import type { PanoramaView } from '../plugins/runtime.svelte.js';
+import {
+  createPluginWindow,
+  type PluginWindowOptions
+} from '../plugins/window.js';
 import type { Location, MovementMode, Point, Trail } from '../types.js';
+import { capturePanoViewport } from './panorama-capture.js';
 
 const OPENSV_SRC = publicAsset('vendor/opensv/opensv.js');
 const DEFAULT_ZOOM = 1;
@@ -83,6 +88,7 @@ interface LookBehindView {
 
 export class OpenSvViewer {
   public onChange: ((heading: number) => void) | null = null;
+  private readonly _host: HTMLDivElement;
   private readonly _lock: HTMLDivElement;
   private readonly _pluginRoot: HTMLDivElement;
   private readonly _viewListeners = new Set<(view: PanoramaView) => void>();
@@ -114,6 +120,7 @@ export class OpenSvViewer {
     host.style.width = '100%';
     host.style.height = '100%';
     container.appendChild(host);
+    this._host = host;
     // Transparent overlay to block drag-look in NMPZ (Street View has no pan-disable
     // option). pointer-events toggles per mode; the HUD/guess map sit above it.
     const lock = document.createElement('div');
@@ -222,6 +229,11 @@ export class OpenSvViewer {
     };
   }
 
+  captureViewport() {
+    const bounds = this._pluginRoot.getBoundingClientRect();
+    return capturePanoViewport(this.pano, this._host, bounds.width, bounds.height);
+  }
+
   onViewChange(listener: (view: PanoramaView) => void) {
     this._viewListeners.add(listener);
     const view = this.getView();
@@ -234,6 +246,10 @@ export class OpenSvViewer {
     Object.assign(layer.style, { position: 'absolute', inset: '0', pointerEvents: 'none' });
     this._pluginRoot.appendChild(layer);
     return layer;
+  }
+
+  createWindow(options: PluginWindowOptions) {
+    return createPluginWindow(options);
   }
 
   // Separate walked paths; a checkpoint return starts a fresh segment.

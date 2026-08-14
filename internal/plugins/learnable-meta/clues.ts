@@ -1,13 +1,12 @@
 import { ApiError, getClue, type LearnableMetaClue } from './api.js';
 import { safeImageUrls, sanitizeHtml } from './sanitizer.js';
+import {
+  createPluginWindow,
+  type PluginWindowHandle
+} from '../../../frontend/src/plugins/window.js';
 import type { Location, MapItem } from '../../../frontend/src/types.js';
 
 const LAYOUT_KEY = 'ohneguessr.learnableMeta.clue.layout';
-const DEFAULT_WIDTH = 450;
-const DEFAULT_HEIGHT = 550;
-const MIN_WIDTH = 280;
-const MIN_HEIGHT = 220;
-const DEFAULT_INSET = 12;
 const IMAGE_LENS_SIZE = 150;
 const IMAGE_LENS_SCALE = 2;
 const errorMessage = (error: unknown, fallback: string) =>
@@ -23,13 +22,6 @@ interface ClueView {
   context: 'result' | 'final';
 }
 
-interface ClueLayout {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-}
-
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className = '',
@@ -41,35 +33,29 @@ function element<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function iconControl(tag: 'a', iconClass: string, label: string): HTMLAnchorElement;
-function iconControl(tag: 'button', iconClass: string, label: string): HTMLButtonElement;
-function iconControl(tag: 'a' | 'button', iconClass: string, label: string) {
-  const control = element(tag, 'icon-action lm-clue-action');
-  if (tag === 'button') control.type = 'button';
-  control.title = label;
-  control.setAttribute('aria-label', label);
-  const icon = element('span', `svg-icon ${iconClass}`);
-  icon.setAttribute('aria-hidden', 'true');
-  control.append(icon);
-  return control;
-}
-
 export class LearnableMetaClues {
   private enabled = false;
   private readonly cache = new Map<string, Promise<LearnableMetaClue | null>>();
   private requestToken = 0;
   private viewKey: string | null = null;
   private closedViewKey: string | null = null;
-  private drag: { x: number; y: number } | null = null;
-  private readonly root: HTMLElementTagNameMap['aside'];
-  private header!: HTMLDivElement;
-  private content!: HTMLDivElement;
+  private readonly window: PluginWindowHandle;
+  private readonly content: HTMLDivElement;
 
   constructor() {
-    this.root = this._createWindow();
-    document.body.appendChild(this.root);
-    this._restoreLayout();
-    this._bindLayout();
+    this.window = createPluginWindow({
+      title: 'Learnable Meta',
+      ariaLabel: 'Learnable Meta clue',
+      layoutKey: LAYOUT_KEY,
+      link: { href: 'https://learnablemeta.com/', label: 'Open Learnable Meta' },
+      resetLabel: 'Reset clue window',
+      closeLabel: 'Hide this clue',
+      onClose: () => {
+        this.closedViewKey = this.viewKey;
+        this.requestToken += 1;
+      }
+    });
+    this.content = this.window.content;
   }
 
   setEnabled(enabled: boolean) {
@@ -79,7 +65,7 @@ export class LearnableMetaClues {
 
   hide({ resetClose = false }: { resetClose?: boolean } = {}) {
     this.requestToken += 1;
-    this.root.classList.add('hidden');
+    this.window.hide();
     if (resetClose) {
       this.viewKey = null;
       this.closedViewKey = null;
@@ -87,8 +73,7 @@ export class LearnableMetaClues {
   }
 
   resetLayout() {
-    this._applyLayout(this._defaultLayout());
-    this._persistLayout();
+    this.window.resetLayout();
   }
 
   preload({ map, location }: Pick<ClueView, 'map' | 'location'>) {
@@ -109,8 +94,7 @@ export class LearnableMetaClues {
     this.viewKey = nextViewKey;
     if (this.closedViewKey === nextViewKey) return;
 
-    this.root.classList.remove('hidden');
-    this._clampLayout();
+    this.window.show();
     if (!mapId || !panoId) {
       this._renderMessage('No panorama ID is available for this clue.');
       return;
@@ -150,33 +134,6 @@ export class LearnableMetaClues {
       });
     this.cache.set(key, request);
     return request;
-  }
-
-  _createWindow(): HTMLElementTagNameMap['aside'] {
-    const root = element('aside', 'lm-clue-window hidden');
-    root.setAttribute('aria-label', 'Learnable Meta clue');
-    const header = element('div', 'lm-clue-header');
-    const title = element('h2', '', 'Learnable Meta');
-    const actions = element('div', 'lm-clue-header-actions');
-    const website = iconControl('a', 'link-icon', 'Open Learnable Meta');
-    website.href = 'https://learnablemeta.com/';
-    website.target = '_blank';
-    website.rel = 'noopener noreferrer';
-    const reset = iconControl('button', 'refresh-icon', 'Reset clue window');
-    reset.addEventListener('click', () => this.resetLayout());
-    const close = iconControl('button', 'close-icon', 'Hide this clue');
-    close.addEventListener('click', () => {
-      this.closedViewKey = this.viewKey;
-      this.hide();
-    });
-    actions.append(website, reset, close);
-    header.append(title, actions);
-    const content = element('div', 'lm-clue-content');
-    content.setAttribute('aria-live', 'polite');
-    root.append(header, content);
-    this.header = header;
-    this.content = content;
-    return root;
   }
 
   _renderLoading() {
@@ -277,106 +234,4 @@ export class LearnableMetaClues {
     return carousel;
   }
 
-  _bindLayout() {
-    this.header.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0 ||
-          (event.target instanceof Element && event.target.closest('button, a'))) return;
-      const rect = this.root.getBoundingClientRect();
-      this.drag = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-      this.header.setPointerCapture(event.pointerId);
-      event.preventDefault();
-    });
-    this.header.addEventListener('pointermove', (event) => {
-      if (!this.drag || !this.header.hasPointerCapture(event.pointerId)) return;
-      const rect = this.root.getBoundingClientRect();
-      this.root.style.left = `${event.clientX - this.drag.x}px`;
-      this.root.style.top = `${event.clientY - this.drag.y}px`;
-      this._clampLayout(rect.width, rect.height);
-    });
-    const finishDrag = (event: PointerEvent) => {
-      if (!this.drag) return;
-      this.drag = null;
-      if (this.header.hasPointerCapture(event.pointerId)) this.header.releasePointerCapture(event.pointerId);
-      this._persistLayout();
-    };
-    this.header.addEventListener('pointerup', finishDrag);
-    this.header.addEventListener('pointercancel', finishDrag);
-    window.addEventListener('resize', () => {
-      this._clampLayout();
-      this._persistLayout();
-    });
-    if ('ResizeObserver' in window) {
-      let ready = false;
-      const observer = new ResizeObserver(() => {
-        if (!ready) { ready = true; return; }
-        this._clampLayout();
-        this._persistLayout();
-      });
-      observer.observe(this.root);
-    }
-  }
-
-  _defaultLayout(): ClueLayout {
-    const width = Math.max(MIN_WIDTH, Math.min(DEFAULT_WIDTH, window.innerWidth - DEFAULT_INSET * 2));
-    const height = Math.max(MIN_HEIGHT, Math.min(DEFAULT_HEIGHT, window.innerHeight - DEFAULT_INSET * 2));
-    return {
-      width,
-      height,
-      left: DEFAULT_INSET,
-      top: DEFAULT_INSET
-    };
-  }
-
-  _restoreLayout() {
-    let value: unknown = null;
-    try { value = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null'); } catch { /* use default */ }
-    const layout = value as Partial<ClueLayout> | null;
-    const valid = layout &&
-      typeof layout.left === 'number' && Number.isFinite(layout.left) &&
-      typeof layout.top === 'number' && Number.isFinite(layout.top) &&
-      typeof layout.width === 'number' && Number.isFinite(layout.width) && layout.width > 0 &&
-      typeof layout.height === 'number' && Number.isFinite(layout.height) && layout.height > 0;
-    this._applyLayout(valid ? layout as ClueLayout : this._defaultLayout());
-  }
-
-  _applyLayout(layout: ClueLayout) {
-    this.root.style.left = `${layout.left}px`;
-    this.root.style.top = `${layout.top}px`;
-    this.root.style.width = `${layout.width}px`;
-    this.root.style.height = `${layout.height}px`;
-    this._clampLayout(layout.width, layout.height);
-  }
-
-  _clampLayout(width?: number, height?: number) {
-    const rect = this.root.getBoundingClientRect();
-    const styledWidth = parseFloat(this.root.style.width);
-    const styledHeight = parseFloat(this.root.style.height);
-    const requestedWidth = width !== undefined && Number.isFinite(width)
-      ? width
-      : (rect.width || styledWidth || DEFAULT_WIDTH);
-    const requestedHeight = height !== undefined && Number.isFinite(height)
-      ? height
-      : (rect.height || styledHeight || DEFAULT_HEIGHT);
-    const nextWidth = Math.max(MIN_WIDTH, Math.min(requestedWidth, window.innerWidth));
-    const nextHeight = Math.max(MIN_HEIGHT, Math.min(requestedHeight, window.innerHeight));
-    const left = Math.max(0, Math.min(parseFloat(this.root.style.left) || 0, window.innerWidth - nextWidth));
-    const top = Math.max(0, Math.min(parseFloat(this.root.style.top) || 0, window.innerHeight - nextHeight));
-    this.root.style.width = `${nextWidth}px`;
-    this.root.style.height = `${nextHeight}px`;
-    this.root.style.left = `${left}px`;
-    this.root.style.top = `${top}px`;
-  }
-
-  _persistLayout() {
-    if (this.root.classList.contains('hidden')) return;
-    const rect = this.root.getBoundingClientRect();
-    try {
-      localStorage.setItem(LAYOUT_KEY, JSON.stringify({
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height
-      }));
-    } catch { /* private mode */ }
-  }
 }
