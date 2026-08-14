@@ -23,19 +23,6 @@ export function scoreFor(distKm: number, scaleKm: number) {
   return Math.min(CONFIG.SCORE_MAX, pts);
 }
 
-// Map scale: haversine diagonal of the location bounding box.
-export function mapDiagonalKm(locations: readonly Point[]) {
-  if (!locations || !locations.length) return 0;
-  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-  for (const l of locations) {
-    if (l.lat < minLat) minLat = l.lat;
-    if (l.lat > maxLat) maxLat = l.lat;
-    if (l.lng < minLng) minLng = l.lng;
-    if (l.lng > maxLng) maxLng = l.lng;
-  }
-  return haversineKm({ lat: minLat, lng: minLng }, { lat: maxLat, lng: maxLng });
-}
-
 export function formatDistance(km: number) {
   return km < 1
     ? `${Math.round(km * 1000)} m`

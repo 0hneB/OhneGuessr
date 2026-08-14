@@ -17,7 +17,6 @@ export { settings };
 
 export const state = $state<GameState>({
   phase: GAME_PHASE.BOOTING,
-  all: [],          // locations of the selected map
   mapDiagonalKm: 0, // loaded map's bbox diagonal (km); Country scale
   map: null,
   deck: [],         // shuffled locations for this game

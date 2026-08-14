@@ -24,6 +24,16 @@ interface DeleteFolderResult {
   deletedMapIds?: string[];
 }
 
+export interface SampledLocation extends Location {
+  sourceIndex: number;
+}
+
+export interface MapSample {
+  locations: SampledLocation[];
+  locationCount: number;
+  mapDiagonalKm: number;
+}
+
 const cleanPath = (value: unknown) => String(value || '')
   .replaceAll('\\', '/')
   .split('/')
@@ -49,9 +59,6 @@ const mapItemFrom = (entry: StoredMap): MapItem => {
     managed: isManagedSource(entry.source)
   };
 };
-
-export const dataFileUrl = (file: string) =>
-  '/data/' + cleanPath(file).split('/').map(encodeURIComponent).join('/');
 
 async function loadManifest(): Promise<Manifest> {
   const res = await fetch(MANIFEST_URL, { cache: 'no-store' });
@@ -93,17 +100,14 @@ export async function loadLibrary() {
   return { maps, folders: [...folders] };
 }
 
-export async function getLocations(item: MapItem): Promise<unknown> {
-  const res = await fetch(dataFileUrl(item.file), { cache: 'no-store' });
-  if (res.status === 404) {
-    throw new Error(`Map data for “${item.name}” is missing. Re-import or delete it.`);
-  }
-  if (!res.ok) throw new Error(`Could not load “${item.name}”.`);
-  const data = await res.json();
-  const arr = Array.isArray(data) ? data : data?.customCoordinates;
-  if (!Array.isArray(arr) || !arr.length) throw new Error('map is empty');
-  return data;
-}
+export const sampleMap = (item: MapItem, count: number, exclude: number[] = []) =>
+  api<MapSample>(`/api/maps/${encodeURIComponent(item.id)}/rounds`, {
+    method: 'POST',
+    body: JSON.stringify({
+      count: Math.min(Math.floor(count), Number.MAX_SAFE_INTEGER),
+      exclude
+    })
+  });
 
 export async function addUserMap(
   name: string,

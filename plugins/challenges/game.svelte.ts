@@ -46,8 +46,7 @@ function createChallengeMode(id: string): GameMode {
           folder: '',
           source: { type: 'challenge' },
           managed: true
-        },
-        locations: challenge.rounds.map(({ challengerGuess: _guess, ...round }) => ({ ...round }))
+        }
       };
     },
     deck() {

@@ -66,7 +66,6 @@ export interface Settings {
 
 export interface GameState {
   phase: GamePhase;
-  all: Location[];
   mapDiagonalKm: number;
   map: MapItem | null;
   deck: Location[];
@@ -83,6 +82,8 @@ export type Trail = Point[][];
 export interface GameSnapshot {
   map: string;
   deck: Location[];
+  deckIndexes?: number[];
+  deckCycleStart?: number;
   round: number;
   total: number;
   results: RoundResult[];

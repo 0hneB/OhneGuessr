@@ -809,6 +809,26 @@ func (s *mapStore) openPublic(rel string) (*os.File, os.FileInfo, error) {
 	return file, info, nil
 }
 
+func (s *mapStore) openByID(id string) (*os.File, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	manifest, err := s.loadManifestLocked()
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range manifest.Maps {
+		if entry.ID != id {
+			continue
+		}
+		file, _, err := s.openPublic(entry.File)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("%w for %q", errMapDataMissing, entry.Name)
+		}
+		return file, err
+	}
+	return nil, errMapNotFound
+}
+
 func normalizeRelative(value string) (string, error) {
 	value = strings.ReplaceAll(value, "\\", "/")
 	osValue := filepath.FromSlash(value)

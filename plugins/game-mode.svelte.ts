@@ -23,7 +23,6 @@ export interface GameModeScoring {
 
 export interface GameModeLoad {
   map: MapItem;
-  locations: Location[];
 }
 
 export interface GameModeResult extends GameModeScoring {

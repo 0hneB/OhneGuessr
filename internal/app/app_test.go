@@ -54,7 +54,7 @@ func TestHTTPMapsAndInternalRouting(t *testing.T) {
 		t.Fatalf("manifest = %d %#v", manifest.Code, manifest.Header())
 	}
 
-	create := perform(handler, localRequest(http.MethodPost, "/api/maps", `{"name":"Test","locations":[{"lat":1,"lng":2}]}`))
+	create := perform(handler, localRequest(http.MethodPost, "/api/maps", `{"name":"Test","locations":[{"lat":1,"lng":2},{"location":{"lat":3,"lng":4},"flags":1,"panoId":"nested"},{"location":{"lat":5,"lng":6},"flags":2}]}`))
 	if create.Code != http.StatusOK {
 		t.Fatalf("create = %d %s", create.Code, create.Body.String())
 	}
@@ -65,6 +65,33 @@ func TestHTTPMapsAndInternalRouting(t *testing.T) {
 	data := perform(handler, localRequest(http.MethodGet, "/data/"+entry.File, ""))
 	if data.Code != http.StatusOK || !strings.Contains(data.Body.String(), `"lat":1`) {
 		t.Fatalf("data = %d %s", data.Code, data.Body.String())
+	}
+	rounds := perform(handler, localRequest(
+		http.MethodPost,
+		"/api/maps/"+entry.ID+"/rounds",
+		`{"count":10}`,
+	))
+	var sample mapSample
+	if rounds.Code != http.StatusOK || json.Unmarshal(rounds.Body.Bytes(), &sample) != nil {
+		t.Fatalf("rounds = %d %s", rounds.Code, rounds.Body.String())
+	}
+	if sample.LocationCount != 2 || len(sample.Locations) != 2 || sample.MapDiagonalKM <= 0 {
+		t.Fatalf("sample = %#v", sample)
+	}
+	byIndex := map[int]sampledLocation{}
+	for _, location := range sample.Locations {
+		byIndex[location.SourceIndex] = location
+	}
+	if byIndex[0].Lat != 1 || byIndex[1].Panoid == nil || *byIndex[1].Panoid != "nested" {
+		t.Fatalf("sample locations = %#v", byIndex)
+	}
+	excluded := perform(handler, localRequest(
+		http.MethodPost,
+		"/api/maps/"+entry.ID+"/rounds",
+		`{"count":1,"exclude":[0,1]}`,
+	))
+	if excluded.Code != http.StatusOK || !strings.Contains(excluded.Body.String(), `"locations":[]`) {
+		t.Fatalf("excluded rounds = %d %s", excluded.Code, excluded.Body.String())
 	}
 	if got := perform(handler, localRequest(http.MethodGet, "/api/health", "")).Code; got != http.StatusNotFound {
 		t.Fatalf("removed health endpoint status = %d", got)

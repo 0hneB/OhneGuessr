@@ -2,15 +2,9 @@
 import { CONFIG } from '../config.js';
 import { OpenSvViewer, loadOpenSV } from './panorama.js';
 import { GuessMap, createRevealMaps } from '../maps/map.js';
-import { haversineKm, scoreFor, mapDiagonalKm } from './scoring.js';
+import { haversineKm, scoreFor } from './scoring.js';
 import { CompassHUD } from './compass.js';
 import { $, setLoading, setHidden } from '../dom.js';
-import {
-  normalizeLocations,
-  randomLocation,
-  sampleWithoutReplacement,
-  shuffle
-} from './locations.js';
 import { GAME_PHASE, state, settings } from './state.svelte.js';
 import { RoundTimer } from './timer.js';
 import { Keybindings } from '../settings/keybindings.js';
@@ -21,7 +15,12 @@ import {
   onSettingsChanged,
   updateSettings
 } from '../settings/store.svelte.js';
-import { getLocations, loadLibrary } from '../maps/api.js';
+import {
+  loadLibrary,
+  sampleMap,
+  type MapSample,
+  type SampledLocation
+} from '../maps/api.js';
 import { challengeAction } from '../../../plugins/challenges/game.svelte.js';
 import { gameMode } from '../../../plugins/game-mode.svelte.js';
 import {
@@ -64,6 +63,8 @@ const ACTIVE_GAME_PHASES = new Set<GamePhase>([
   GAME_PHASE.GUESSING,
   GAME_PHASE.RESULT
 ]);
+const PANORAMA_RETRIES = 8;
+const UNLIMITED_BATCH_ROUNDS = 100;
 
 let modeRoundPending = false;
 
@@ -79,7 +80,6 @@ interface RoundPreparation {
   index: number;
   mapID: string | null;
   deck: Location[];
-  locations: Location[];
   load: { controller: AbortController; signal: AbortSignal };
   location: Location | null;
   status: 'loading' | 'ready' | 'failed' | 'aborted';
@@ -88,6 +88,15 @@ interface RoundPreparation {
 
 let roundPreload: RoundPreparation | null = null;
 let preloadFrame = 0;
+let sampledMap: MapItem | null = null;
+let pendingSample: MapSample | null = null;
+let mapLocationCount = 0;
+let deckIndexes: number[] = [];
+let deckCycleStart = 0;
+let sampledIndexes = new Set<number>();
+let fallbackLocations: SampledLocation[] = [];
+let sampleGeneration = 0;
+let deckGrowth: Promise<void> | null = null;
 
 const currentMapItem = (): MapItem | null => {
   const map = state.map;
@@ -135,36 +144,121 @@ function updateResultActions() {
   ui.endGameVisible = state.unlimited;
 }
 
-function ensureDeckIndex(index: number) {
-  while (state.unlimited && index >= state.deck.length && state.all.length) {
-    state.deck = state.deck.concat(shuffle(state.all));
+const locationFromSample = ({ sourceIndex: _sourceIndex, ...location }: SampledLocation) => location;
+
+function acceptSample(sample: MapSample) {
+  mapLocationCount = sample.locationCount;
+  state.mapDiagonalKm = sample.mapDiagonalKm;
+  for (const location of sample.locations) sampledIndexes.add(location.sourceIndex);
+}
+
+function appendRound(location: SampledLocation) {
+  state.deck.push(locationFromSample(location));
+  deckIndexes.push(location.sourceIndex);
+}
+
+function resetSampleTracking() {
+  sampleGeneration++;
+  deckIndexes = [];
+  deckCycleStart = 0;
+  sampledIndexes = new Set();
+  fallbackLocations = [];
+  deckGrowth = null;
+}
+
+async function growSampledDeck(count: number, allowRepeat: boolean) {
+  if (!sampledMap || count <= 0) return;
+  const generation = sampleGeneration;
+
+  while (count > 0 && fallbackLocations.length) {
+    appendRound(fallbackLocations.shift()!);
+    count--;
+  }
+  if (!count) return;
+
+  let sample = await sampleMap(
+    sampledMap,
+    count + PANORAMA_RETRIES,
+    [...sampledIndexes]
+  );
+  if (generation !== sampleGeneration) return;
+  acceptSample(sample);
+
+  if (!sample.locations.length && allowRepeat && mapLocationCount) {
+    sampledIndexes = new Set();
+    fallbackLocations = [];
+    deckCycleStart = state.deck.length;
+    sample = await sampleMap(sampledMap, count + PANORAMA_RETRIES);
+    if (generation !== sampleGeneration) return;
+    acceptSample(sample);
+  }
+
+  const roundCount = Math.min(count, sample.locations.length);
+  for (const location of sample.locations.slice(0, roundCount)) appendRound(location);
+  fallbackLocations.push(...sample.locations.slice(roundCount));
+}
+
+async function ensureDeckIndex(index: number) {
+  while (state.unlimited && sampledMap && index >= state.deck.length) {
+    const before = state.deck.length;
+    if (!deckGrowth) {
+      deckGrowth = growSampledDeck(
+        Math.max(UNLIMITED_BATCH_ROUNDS, index - before + 1),
+        true
+      );
+    }
+    const growth = deckGrowth;
+    try {
+      await growth;
+    } finally {
+      if (deckGrowth === growth) deckGrowth = null;
+    }
+    if (state.deck.length === before) break;
   }
   return state.deck[index] || null;
+}
+
+async function nextFallback(currentSourceIndex: number) {
+  if (fallbackLocations.length) return fallbackLocations.shift()!;
+  if (!sampledMap) return null;
+  const generation = sampleGeneration;
+  let sample = await sampleMap(sampledMap, PANORAMA_RETRIES, [...sampledIndexes]);
+  if (generation !== sampleGeneration) return null;
+  acceptSample(sample);
+  if (!sample.locations.length && mapLocationCount > 1) {
+    sample = await sampleMap(
+      sampledMap,
+      1,
+      currentSourceIndex >= 0 ? [currentSourceIndex] : []
+    );
+    if (generation !== sampleGeneration) return null;
+    acceptSample(sample);
+    return sample.locations[0] || null;
+  }
+  fallbackLocations.push(...sample.locations);
+  return fallbackLocations.shift() || null;
 }
 
 // Load and resolve a round without activating its UI, timer, state.current, or
 // walking trail. The same operation serves foreground loads and result preloads.
 function prepareRound(index: number): RoundPreparation {
-  const firstLocation = ensureDeckIndex(index);
   const load = beginPanoLoad();
   const preparation: RoundPreparation = {
     index,
     mapID: state.map?.id || null,
     deck: state.deck,
-    locations: state.all,
     load,
-    location: firstLocation,
-    status: firstLocation ? 'loading' : 'failed',
+    location: null,
+    status: 'loading',
     promise: null
   };
 
-  if (!firstLocation) {
-    preparation.promise = Promise.resolve(preparation);
-    return preparation;
-  }
-
   preparation.promise = (async () => {
-    let loc = firstLocation;
+    let loc = await ensureDeckIndex(index);
+    if (!loc || !isPanoLoadActive(load)) {
+      preparation.status = load.signal.aborted ? 'aborted' : 'failed';
+      return preparation;
+    }
     let tries = 0;
     let ok = await viewer.showLocation(loc, load.signal);
     if (gameMode.current?.fixedDeck && isPanoLoadActive(load) && !ok && loc.panoid) {
@@ -172,10 +266,13 @@ function prepareRound(index: number): RoundPreparation {
       preparation.deck[index] = loc;
       ok = await viewer.showLocation(loc, load.signal);
     }
-    while (!gameMode.current?.fixedDeck && isPanoLoadActive(load) && !ok && tries < 8) {
+    while (!gameMode.current?.fixedDeck && isPanoLoadActive(load) && !ok && tries < PANORAMA_RETRIES) {
       tries++;
-      loc = randomLocation(preparation.locations);
+      const fallback = await nextFallback(deckIndexes[index] ?? -1);
+      if (!fallback) break;
+      loc = locationFromSample(fallback);
       preparation.deck[index] = loc;
+      deckIndexes[index] = fallback.sourceIndex;
       ok = await viewer.showLocation(loc, load.signal);
     }
 
@@ -224,6 +321,25 @@ function takeRoundPreload(index: number) {
   return null;
 }
 
+async function createSampledDeck(wanted: number) {
+  if (!sampledMap) throw new Error('The selected map is unavailable.');
+  state.deck = [];
+  resetSampleTracking();
+  const generation = sampleGeneration;
+  const sample = pendingSample || await sampleMap(
+    sampledMap,
+    wanted + PANORAMA_RETRIES
+  );
+  pendingSample = null;
+  if (generation !== sampleGeneration) return;
+  acceptSample(sample);
+  const target = Math.min(wanted, mapLocationCount);
+  const roundCount = Math.min(target, sample.locations.length);
+  for (const location of sample.locations.slice(0, roundCount)) appendRound(location);
+  fallbackLocations.push(...sample.locations.slice(roundCount));
+  await growSampledDeck(target - state.deck.length, false);
+}
+
 export async function startGame() {
   challengeAction.error = '';
   gameMode.current?.reset?.();
@@ -235,16 +351,18 @@ export async function startGame() {
   setHidden('final', true);
   const modeDeck = gameMode.current?.deck?.();
   if (modeDeck) {
+    pendingSample = null;
+    resetSampleTracking();
     state.unlimited = false;
     state.deck = modeDeck;
+    deckIndexes = modeDeck.map(() => -1);
     state.rounds = state.deck.length;
   } else {
     const n = roundsPerGame();
     state.unlimited = !Number.isFinite(n);
-    state.deck = state.unlimited
-      ? shuffle(state.all)
-      : sampleWithoutReplacement(state.all, n);
-    state.rounds = state.unlimited ? Infinity : Math.min(n, state.deck.length);
+    await createSampledDeck(state.unlimited ? UNLIMITED_BATCH_ROUNDS : n);
+    if (!state.deck.length) throw new Error(`"${state.map?.name || 'Map'}" has no playable locations`);
+    state.rounds = state.unlimited ? Infinity : state.deck.length;
   }
   state.round = 0;
   state.total = 0;
@@ -306,6 +424,10 @@ function saveProgress({ resultTrail }: { resultTrail?: Trail } = {}) {
     rounds: state.unlimited ? null : state.rounds,
     phase: state.phase
   };
+  if (sampledMap) {
+    snapshot.deckIndexes = deckIndexes.slice(0, state.deck.length);
+    snapshot.deckCycleStart = deckCycleStart;
+  }
   // A settings change can rewrite a result snapshot after its panorama trail
   // has been preloaded away, so retain the trail already saved for this round.
   if (resultTrail === undefined && state.phase === GAME_PHASE.RESULT) {
@@ -343,6 +465,26 @@ function cleanSavedTrail(value: unknown): Trail | null {
   return trail.length ? trail : null;
 }
 
+function restoreSampleTracking(snapshot: GameSnapshot) {
+  if (!sampledMap) return;
+  sampleGeneration++;
+  pendingSample = null;
+  fallbackLocations = [];
+  deckGrowth = null;
+  const saved = Array.isArray(snapshot.deckIndexes) ? snapshot.deckIndexes : [];
+  deckIndexes = state.deck.map((_, index) => {
+    const value = saved[index];
+    return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : -1;
+  });
+  const start = typeof snapshot.deckCycleStart === 'number' && Number.isInteger(snapshot.deckCycleStart)
+    ? snapshot.deckCycleStart
+    : 0;
+  deckCycleStart = Math.max(0, Math.min(state.deck.length, start));
+  sampledIndexes = new Set(
+    deckIndexes.slice(deckCycleStart).filter((index) => index >= 0)
+  );
+}
+
 // Restore a saved game for the loaded map and show its active or completed screen.
 // False means there is nothing valid to resume and the caller should start fresh.
 async function tryResume() {
@@ -364,6 +506,7 @@ async function tryResume() {
   state.results = Array.isArray(snap.results)
     ? snap.results.map((result) => isSavedResult(result) ? { ...result } : result)
     : [];
+  restoreSampleTracking(snap);
   state.results.forEach((result, index) => {
     if (isSavedResult(result)) recordModeResult(index, result);
   });
@@ -398,35 +541,31 @@ async function tryResume() {
 
 // Apply a rounds-per-game change. Outside a game it restarts; mid-game it grows or
 // trims the upcoming deck in place, keeping the played and current rounds.
-function applyRoundLimitChange() {
-  if (!state.all.length) return;
+async function applyRoundLimitChange() {
+  if (!sampledMap || !mapLocationCount) return;
   const inGame = ACTIVE_GAME_PHASES.has(state.phase);
-  if (!inGame) { startGame(); return; }
+  if (!inGame) { await startGame(); return; }
 
+  cancelRoundPreload();
+  const generation = ++sampleGeneration;
+  deckGrowth = null;
   const nRaw = roundsPerGame();
   state.unlimited = !Number.isFinite(nRaw);
 
   if (state.unlimited) {
     state.rounds = Infinity; // loadRound grows the deck on demand
   } else {
-    const requested = Math.min(nRaw, state.all.length);
+    const requested = Math.min(nRaw, mapLocationCount);
     const keep = Math.min(state.deck.length, state.round + 1); // played + current
-    if (requested > keep) {
-      // Grow: append locations not already in the kept deck.
-      const nextDeck = state.deck.slice(0, keep);
-      nextDeck.push(...sampleWithoutReplacement(
-        state.all,
-        requested - keep,
-        new Set(nextDeck)
-      ));
-
-      // An in-flight round preparation holds this array as its generation
-      // guard, so update its contents without replacing the array itself.
-      state.deck.length = nextDeck.length;
-      for (let i = 0; i < nextDeck.length; i++) state.deck[i] = nextDeck[i];
-    } else {
-      state.deck.length = Math.max(requested, keep); // trim only upcoming rounds
-    }
+    state.deck.length = keep;
+    deckIndexes.length = keep;
+    deckCycleStart = Math.min(deckCycleStart, keep);
+    sampledIndexes = new Set(
+      deckIndexes.slice(deckCycleStart).filter((index) => index >= 0)
+    );
+    fallbackLocations = [];
+    await growSampledDeck(Math.max(0, requested - keep), false);
+    if (generation !== sampleGeneration) return;
     state.rounds = state.deck.length;
   }
 
@@ -442,7 +581,7 @@ async function loadRound(preparation: RoundPreparation | null = null) {
   state.phase = GAME_PHASE.LOADING;
   guessPanel.setFullscreen(false);
   guessPanel.setPinned(false);
-  ensureDeckIndex(state.round);
+  await ensureDeckIndex(state.round);
   setHidden('resultScreen', true);
   ui.hasGuess = false;
   gmap.reset();
@@ -776,7 +915,7 @@ function applyLiveSettings(next: Settings, previous: Settings) {
   if (!gameMode.current && next.streetViewZoomedOut !== previous.streetViewZoomedOut) {
     viewer.setStartZoomedOut(next.streetViewZoomedOut);
   }
-  if (!gameMode.current && next.rounds !== previous.rounds) applyRoundLimitChange();
+  if (!gameMode.current && next.rounds !== previous.rounds) void applyRoundLimitChange();
   if (!gameMode.current && next.timer !== previous.timer) {
     if (state.phase === GAME_PHASE.GUESSING) roundTimer.start();
     else roundTimer.stop();
@@ -787,35 +926,39 @@ function applyLiveSettings(next: Settings, previous: Settings) {
 async function loadRequestedGameData() {
   const mode = gameMode.current;
   const loaded = await mode?.load?.();
-  let map: MapItem;
-  let locations: Location[];
   if (loaded) {
-    ({ map, locations } = loaded);
-  } else {
-    const mapID = new URLSearchParams(location.search).get('map')?.trim();
-    if (!mapID) throw new Error('No map was selected');
-    const { maps } = await loadLibrary();
-    const selected = maps.find((item) => item.id === mapID);
-    if (!selected) throw new Error('That map no longer exists');
-    map = selected;
-    locations = normalizeLocations(await getLocations(map));
+    return { mode, map: loaded.map, sample: null };
   }
-
-  return { mode, map, locations };
+  const mapID = new URLSearchParams(location.search).get('map')?.trim();
+  if (!mapID) throw new Error('No map was selected');
+  const { maps } = await loadLibrary();
+  const selected = maps.find((item) => item.id === mapID);
+  if (!selected) throw new Error('That map no longer exists');
+  const rounds = roundsPerGame();
+  const sample = await sampleMap(
+    selected,
+    (Number.isFinite(rounds) ? rounds : UNLIMITED_BATCH_ROUNDS) + PANORAMA_RETRIES
+  );
+  return {
+    mode,
+    map: { ...selected, count: sample.locationCount },
+    sample
+  };
 }
 
 async function activateRequestedGame({
   mode,
   map,
-  locations
+  sample
 }: Awaited<ReturnType<typeof loadRequestedGameData>>) {
   state.map = map;
   selectLearnableMetaMap(currentMapItem());
   setLoading(true, `Loading ${map.name}…`);
-  if (!locations.length) throw new Error(`"${map.name}" has no playable locations`);
-  // Coordinates never change in-game, so compute this once before Svelte wraps the array.
-  state.mapDiagonalKm = mapDiagonalKm(locations);
-  state.all = locations;
+  sampledMap = sample ? map : null;
+  pendingSample = sample;
+  mapLocationCount = sample?.locationCount || 0;
+  state.mapDiagonalKm = sample?.mapDiagonalKm || 0;
+  if (sample && !sample.locationCount) throw new Error(`"${map.name}" has no playable locations`);
   if (mode) {
     await mode.initialize(map);
     viewer.setMode(movementForGame());
