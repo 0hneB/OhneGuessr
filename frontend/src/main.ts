@@ -10,8 +10,8 @@ const challengeID = params.get('view') === 'game' ? params.get('challenge')?.tri
 
 async function setupMapSources() {
   const [{ setupMapMakingApp }, { setupLearnableMetaMapSource }] = await Promise.all([
-    import('../../plugins/map-making-app/setup.js'),
-    import('../../plugins/learnable-meta/setup.js')
+    import('../../internal/plugins/map-making-app/setup.js'),
+    import('../../internal/plugins/learnable-meta/setup.js')
   ]);
   setupMapMakingApp();
   setupLearnableMetaMapSource();
@@ -19,12 +19,12 @@ async function setupMapSources() {
 
 if (route.view === 'game' || challengeID) {
   await Promise.all([import('./app.css'), setupMapSources()]);
-  const { setupChallengeGame } = await import('../../plugins/challenges/setup.js');
+  const { setupChallengeGame } = await import('../../internal/plugins/challenges/setup.js');
   const partyID = params.get('party')?.trim();
   setupChallengeGame(partyID ? '' : challengeID);
   if (partyID) {
     await import('./launcher.css');
-    const { setupLocalPartyHost } = await import('../../plugins/local-party/host-game.js');
+    const { setupLocalPartyHost } = await import('../../internal/plugins/local-party/host-game.js');
     setupLocalPartyHost(partyID);
   }
   const { default: GameApp } = await import('./GameApp.svelte');
@@ -33,13 +33,13 @@ if (route.view === 'game' || challengeID) {
   await Promise.all([import('./app.css'), import('./launcher.css')]);
   document.title = '';
   document.querySelector('link[rel~="icon"]')?.remove();
-  const { default: PartyGuestApp } = await import('../../plugins/local-party/PartyGuestApp.svelte');
+  const { default: PartyGuestApp } = await import('../../internal/plugins/local-party/PartyGuestApp.svelte');
   mount(PartyGuestApp, { target, props: { join: route.join } });
 } else {
   await Promise.all([import('./app.css'), import('./launcher.css')]);
   await setupMapSources();
   const { default: LauncherApp } = await import('./LauncherApp.svelte');
   mount(LauncherApp, { target });
-  const { setupChallengeLauncher } = await import('../../plugins/challenges/setup.js');
+  const { setupChallengeLauncher } = await import('../../internal/plugins/challenges/setup.js');
   setupChallengeLauncher();
 }

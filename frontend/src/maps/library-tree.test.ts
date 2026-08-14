@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mapSources, registerMapSource } from '../../../plugins/map-sources.js';
+import { mapSources, registerMapSource } from '../../../internal/plugins/map-sources.js';
 import type { MapItem } from '../types.js';
 import {
   buildLibraryRows,

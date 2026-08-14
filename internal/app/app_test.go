@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/0hneB/OhneGuessr/internal/httpjson"
-	learnablemeta "github.com/0hneB/OhneGuessr/plugins/learnable-meta"
-	mapmakingapp "github.com/0hneB/OhneGuessr/plugins/map-making-app"
+	learnablemeta "github.com/0hneB/OhneGuessr/internal/plugins/learnable-meta"
+	mapmakingapp "github.com/0hneB/OhneGuessr/internal/plugins/map-making-app"
 )
 
 func newTestApp(t *testing.T) *App {

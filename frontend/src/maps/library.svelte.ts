@@ -1,10 +1,10 @@
 import { SvelteSet } from 'svelte/reactivity';
 import { closeGame, exportMaps as exportMapsToFile, launchMap } from '../desktop.js';
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
-import { isChallengeFilename } from '../../../plugins/challenges/challenge.js';
-import { openChallengeFile } from '../../../plugins/challenges/open.js';
-import { localPartyMapAction } from '../../../plugins/local-party/map-action.js';
-import { mapSourceFor, refreshMapSourceRoot } from '../../../plugins/map-sources.js';
+import { isChallengeFilename } from '../../../internal/plugins/challenges/challenge.js';
+import { openChallengeFile } from '../../../internal/plugins/challenges/open.js';
+import { localPartyMapAction } from '../../../internal/plugins/local-party/map-action.js';
+import { mapSourceFor, refreshMapSourceRoot } from '../../../internal/plugins/map-sources.js';
 import type { MapItem } from '../types.js';
 import {
   addUserMap,

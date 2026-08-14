@@ -26,8 +26,8 @@
     challengeAction,
     challengeActionVisible,
     runChallengeAction
-  } from '../../plugins/challenges/game.svelte.js';
-  import { gameMode } from '../../plugins/game-mode.svelte.js';
+  } from '../../internal/plugins/challenges/game.svelte.js';
+  import { gameMode } from '../../internal/plugins/game-mode.svelte.js';
   import { ui } from './ui.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);

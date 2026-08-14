@@ -20,8 +20,8 @@ import {
   type MapSample,
   type SampledLocation
 } from '../maps/api.js';
-import { challengeAction } from '../../../plugins/challenges/game.svelte.js';
-import { gameMode } from '../../../plugins/game-mode.svelte.js';
+import { challengeAction } from '../../../internal/plugins/challenges/game.svelte.js';
+import { gameMode } from '../../../internal/plugins/game-mode.svelte.js';
 import {
   resetLearnableMetaClues,
   selectLearnableMetaFinalRound,
@@ -29,7 +29,7 @@ import {
   setupLearnableMeta,
   showLearnableMetaResult,
   startLearnableMetaRound
-} from '../../../plugins/learnable-meta/index.js';
+} from '../../../internal/plugins/learnable-meta/index.js';
 import type {
   GamePhase,
   GuessMapSize,
