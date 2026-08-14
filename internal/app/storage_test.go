@@ -138,7 +138,7 @@ func TestMapStoreLifecycleAndUnsupportedExternalMove(t *testing.T) {
 	if entry.Count != 1 || entry.File != "my-map.json" || entry.ID == "" || entry.Checksum != "" {
 		t.Fatalf("unexpected entry: %#v", entry)
 	}
-	renamed, err := store.renameLocal(entry.ID, "Renamed")
+	renamed, err := store.updateMap(entry.ID, pointer("Renamed"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestMapStoreLifecycleAndUnsupportedExternalMove(t *testing.T) {
 	if len(manifest.Maps) != 1 || manifest.Maps[0].File != "renamed.json" || len(manifest.Folders) != 0 {
 		t.Fatalf("external move changed manifest: %#v", manifest)
 	}
-	if _, err := store.renameLocal(entry.ID, "Again"); !errors.Is(err, errMapDataMissing) {
+	if _, err := store.updateMap(entry.ID, pointer("Again"), nil); !errors.Is(err, errMapDataMissing) {
 		t.Fatalf("missing-data rename error = %v", err)
 	}
 	if err := store.deleteLocal(entry.ID); err != nil {

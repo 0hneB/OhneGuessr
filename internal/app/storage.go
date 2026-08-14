@@ -227,10 +227,6 @@ func (s *mapStore) createLocal(name string, locations json.RawMessage, folder st
 	return entry, nil
 }
 
-func (s *mapStore) renameLocal(id, name string) (mapEntry, error) {
-	return s.updateMap(id, &name, nil)
-}
-
 func (s *mapStore) updateMap(id string, requestedName, requestedFolder *string) (mapEntry, error) {
 	if requestedName == nil && requestedFolder == nil {
 		return mapEntry{}, errNoMutation
