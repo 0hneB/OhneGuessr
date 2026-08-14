@@ -24,6 +24,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/0hneB/OhneGuessr/internal/httpjson"
 	qrcode "github.com/skip2/go-qrcode"
 )
 
@@ -348,7 +349,7 @@ func (p *partyServer) serveState(w http.ResponseWriter, r *http.Request) {
 	}
 	state := p.guestStateLocked(player)
 	p.mu.Unlock()
-	partyJSON(w, http.StatusOK, state)
+	httpjson.Write(w, http.StatusOK, state)
 }
 
 func (p *partyServer) serveJoin(w http.ResponseWriter, r *http.Request) {
@@ -356,12 +357,12 @@ func (p *partyServer) serveJoin(w http.ResponseWriter, r *http.Request) {
 		partyError(w, http.StatusForbidden, "invalid request origin")
 		return
 	}
-	var body struct {
+	body, err := httpjson.DecodeLimit[struct {
 		Join  string `json:"join"`
 		Name  string `json:"name"`
 		Color string `json:"color"`
-	}
-	if err := partyDecode(r, &body); err != nil {
+	}](r, partyBodyLimit)
+	if err != nil {
 		partyError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -376,7 +377,7 @@ func (p *partyServer) serveJoin(w http.ResponseWriter, r *http.Request) {
 	if existing := p.playerFromRequestLocked(r); existing != nil {
 		state := p.guestStateLocked(existing)
 		p.mu.Unlock()
-		partyJSON(w, http.StatusOK, state)
+		httpjson.Write(w, http.StatusOK, state)
 		return
 	}
 	if body.Join != p.secret {
@@ -427,7 +428,7 @@ func (p *partyServer) serveJoin(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	})
-	partyJSON(w, http.StatusCreated, state)
+	httpjson.Write(w, http.StatusCreated, state)
 }
 
 func (p *partyServer) serveEvents(w http.ResponseWriter, r *http.Request) {
@@ -483,12 +484,12 @@ func (p *partyServer) serveGuess(w http.ResponseWriter, r *http.Request) {
 		partyError(w, http.StatusForbidden, "invalid request origin")
 		return
 	}
-	var body struct {
+	body, err := httpjson.DecodeLimit[struct {
 		Round int     `json:"round"`
 		Lat   float64 `json:"lat"`
 		Lng   float64 `json:"lng"`
-	}
-	if err := partyDecode(r, &body); err != nil {
+	}](r, partyBodyLimit)
+	if err != nil {
 		partyError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -518,7 +519,7 @@ func (p *partyServer) serveGuess(w http.ResponseWriter, r *http.Request) {
 	state := p.guestStateLocked(player)
 	p.mu.Unlock()
 	p.emitChanged()
-	partyJSON(w, http.StatusOK, state)
+	httpjson.Write(w, http.StatusOK, state)
 }
 
 func cleanPartyName(value string) (string, error) {
@@ -835,37 +836,13 @@ func partySameOrigin(r *http.Request) bool {
 	return err == nil && parsed.Host == r.Host
 }
 
-func partyDecode(r *http.Request, target any) error {
-	if !strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "application/json") {
-		return errors.New("Content-Type must be application/json")
-	}
-	r.Body = http.MaxBytesReader(nil, r.Body, partyBodyLimit)
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(target); err != nil {
-		return errors.New("invalid JSON request")
-	}
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return errors.New("request body must contain one JSON value")
-	}
-	return nil
-}
-
 func writePartyEvent(w io.Writer, state PartyGuestState) {
 	data, _ := json.Marshal(state)
 	_, _ = fmt.Fprintf(w, "event: state\ndata: %s\n\n", data)
 }
 
-func partyJSON(w http.ResponseWriter, status int, value any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(value)
-}
-
 func partyError(w http.ResponseWriter, status int, message string) {
-	partyJSON(w, status, map[string]string{"error": message})
+	httpjson.Write(w, status, map[string]string{"error": message})
 }
 
 func (p *LocalParty) activeParty(id string) (*partyServer, error) {

@@ -63,15 +63,19 @@ func Write(w http.ResponseWriter, status int, value any) {
 }
 
 func Decode[T any](r *http.Request) (T, error) {
+	return DecodeLimit[T](r, MaxBodySize)
+}
+
+func DecodeLimit[T any](r *http.Request, maximum int64) (T, error) {
 	var result T
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mediaType != "application/json" {
 		return result, Error(http.StatusUnsupportedMediaType, "Content-Type must be application/json")
 	}
-	if r.ContentLength > MaxBodySize {
+	if r.ContentLength > maximum {
 		return result, Error(http.StatusRequestEntityTooLarge, "request body is too large")
 	}
-	r.Body = http.MaxBytesReader(nil, r.Body, MaxBodySize)
+	r.Body = http.MaxBytesReader(nil, r.Body, maximum)
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&result); err != nil {
 		var tooLarge *http.MaxBytesError
