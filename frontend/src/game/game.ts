@@ -232,7 +232,6 @@ export async function startGame() {
   state.phase = GAME_PHASE.LOADING;
   setHidden('resultScreen', true);
   setHidden('final', true);
-  state.mapDiagonalKm = mapDiagonalKm(state.all);
   const modeDeck = gameMode.current?.deck?.();
   if (modeDeck) {
     state.unlimited = false;
@@ -356,7 +355,6 @@ async function tryResume() {
   if (round < 0) return false;
   if (!unlimited && (round >= rounds || round >= snap.deck.length)) return false; // done / out of range
 
-  state.mapDiagonalKm = mapDiagonalKm(state.all);
   state.unlimited = unlimited;
   state.deck = snap.deck;
   state.rounds = rounds;
@@ -806,6 +804,8 @@ async function loadRequestedGame() {
   selectLearnableMetaMap(currentMapItem());
   setLoading(true, `Loading ${map.name}…`);
   if (!locations.length) throw new Error(`"${map.name}" has no playable locations`);
+  // Coordinates never change in-game, so compute this once before Svelte wraps the array.
+  state.mapDiagonalKm = mapDiagonalKm(locations);
   state.all = locations;
   if (mode) {
     await mode.initialize(map);
