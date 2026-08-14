@@ -4,7 +4,7 @@ import { OpenSvViewer, loadOpenSV } from './panorama.js';
 import { GuessMap, createRevealMaps } from '../maps/map.js';
 import { haversineKm, scoreFor } from './scoring.js';
 import { CompassHUD } from './compass.js';
-import { $, setLoading, setHidden } from '../dom.js';
+import { $, setLoading } from '../dom.js';
 import { GAME_PHASE, state, settings } from './state.svelte.js';
 import { RoundTimer } from './timer.js';
 import { Keybindings } from '../settings/keybindings.js';
@@ -345,8 +345,8 @@ export async function startGame() {
   roundTimer.stop();
   resetLearnableMetaClues();
   state.phase = GAME_PHASE.LOADING;
-  setHidden('resultScreen', true);
-  setHidden('final', true);
+  ui.resultVisible = false;
+  ui.finalVisible = false;
   const modeDeck = gameMode.current?.deck?.();
   if (modeDeck) {
     pendingSample = null;
@@ -395,7 +395,7 @@ export async function rematchModeGame() {
   try {
     await mode.rematch(startGame, () => {
       state.phase = GAME_PHASE.EMPTY;
-      setHidden('final', true);
+      ui.finalVisible = false;
     });
   } catch (error) {
     gameMode.error = modeError(error, 'Could not reset this game mode.');
@@ -450,7 +450,7 @@ async function loadRound(preparation: RoundPreparation | null = null) {
   guessPanel.setFullscreen(false);
   guessPanel.setPinned(false);
   await ensureDeckIndex(state.round);
-  setHidden('resultScreen', true);
+  ui.resultVisible = false;
   ui.hasGuess = false;
   gmap.reset();
   gmap.resize();
@@ -654,7 +654,7 @@ export async function completeModeRound() {
     state.phase = GAME_PHASE.RESULT;
     updateResultActions();
     setLoading(false);
-    setHidden('resultScreen', false);
+    ui.resultVisible = true;
     resultMap.showMany(reveals);
     scheduleNextRoundPreload();
   } catch (error) {
@@ -672,7 +672,7 @@ function showRoundResult(result: RoundResult, trail: Trail | null = null) {
   updateResultActions();
 
   setLoading(false);
-  setHidden('resultScreen', false);
+  ui.resultVisible = true;
   const modeResults = gameMode.current?.roundResults?.(state.round, result);
   if (modeResults?.length) resultMap.showMany(modeResults, trail);
   else resultMap.show(result, trail);
@@ -750,8 +750,8 @@ function showFinal() {
   state.phase = GAME_PHASE.FINAL;
   ui.selectedFinalRound = gameMode.current?.initialFinalRound() ?? null;
   setLoading(false);
-  setHidden('resultScreen', true);
-  setHidden('final', false);
+  ui.resultVisible = false;
+  ui.finalVisible = true;
   // Mode-specific final UI is inserted reactively, so fit after that DOM update.
   if (gameMode.current) requestAnimationFrame(applyFinalRoundSelection);
   else applyFinalRoundSelection();
