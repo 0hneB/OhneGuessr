@@ -6,3 +6,32 @@ export interface GameWindowState {
     "mapId"?: string;
     "fullscreen": boolean;
 }
+
+export interface PluginInfo {
+    "id": string;
+    "name": string;
+    "description": string;
+    "icon": string;
+    "version": string;
+    "apiVersion": number;
+    "main": string;
+    "experimental"?: boolean;
+    "enabled": boolean;
+}
+
+export interface PluginManifest {
+    "id": string;
+    "name": string;
+    "description": string;
+    "icon": string;
+    "version": string;
+    "apiVersion": number;
+    "main": string;
+    "experimental"?: boolean;
+    "sha256"?: string;
+}
+
+export interface PluginModule {
+    "manifest": PluginManifest;
+    "source": string;
+}

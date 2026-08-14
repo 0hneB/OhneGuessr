@@ -151,6 +151,21 @@ Start the development app with:
 go tool wails3 dev
 ```
 
+To test installable plugins from the working tree, serve the plugin directory in one terminal:
+
+```powershell
+python -m http.server 8765 --directory plugins
+```
+
+Then point the development app at it from a second terminal:
+
+```powershell
+$env:OHNEGUESSR_PLUGIN_REPOSITORY = "http://127.0.0.1:8765"
+go tool wails3 dev
+```
+
+Run `node plugins/generate-registry.mjs` after changing a plugin's source or manifest.
+
 Development uses `%LOCALAPPDATA%\OhneGuessr` on Windows.
 
 Build the portable EXE with:

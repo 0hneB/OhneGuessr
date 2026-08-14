@@ -9,6 +9,7 @@ import { GAME_PHASE, state, settings } from './state.svelte.js';
 import { RoundTimer } from './timer.js';
 import { Keybindings } from '../settings/keybindings.js';
 import { createGuessPanel } from '../maps/guess-panel.js';
+import { activateExternalPlugins, loadExternalPlugins } from '../plugins/runtime.svelte.js';
 import {
   initSettingsSync,
   onSettingsChanged,
@@ -858,6 +859,7 @@ export async function init() {
   const startup = Promise.all([
     loadRequestedGameData(),
     loadOpenSV(),
+    loadExternalPlugins(),
     setupLearnableMeta().catch((error) => {
       console.warn('Learnable Meta plugin unavailable:', error);
       return null;
@@ -874,6 +876,7 @@ export async function init() {
     return;
   }
   viewer = new OpenSvViewer($('pano'));
+  activateExternalPlugins(viewer);
   const faceNorth = () => {
     if (canInteractWithGuess()) viewer.faceNorth();
   };

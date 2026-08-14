@@ -5,6 +5,7 @@
 //   nmpz   — no move, pan, or zoom (locked to the spawn view)
 
 import { publicAsset } from '../config.js';
+import type { PanoramaView } from '../plugins/runtime.svelte.js';
 import type { Location, MovementMode, Point, Trail } from '../types.js';
 
 const OPENSV_SRC = publicAsset('vendor/opensv/opensv.js');
@@ -83,6 +84,8 @@ interface LookBehindView {
 export class OpenSvViewer {
   public onChange: ((heading: number) => void) | null = null;
   private readonly _lock: HTMLDivElement;
+  private readonly _pluginRoot: HTMLDivElement;
+  private readonly _viewListeners = new Set<(view: PanoramaView) => void>();
   private readonly streetView: google.maps.StreetViewService;
   private readonly pano: google.maps.StreetViewPanorama;
   private defaultHeading = 0;
@@ -117,6 +120,13 @@ export class OpenSvViewer {
     Object.assign(lock.style, { position: 'absolute', inset: '0', zIndex: '1', pointerEvents: 'none' });
     container.appendChild(lock);
     this._lock = lock;
+    const pluginRoot = document.createElement('div');
+    pluginRoot.className = 'plugin-overlay-root';
+    Object.assign(pluginRoot.style, {
+      position: 'absolute', inset: '0', zIndex: '2', pointerEvents: 'none', overflow: 'hidden'
+    });
+    container.appendChild(pluginRoot);
+    this._pluginRoot = pluginRoot;
 
     const g = window.google;
     this.streetView = new g.maps.StreetViewService();
@@ -132,9 +142,11 @@ export class OpenSvViewer {
     // Live heading for the compass.
     this.pano.addListener('pov_changed', () => {
       if (this.onChange) this.onChange(this.pano.getPov().heading);
+      this._emitView();
     });
     // Record each step so the result map can show where the player walked.
     this.pano.addListener('position_changed', () => {
+      this._emitView();
       if (!this._trailActive || this._checkpointBusy) return;
       const p = this.pano.getPosition?.();
       if (!p) return;
@@ -145,6 +157,8 @@ export class OpenSvViewer {
       if (last && last.lat === point.lat && last.lng === point.lng) return;
       segment.push(point);
     });
+    this.pano.addListener('zoom_changed', () => this._emitView());
+    window.addEventListener('resize', () => this._emitView());
     // Keyboard walking only in moving mode.
     host.addEventListener('keydown', (e) => {
       if (this.mode !== 'moving' && MOVE_KEYS.has(e.code)) { e.stopPropagation(); e.preventDefault(); }
@@ -192,6 +206,35 @@ export class OpenSvViewer {
 
   getHeading() { return this.pano.getPov().heading; }
   get lat() { return this.pano.getPov().pitch; }
+
+  getView(): PanoramaView | null {
+    const position = this.pano.getPosition?.();
+    const pov = this.pano.getPov?.();
+    const bounds = this._pluginRoot.getBoundingClientRect();
+    if (!position || !pov || bounds.width <= 0 || bounds.height <= 0) return null;
+    return {
+      position: { lat: position.lat(), lng: position.lng() },
+      heading: pov.heading ?? 0,
+      pitch: pov.pitch ?? 0,
+      zoom: this.pano.getZoom?.() ?? DEFAULT_ZOOM,
+      width: bounds.width,
+      height: bounds.height
+    };
+  }
+
+  onViewChange(listener: (view: PanoramaView) => void) {
+    this._viewListeners.add(listener);
+    const view = this.getView();
+    if (view) listener(view);
+    return () => { this._viewListeners.delete(listener); };
+  }
+
+  createLayer() {
+    const layer = document.createElement('div');
+    Object.assign(layer.style, { position: 'absolute', inset: '0', pointerEvents: 'none' });
+    this._pluginRoot.appendChild(layer);
+    return layer;
+  }
 
   // Separate walked paths; a checkpoint return starts a fresh segment.
   getTrail(): Trail { return this._trail.map((segment) => segment.map((point) => ({ ...point }))); }
@@ -491,5 +534,11 @@ export class OpenSvViewer {
   _cancelTween() {
     if (this._tweenId) cancelAnimationFrame(this._tweenId);
     this._tweenId = 0;
+  }
+
+  _emitView() {
+    const view = this.getView();
+    if (!view) return;
+    for (const listener of this._viewListeners) listener(view);
   }
 }

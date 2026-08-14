@@ -125,12 +125,18 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	pluginRepository := pluginRepositoryURL
+	if override := os.Getenv("OHNEGUESSR_PLUGIN_REPOSITORY"); override != "" {
+		pluginRepository = override
+	}
+	pluginService := newPluginService(dataDir, pluginRepository)
 	desktop.wails = wailsApp
 	wailsApp.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
 		challenges.QueueFile(challengeService, event.Context().Filename())
 	})
 	wailsApp.RegisterService(application.NewService(desktop))
 	wailsApp.RegisterService(application.NewService(updates))
+	wailsApp.RegisterService(application.NewService(pluginService))
 	wailsApp.RegisterService(application.NewService(party))
 	wailsApp.RegisterService(application.NewService(challengeService))
 	launcher := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{

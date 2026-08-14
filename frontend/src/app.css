@@ -228,7 +228,8 @@ button { font-family: inherit; }
 }
 
 /* 'H' on the guess page leaves only the panorama. */
-body.ui-hidden #settingsBtn,
+body.ui-hidden #hudActions,
+body.ui-hidden .plugin-overlay-root,
 body.ui-hidden #topLeft,
 body.ui-hidden #compass-hud,
 body.ui-hidden #classicCompass,
@@ -416,11 +417,18 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 
 /* Settings */
-#settingsBtn {
+#hudActions {
   position: fixed;
   top: 12px;
   left: 12px;
   z-index: 700;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#settingsBtn,
+.plugin-hud-button {
   display: grid;
   place-items: center;
   width: 32px;
@@ -435,12 +443,21 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   box-shadow: var(--hud-shadow);
 }
 /* Darken with an overlay so the gradient underneath is preserved. */
-#settingsBtn:hover {
+#settingsBtn:hover,
+.plugin-hud-button:hover {
   background: linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), var(--hud-bg);
 }
 #settingsBtn .settings-icon {
   width: 18px;
   height: 18px;
+}
+.plugin-hud-button svg {
+  width: 19px;
+  height: 19px;
+  fill: currentColor;
+}
+.plugin-hud-button[aria-pressed="false"] {
+  color: rgba(251, 251, 253, 0.5);
 }
 
 .setting {

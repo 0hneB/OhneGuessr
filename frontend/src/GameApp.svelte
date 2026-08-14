@@ -29,6 +29,7 @@
   } from '../../internal/plugins/challenges/game.svelte.js';
   import { gameMode } from '../../internal/plugins/game-mode.svelte.js';
   import { ui } from './ui.svelte.js';
+  import { pluginHudButtons } from './plugins/runtime.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);
   const modeActive = $derived(Boolean(gameMode.current));
@@ -74,10 +75,18 @@
          onstart={startModeGame} onclose={endModeGame} />
 {/if}
 
-<button id="settingsBtn" aria-label="Open launcher settings" title="Open launcher settings"
-        onclick={focusLauncher}>
-  <span class="svg-icon settings-icon" aria-hidden="true"></span>
-</button>
+<div id="hudActions">
+  <button id="settingsBtn" aria-label="Open launcher settings" title="Open launcher settings"
+          onclick={focusLauncher}>
+    <span class="svg-icon settings-icon" aria-hidden="true"></span>
+  </button>
+  {#each pluginHudButtons as action (action.id)}
+    <button class="plugin-hud-button" type="button" aria-label={action.label} title={action.label}
+            aria-pressed={action.pressed} onclick={action.onClick}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d={action.icon}></path></svg>
+    </button>
+  {/each}
+</div>
 
 <div id="topLeft" class="hud-pill">
   <span>
