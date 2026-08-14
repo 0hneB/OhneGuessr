@@ -5,15 +5,17 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/0hneB/OhneGuessr/internal/mapfile"
 )
 
 func TestChallengeFileBoundary(t *testing.T) {
 	dir := t.TempDir()
 	filename := filepath.Join(dir, "game.ohne")
-	if err := atomicWriteFile(filename, []byte(`{"format":"ohneguessr.challenge"}`)); err != nil {
+	if err := mapfile.Write(filename, []byte(`{"format":"ohneguessr.challenge"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := atomicWriteFile(filename, []byte(`{"format":"ohneguessr.challenge","version":1}`)); err != nil {
+	if err := mapfile.Write(filename, []byte(`{"format":"ohneguessr.challenge","version":1}`), 0o644); err != nil {
 		t.Fatalf("overwrite challenge: %v", err)
 	}
 	contents, err := readChallengeFile(filename)

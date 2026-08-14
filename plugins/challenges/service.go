@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/0hneB/OhneGuessr/internal/mapfile"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -129,7 +130,10 @@ func (s *Service) SaveChallenge(suggestedName, contents string) (bool, error) {
 	if !IsFile(filename) {
 		filename += ".ohne"
 	}
-	return true, atomicWriteFile(filename, []byte(contents))
+	if err := mapfile.Write(filename, []byte(contents), 0o644); err != nil {
+		return true, fmt.Errorf("save challenge: %w", err)
+	}
+	return true, nil
 }
 
 func queueFile(s *Service, filename string) {
@@ -160,37 +164,4 @@ func readChallengeFile(filename string) (string, error) {
 		return "", err
 	}
 	return string(contents), nil
-}
-
-func atomicWriteFile(filename string, contents []byte) (err error) {
-	if err = os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
-		return err
-	}
-	temporary, err := os.CreateTemp(filepath.Dir(filename), ".ohneguessr-challenge-*.tmp")
-	if err != nil {
-		return err
-	}
-	name := temporary.Name()
-	defer func() {
-		_ = temporary.Close()
-		if err != nil {
-			_ = os.Remove(name)
-		}
-	}()
-	if err = temporary.Chmod(0o644); err == nil {
-		_, err = temporary.Write(contents)
-	}
-	if err == nil {
-		err = temporary.Sync()
-	}
-	if closeErr := temporary.Close(); err == nil {
-		err = closeErr
-	}
-	if err == nil {
-		err = os.Rename(name, filename)
-	}
-	if err != nil {
-		return fmt.Errorf("save challenge: %w", err)
-	}
-	return nil
 }
