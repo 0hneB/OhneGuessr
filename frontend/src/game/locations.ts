@@ -59,5 +59,26 @@ export function shuffle<T>(arr: readonly T[]) {
   return a;
 }
 
+// Sparse Fisher-Yates: the first `count` values of a uniform shuffle without
+// copying or visiting the unused remainder.
+export function sampleWithoutReplacement<T>(
+  arr: readonly T[],
+  count: number,
+  excluded?: ReadonlySet<T>
+) {
+  if (!(count > 0) || !arr.length) return [];
+  const wanted = Math.min(arr.length, Math.floor(count));
+  const swaps = new Map<number, number>();
+  const sampled: T[] = [];
+  for (let i = 0; i < arr.length && sampled.length < wanted; i++) {
+    const j = i + Math.floor(Math.random() * (arr.length - i));
+    const index = swaps.get(j) ?? j;
+    swaps.set(j, swaps.get(i) ?? i);
+    const value = arr[index];
+    if (!excluded?.has(value)) sampled.push(value);
+  }
+  return sampled;
+}
+
 export const randomLocation = <T>(locations: readonly T[]) =>
   locations[Math.floor(Math.random() * locations.length)];

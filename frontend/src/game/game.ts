@@ -5,7 +5,12 @@ import { GuessMap, createRevealMaps } from '../maps/map.js';
 import { haversineKm, scoreFor, mapDiagonalKm } from './scoring.js';
 import { CompassHUD } from './compass.js';
 import { $, setLoading, setHidden } from '../dom.js';
-import { normalizeLocations, shuffle, randomLocation } from './locations.js';
+import {
+  normalizeLocations,
+  randomLocation,
+  sampleWithoutReplacement,
+  shuffle
+} from './locations.js';
 import { GAME_PHASE, state, settings } from './state.svelte.js';
 import { RoundTimer } from './timer.js';
 import { Keybindings } from '../settings/keybindings.js';
@@ -236,7 +241,9 @@ export async function startGame() {
   } else {
     const n = roundsPerGame();
     state.unlimited = !Number.isFinite(n);
-    state.deck = state.unlimited ? shuffle(state.all) : shuffle(state.all).slice(0, n);
+    state.deck = state.unlimited
+      ? shuffle(state.all)
+      : sampleWithoutReplacement(state.all, n);
     state.rounds = state.unlimited ? Infinity : Math.min(n, state.deck.length);
   }
   state.round = 0;
@@ -407,10 +414,12 @@ function applyRoundLimitChange() {
     const keep = Math.min(state.deck.length, state.round + 1); // played + current
     if (requested > keep) {
       // Grow: append locations not already in the kept deck.
-      const have = new Set(state.deck.slice(0, keep));
-      let nextDeck = state.deck.slice(0, keep).concat(shuffle(state.all).filter((l) => !have.has(l)));
-      while (nextDeck.length < requested) nextDeck = nextDeck.concat(shuffle(state.all));
-      nextDeck.length = requested;
+      const nextDeck = state.deck.slice(0, keep);
+      nextDeck.push(...sampleWithoutReplacement(
+        state.all,
+        requested - keep,
+        new Set(nextDeck)
+      ));
 
       // An in-flight round preparation holds this array as its generation
       // guard, so update its contents without replacing the array itself.
