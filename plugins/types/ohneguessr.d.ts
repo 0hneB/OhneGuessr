@@ -32,6 +32,8 @@ declare global {
 
   interface OhneGuessrPanoramaDetails {
     panoId: string;
+    /** Capture date in YYYY-MM format, or an empty string when Google omits it. */
+    imageDate: string;
     /** Panorama elevation in meters above sea level. */
     elevation: number | null;
     cameraType: 'gen1' | 'gen2' | 'gen4' | 'badcam' | 'tripod' | 'trekker' | null;

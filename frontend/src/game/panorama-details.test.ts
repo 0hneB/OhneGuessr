@@ -23,7 +23,8 @@ describe('panorama details', () => {
     result[6] = dateInfo;
 
     expect(parsePanoramaDetails(result, 'pano-id')).toEqual({
-      panoId: 'pano-id', elevation: 206.8, cameraType: 'trekker', panoType: 'user-uploaded',
+      panoId: 'pano-id', imageDate: '2020-12', elevation: 206.8,
+      cameraType: 'trekker', panoType: 'user-uploaded',
       uploader: 'Uploader', drivingDirection: 227.9,
       coverageDates: ['2013-05', '2020-12'], copyright: '© Example'
     });

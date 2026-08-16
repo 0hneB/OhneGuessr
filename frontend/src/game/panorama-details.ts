@@ -5,6 +5,7 @@ export type PanoramaType = 'official' | 'user-uploaded' | 'unknown';
 
 export interface PanoramaDetails {
   panoId: string;
+  imageDate: string;
   elevation: number | null;
   cameraType: PanoramaCameraType | null;
   panoType: PanoramaType;
@@ -108,6 +109,7 @@ export function parsePanoramaDetails(value: unknown, panoId: string): PanoramaDe
 
   return {
     panoId,
+    imageDate,
     elevation: finiteNumber(locationData?.[1]?.[0]),
     cameraType: cameraType(height, source, levelId, country, imageDate, lat),
     panoType: panoType === 2 ? 'official' : panoType === 10 ? 'user-uploaded' : 'unknown',
