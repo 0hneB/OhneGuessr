@@ -142,6 +142,19 @@ func TestPluginInstallRejectsCatalogMismatchWithoutReplacingCurrent(t *testing.T
 	}
 }
 
+func TestPluginCatalogSkipsIncompatibleAPIVersion(t *testing.T) {
+	manifest := testPluginManifest()
+	manifest.APIVersion++
+	source := "globalThis.Example = true;\n"
+	server := testPluginServer(t, &manifest, &source, nil)
+	service := newPluginService(t.TempDir(), server.URL)
+
+	catalog, err := service.Catalog()
+	if err != nil || len(catalog) != 0 {
+		t.Fatalf("catalog = %#v, err = %v", catalog, err)
+	}
+}
+
 func TestPluginValidationRejectsUnsafePaths(t *testing.T) {
 	for _, id := range []string{"", "../example", "Example", "-example", "example-", "example/other"} {
 		if validatePluginID(id) == nil {

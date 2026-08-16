@@ -24,7 +24,7 @@ import (
 
 const (
 	pluginRepositoryURL = "https://raw.githubusercontent.com/0hneB/OhneGuessr/main/plugins"
-	pluginAPIVersion    = 3
+	pluginAPIVersion    = 1
 	maxPluginCatalog    = 256 << 10
 	maxPluginManifest   = 64 << 10
 	maxPluginSource     = 2 << 20
@@ -336,8 +336,12 @@ func (s *PluginService) catalog() ([]PluginManifest, error) {
 	if err := json.Unmarshal(contents, &catalog); err != nil {
 		return nil, fmt.Errorf("decode plugin catalog: %w", err)
 	}
+	compatible := catalog[:0]
 	seen := make(map[string]bool, len(catalog))
 	for _, manifest := range catalog {
+		if manifest.APIVersion != pluginAPIVersion {
+			continue
+		}
 		if err := validatePluginManifest(manifest, manifest.ID, true); err != nil {
 			return nil, err
 		}
@@ -345,9 +349,10 @@ func (s *PluginService) catalog() ([]PluginManifest, error) {
 			return nil, fmt.Errorf("duplicate plugin id %q", manifest.ID)
 		}
 		seen[manifest.ID] = true
+		compatible = append(compatible, manifest)
 	}
-	sort.Slice(catalog, func(i, j int) bool { return catalog[i].Name < catalog[j].Name })
-	return catalog, nil
+	sort.Slice(compatible, func(i, j int) bool { return compatible[i].Name < compatible[j].Name })
+	return compatible, nil
 }
 
 func (s *PluginService) fetch(url string, maximum int64) ([]byte, error) {

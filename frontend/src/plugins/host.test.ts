@@ -18,7 +18,7 @@ afterEach(() => {
 
 const manifest = {
   id: 'runtime-test', name: 'Runtime Test', description: '', icon: 'M1 1',
-  version: '1.0.0', apiVersion: 3, main: 'index.js'
+  version: '1.0.0', apiVersion: 1, main: 'index.js'
 } as PluginManifest;
 
 function panoramaHost(): PanoramaPluginHost {

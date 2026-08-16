@@ -7,7 +7,7 @@ const manifest = (id: string, version: string) => ({
   description: `${id} plugin`,
   icon: 'M1 1',
   version,
-  apiVersion: 3,
+  apiVersion: 1,
   main: 'index.js',
   settings: id === 'example' ? [{ key: 'apiKey', label: 'API key', type: 'password' }] : []
 });
