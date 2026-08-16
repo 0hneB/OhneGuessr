@@ -46,11 +46,13 @@ describe('PlantNet plugin', () => {
     expect(fetchMock.mock.calls[0][1].body.get('images')).toBeInstanceOf(Blob);
   });
 
-  it('keeps PlantNet key failures broad', async () => {
-    vi.stubGlobal('location', { origin: 'http://wails.localhost' });
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 401 })));
+  it('explains browser setup when PlantNet denies access', async () => {
+    vi.stubGlobal('location', { origin: 'http://wails.localhost:9245' });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 403 })));
     await expect(identifyPlants('rejected', new Blob(['png'])))
-      .rejects.toThrow('Check the plugin settings');
+      .rejects.toThrow(`PlantNet access denied. Check the key, enable "Expose my API key", and add these authorized domains:
+http://wails.localhost:9245
+http://wails.localhost`);
   });
 
   it('keeps other API errors broad', async () => {
