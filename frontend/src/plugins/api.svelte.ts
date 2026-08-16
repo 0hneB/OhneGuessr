@@ -7,7 +7,7 @@ import { publicAsset } from '../config.js';
 import type { PanoramaCapture, PanoramaCaptureOptions } from '../game/panorama-capture.js';
 import type { PanoramaMetadata, PanoramaView } from '../game/panorama.js';
 import { reverseLocation } from './location.js';
-import { createPluginWindow, type PluginWindowHandle } from './window.js';
+import type { PluginWindowHandle } from './window.js';
 
 const MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
@@ -75,13 +75,15 @@ export function connectPluginAPI(
   rawManifest: PluginManifest,
   host: PanoramaPluginHost,
   iframe: HTMLIFrameElement,
-  port: MessagePort
+  port: MessagePort,
+  reservedWindow: PluginWindowHandle
 ) {
   const manifest = rawManifest;
   const disposables: (() => void)[] = [];
   const requests = new Map<number, AbortController>();
   const buttons = new Set<number>();
-  let windowHandle: PluginWindowHandle | null = null;
+  let windowHandle: PluginWindowHandle | null = reservedWindow;
+  let windowCreated = false;
   let disposed = false;
   let settled = false;
   let resolveReady!: () => void;
@@ -206,21 +208,24 @@ export function connectPluginAPI(
         return;
       }
       case 'ui.createWindow':
-        if (windowHandle) throw new Error('additional plugins may create one window');
-        windowHandle = createSandboxWindow(manifest, iframe, first, send);
+        if (windowCreated || !windowHandle) throw new Error('additional plugins may create one window');
+        configureSandboxWindow(windowHandle, iframe, first, send);
+        windowCreated = true;
         return;
       case 'ui.show':
-        windowHandle?.show();
+        if (windowCreated) windowHandle?.show();
         return;
       case 'ui.hide':
-        windowHandle?.hide();
+        if (windowCreated) windowHandle?.hide();
         return;
       case 'ui.resetLayout':
-        windowHandle?.resetLayout();
+        if (windowCreated) windowHandle?.resetLayout();
         return;
       case 'ui.remove':
-        windowHandle?.remove();
-        windowHandle = null;
+        if (windowCreated) {
+          windowHandle?.remove();
+          windowHandle = null;
+        }
         return;
     }
   }
@@ -256,8 +261,8 @@ export function connectPluginAPI(
   };
 }
 
-function createSandboxWindow(
-  manifest: PluginManifest,
+function configureSandboxWindow(
+  handle: PluginWindowHandle,
   iframe: HTMLIFrameElement,
   rawOptions: unknown,
   send: (message: unknown) => void
@@ -265,17 +270,13 @@ function createSandboxWindow(
   const options = object(rawOptions, 'plugin window');
   const title = requiredText(options.title, 80, 'plugin window title');
   const onClose = options.onClose == null ? null : integer(options.onClose, 'window callback id');
-  const handle = createPluginWindow({
+  handle.configure({
     title,
     ariaLabel: optionalText(options.ariaLabel, 120),
     closeLabel: optionalText(options.closeLabel, 120),
-    layoutKey: `ohneguessr.plugin.${manifest.id}.window.layout`,
     onClose: onClose == null ? undefined : () => send({ kind: 'event', name: 'callback', value: onClose })
   });
-  handle.content.classList.add('plugin-window-sandbox-content');
   iframe.classList.remove('plugin-sandbox-pending');
-  handle.content.append(iframe);
-  return handle;
 }
 
 function removeButton(pluginID: string, id: number) {

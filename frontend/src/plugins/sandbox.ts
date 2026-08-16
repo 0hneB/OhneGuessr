@@ -287,19 +287,22 @@ const SANDBOX_DOCUMENT = `<!doctype html>
 <style>
   * { box-sizing:border-box; margin:0; padding:0 }
   :root { color-scheme:dark; --accent:#22c55e }
-  html, body { width:100%; min-height:100%; background:#181818; color:#eef1f6;
+  html, body { width:100%; height:100%; background:#181818; color:#eef1f6;
     font:16px/1.5 "Manrope",system-ui,sans-serif }
-  body { overflow:auto }
+  body { overflow:hidden }
+  #plugin-content { width:100%; height:100%; padding:6px 12px 10px; overflow:auto }
   button, input, select, textarea { font:inherit }
   * { scrollbar-width:thin; scrollbar-color:var(--accent) transparent }
   @supports selector(::-webkit-scrollbar) {
+    * { scrollbar-width:auto; scrollbar-color:auto }
     *::-webkit-scrollbar { width:3px; height:3px; background:transparent }
     *::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background:transparent }
     *::-webkit-scrollbar-thumb { background:var(--accent); border-radius:999px }
-    *::-webkit-scrollbar-button { display:none; width:0; height:0 }
+    *::-webkit-scrollbar-button { display:none; width:0; height:0; background:transparent;
+      -webkit-appearance:none }
   }
 </style>
-</head><body><div id="plugin-content"></div><script>(${sandboxMain.toString()})()</script></body></html>`;
+</head><body><div id="plugin-content" aria-live="polite"></div><script>(${sandboxMain.toString()})()</script></body></html>`;
 
 export function createPluginFrame(name: string) {
   const iframe = document.createElement('iframe');
@@ -317,6 +320,7 @@ export function mountPluginFrame(
   module: PluginModule,
   port: MessagePort,
   state: unknown,
+  mount: HTMLElement,
   onNavigation: () => void
 ) {
   return new Promise<void>((resolve, reject) => {
@@ -337,6 +341,6 @@ export function mountPluginFrame(
     };
     iframe.addEventListener('load', onLoad);
     iframe.addEventListener('error', () => reject(new Error('plugin sandbox failed to load')), { once: true });
-    document.body.append(iframe);
+    mount.append(iframe);
   });
 }

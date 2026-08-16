@@ -9,6 +9,7 @@ import {
   type PanoramaPluginHost
 } from './api.svelte.js';
 import { createPluginFrame, mountPluginFrame } from './sandbox.js';
+import { createPluginWindow } from './window.js';
 
 type PluginBridge = ReturnType<typeof connectPluginAPI>;
 
@@ -30,8 +31,13 @@ export async function activateExternalPlugins(host: PanoramaPluginHost) {
     a.manifest.name.localeCompare(b.manifest.name))) {
     if (active.has(module.manifest.id)) continue;
     const iframe = createPluginFrame(module.manifest.name);
+    const pluginWindow = createPluginWindow({
+      title: module.manifest.name,
+      layoutKey: `ohneguessr.plugin.${module.manifest.id}.window.layout`
+    });
+    pluginWindow.content.classList.add('plugin-window-sandbox-content');
     const channel = new MessageChannel();
-    const bridge = connectPluginAPI(module.manifest, host, iframe, channel.port1);
+    const bridge = connectPluginAPI(module.manifest, host, iframe, channel.port1, pluginWindow);
     active.set(module.manifest.id, bridge);
     try {
       await mountPluginFrame(
@@ -39,6 +45,7 @@ export async function activateExternalPlugins(host: PanoramaPluginHost) {
         module,
         channel.port2,
         await pluginInitialState(host),
+        pluginWindow.content,
         () => {
           if (active.get(module.manifest.id) !== bridge) return;
           active.delete(module.manifest.id);

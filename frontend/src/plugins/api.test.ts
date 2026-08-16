@@ -6,6 +6,7 @@ import {
   type PanoramaPluginHost
 } from './api.svelte.js';
 import { PLUGIN_CSP, PLUGIN_FEATURE_POLICY, PLUGIN_SANDBOX } from './sandbox.js';
+import type { PluginWindowHandle } from './window.js';
 
 const bridges: ReturnType<typeof connectPluginAPI>[] = [];
 
@@ -39,12 +40,19 @@ async function bridge(permissions = {}) {
     version: '1.0.0', apiVersion: 2, main: 'index.js', permissions
   } as PluginManifest;
   const channel = new MessageChannel();
-  const iframe = { remove: vi.fn() } as unknown as HTMLIFrameElement;
-  const connected = connectPluginAPI(manifest, host(), iframe, channel.port1);
+  const append = vi.fn();
+  const configure = vi.fn();
+  const iframe = { classList: { remove: vi.fn() }, remove: vi.fn() } as unknown as HTMLIFrameElement;
+  const windowHandle = {
+    content: { append } as unknown as HTMLDivElement,
+    configure,
+    show: vi.fn(), hide: vi.fn(), resetLayout: vi.fn(), remove: vi.fn()
+  } as PluginWindowHandle;
+  const connected = connectPluginAPI(manifest, host(), iframe, channel.port1, windowHandle);
   bridges.push(connected);
   channel.port2.postMessage({ kind: 'ready' });
   await connected.ready;
-  return { connected, port: channel.port2 };
+  return { connected, port: channel.port2, append, configure };
 }
 
 function nextMessage(port: MessagePort) {
@@ -119,5 +127,15 @@ describe('additional plugin boundary', () => {
 
     port.postMessage({ kind: 'command', method: 'hud.remove', args: [7] });
     await vi.waitFor(() => expect(pluginHudButtons).toHaveLength(0));
+  });
+
+  it('configures its permanent window without moving the sandbox frame', async () => {
+    const { port, append, configure } = await bridge();
+    port.postMessage({
+      kind: 'command', method: 'ui.createWindow',
+      args: [{ title: 'Plugin window', ariaLabel: 'Plugin content', closeLabel: 'Close plugin' }]
+    });
+    await vi.waitFor(() => expect(configure).toHaveBeenCalledOnce());
+    expect(append).not.toHaveBeenCalled();
   });
 });

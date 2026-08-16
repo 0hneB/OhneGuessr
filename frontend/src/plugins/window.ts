@@ -13,18 +13,22 @@ interface WindowLayout {
   height: number;
 }
 
-export interface PluginWindowOptions {
+export interface PluginWindowChrome {
   title: string;
   ariaLabel?: string;
-  layoutKey: string;
-  link?: { href: string; label: string };
   resetLabel?: string;
   closeLabel?: string;
   onClose?(): void;
 }
 
+export interface PluginWindowOptions extends PluginWindowChrome {
+  layoutKey: string;
+  link?: { href: string; label: string };
+}
+
 export interface PluginWindowHandle {
   readonly content: HTMLDivElement;
+  configure(options: PluginWindowChrome): void;
   show(): void;
   hide(): void;
   resetLayout(): void;
@@ -53,8 +57,8 @@ function iconControl(tag: 'a' | 'button', iconClass: string, label: string) {
 
 export function createPluginWindow(options: PluginWindowOptions): PluginWindowHandle {
   const root = element('aside', 'plugin-window hidden');
-  root.setAttribute('aria-label', options.ariaLabel || options.title);
   const header = element('div', 'plugin-window-header');
+  const heading = element('h2');
   const actions = element('div', 'plugin-window-header-actions');
   const content = element('div', 'plugin-window-content');
   content.setAttribute('aria-live', 'polite');
@@ -62,6 +66,7 @@ export function createPluginWindow(options: PluginWindowOptions): PluginWindowHa
   let drag: { x: number; y: number } | null = null;
   let removed = false;
   let observer: ResizeObserver | null = null;
+  let onClose = options.onClose;
 
   const defaultLayout = (): WindowLayout => ({
     width: Math.max(MIN_WIDTH, Math.min(DEFAULT_WIDTH, window.innerWidth - DEFAULT_INSET * 2)),
@@ -122,15 +127,25 @@ export function createPluginWindow(options: PluginWindowOptions): PluginWindowHa
     website.rel = 'noopener noreferrer';
     actions.append(website);
   }
-  const reset = iconControl('button', 'refresh-icon', options.resetLabel || 'Reset window');
+  const reset = iconControl('button', 'refresh-icon', '');
   reset.addEventListener('click', resetLayout);
-  const close = iconControl('button', 'close-icon', options.closeLabel || 'Close window');
+  const close = iconControl('button', 'close-icon', '');
   close.addEventListener('click', () => {
     hide();
-    options.onClose?.();
+    onClose?.();
   });
+  const configure = (next: PluginWindowChrome) => {
+    root.setAttribute('aria-label', next.ariaLabel || next.title);
+    heading.textContent = next.title;
+    reset.title = next.resetLabel || 'Reset window';
+    reset.setAttribute('aria-label', reset.title);
+    close.title = next.closeLabel || 'Close window';
+    close.setAttribute('aria-label', close.title);
+    onClose = next.onClose;
+  };
+  configure(options);
   actions.append(reset, close);
-  header.append(element('h2', '', options.title), actions);
+  header.append(heading, actions);
   root.append(header, content);
   document.body.append(root);
 
@@ -184,6 +199,7 @@ export function createPluginWindow(options: PluginWindowOptions): PluginWindowHa
 
   return {
     content,
+    configure,
     show,
     hide,
     resetLayout,
