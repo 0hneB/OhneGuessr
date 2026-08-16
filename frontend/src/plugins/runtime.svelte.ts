@@ -4,7 +4,8 @@ import {
   type PluginModule
 } from '../../bindings/github.com/0hneB/OhneGuessr/index.js';
 import { desktopRuntimeAvailable } from '../desktop.js';
-import type { PanoramaCapture } from '../game/panorama-capture.js';
+import type { PanoramaCapture, PanoramaCaptureOptions } from '../game/panorama-capture.js';
+import { reverseLocation, type LocationDetails } from './location.js';
 import type { PluginWindowHandle, PluginWindowOptions } from './window.js';
 
 export interface PanoramaView {
@@ -16,9 +17,19 @@ export interface PanoramaView {
   height: number;
 }
 
+export interface PanoramaMetadata extends PanoramaView {
+  panoId: string;
+  imageDate: string;
+  description: string;
+  shortDescription: string;
+  photographer: { heading: number | null; pitch: number | null };
+}
+
 export interface PanoramaPluginHost {
   getView(): PanoramaView | null;
-  captureViewport(): Promise<PanoramaCapture>;
+  getMetadata(): PanoramaMetadata | null;
+  captureViewport(options?: PanoramaCaptureOptions): Promise<PanoramaCapture>;
+  onRoundStart(listener: () => void): () => void;
   onViewChange(listener: (view: PanoramaView) => void): () => void;
   createLayer(): HTMLElement;
   createWindow(options: PluginWindowOptions): PluginWindowHandle;
@@ -34,9 +45,14 @@ interface PluginButtonOptions {
 interface PluginAPI {
   panorama: {
     getView(): PanoramaView | null;
-    captureViewport(): Promise<PanoramaCapture>;
+    getMetadata(): PanoramaMetadata | null;
+    captureViewport(options?: PanoramaCaptureOptions): Promise<PanoramaCapture>;
+    onRoundStart(listener: () => void): () => void;
     onViewChange(listener: (view: PanoramaView) => void): () => void;
     createLayer(): HTMLElement;
+  };
+  location: {
+    reverse(position: { lat: number; lng: number }): Promise<LocationDetails>;
   };
   hud: {
     addButton(options: PluginButtonOptions): {
@@ -168,7 +184,16 @@ function createPluginAPI(
   return {
     panorama: {
       getView: () => host.getView(),
-      captureViewport: () => host.captureViewport(),
+      getMetadata: () => host.getMetadata(),
+      captureViewport: (options) => host.captureViewport(options),
+      onRoundStart(listener) {
+        const stop = host.onRoundStart(() => {
+          try { listener(); }
+          catch (error) { console.error(`[plugin] round callback failed for "${manifest.id}":`, error); }
+        });
+        disposables.push(stop);
+        return stop;
+      },
       onViewChange(listener) {
         const stop = host.onViewChange((view) => {
           try { listener(view); }
@@ -182,6 +207,9 @@ function createPluginAPI(
         disposables.push(() => layer.remove());
         return layer;
       }
+    },
+    location: {
+      reverse: (position) => reverseLocation(position)
     },
     hud: {
       addButton(options) {

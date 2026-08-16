@@ -7,6 +7,11 @@ export interface PanoramaCapture {
   height: number;
 }
 
+export interface PanoramaCaptureOptions {
+  width: number;
+  height: number;
+}
+
 export function fitCaptureSize(width: number, height: number, maxWidth = 1920, maxHeight = 1080) {
   if (![width, height, maxWidth, maxHeight].every((value) => Number.isFinite(value) && value > 0)) {
     throw new Error('Street View has no visible viewport');
@@ -18,20 +23,29 @@ export function fitCaptureSize(width: number, height: number, maxWidth = 1920, m
   };
 }
 
+export function requestedCaptureSize(options: PanoramaCaptureOptions) {
+  return fitCaptureSize(
+    options.width,
+    options.height,
+    Math.min(1920, options.width),
+    Math.min(1080, options.height)
+  );
+}
+
 export async function capturePanoViewport(
   panorama: google.maps.StreetViewPanorama,
   host: HTMLElement,
   viewportWidth: number,
-  viewportHeight: number
+  viewportHeight: number,
+  options?: PanoramaCaptureOptions
 ): Promise<PanoramaCapture> {
   const panoId = panorama.getPano();
   if (!panoId) throw new Error('Street View is not ready');
+  const requestedSize = options ? requestedCaptureSize(options) : null;
   const source = await waitForLiveCanvas(host);
-  const size = fitCaptureSize(
-    viewportWidth,
-    viewportHeight,
-    Math.min(1920, source.width),
-    Math.min(1080, source.height)
+  const size = requestedSize || fitCaptureSize(
+    viewportWidth, viewportHeight,
+    Math.min(1920, source.width), Math.min(1080, source.height)
   );
   return { blob: await canvasToBlob(drawScaled(source, size.width, size.height)), panoId, ...size };
 }

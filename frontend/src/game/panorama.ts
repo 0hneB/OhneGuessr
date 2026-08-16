@@ -5,13 +5,13 @@
 //   nmpz   — no move, pan, or zoom (locked to the spawn view)
 
 import { publicAsset } from '../config.js';
-import type { PanoramaView } from '../plugins/runtime.svelte.js';
+import type { PanoramaMetadata, PanoramaView } from '../plugins/runtime.svelte.js';
 import {
   createPluginWindow,
   type PluginWindowOptions
 } from '../plugins/window.js';
 import type { Location, MovementMode, Point, Trail } from '../types.js';
-import { capturePanoViewport } from './panorama-capture.js';
+import { capturePanoViewport, type PanoramaCaptureOptions } from './panorama-capture.js';
 
 const OPENSV_SRC = publicAsset('vendor/opensv/opensv.js');
 const DEFAULT_ZOOM = 1;
@@ -91,6 +91,7 @@ export class OpenSvViewer {
   private readonly _host: HTMLDivElement;
   private readonly _lock: HTMLDivElement;
   private readonly _pluginRoot: HTMLDivElement;
+  private readonly _roundListeners = new Set<() => void>();
   private readonly _viewListeners = new Set<(view: PanoramaView) => void>();
   private readonly streetView: google.maps.StreetViewService;
   private readonly pano: google.maps.StreetViewPanorama;
@@ -229,9 +230,36 @@ export class OpenSvViewer {
     };
   }
 
-  captureViewport() {
+  getMetadata(): PanoramaMetadata | null {
+    const view = this.getView();
+    const panoId = this.pano.getPano?.();
+    if (!view || !panoId) return null;
+    const location = this.pano.getLocation?.();
+    const photographer = this.pano.getPhotographerPov?.();
+    const heading = photographer?.heading;
+    const pitch = photographer?.pitch;
+    const imageDate = this.pano.get('imageDate');
+    return {
+      ...view,
+      panoId,
+      imageDate: typeof imageDate === 'string' ? imageDate : '',
+      description: typeof location?.description === 'string' ? location.description : '',
+      shortDescription: typeof location?.shortDescription === 'string' ? location.shortDescription : '',
+      photographer: {
+        heading: typeof heading === 'number' && Number.isFinite(heading) ? heading : null,
+        pitch: typeof pitch === 'number' && Number.isFinite(pitch) ? pitch : null
+      }
+    };
+  }
+
+  captureViewport(options?: PanoramaCaptureOptions) {
     const bounds = this._pluginRoot.getBoundingClientRect();
-    return capturePanoViewport(this.pano, this._host, bounds.width, bounds.height);
+    return capturePanoViewport(this.pano, this._host, bounds.width, bounds.height, options);
+  }
+
+  onRoundStart(listener: () => void) {
+    this._roundListeners.add(listener);
+    return () => { this._roundListeners.delete(listener); };
   }
 
   onViewChange(listener: (view: PanoramaView) => void) {
@@ -273,6 +301,7 @@ export class OpenSvViewer {
     if (p) this._trail.push([{ lat: p.lat(), lng: p.lng() }]);
     this._trailActive = true;
     if (this.mode !== 'nmpz') this.pano.focus?.();
+    for (const listener of this._roundListeners) listener();
   }
 
   // C alternates between saving the exact current view and returning to it once.

@@ -17,6 +17,31 @@ declare global {
     height: number;
   }
 
+  interface OhneGuessrPanoramaCaptureOptions {
+    width: number;
+    height: number;
+  }
+
+  interface OhneGuessrPanoramaMetadata extends OhneGuessrPanoramaView {
+    panoId: string;
+    imageDate: string;
+    description: string;
+    shortDescription: string;
+    photographer: { heading: number | null; pitch: number | null };
+  }
+
+  interface OhneGuessrLocationDetails {
+    fullAddress: string;
+    country: string;
+    countryCode: string;
+    state: string;
+    region: string;
+    feature: string;
+    category: string;
+    type: string;
+    address: Record<string, string>;
+  }
+
   interface OhneGuessrPluginWindow {
     readonly content: HTMLDivElement;
     show(): void;
@@ -28,9 +53,14 @@ declare global {
   interface OhneGuessrPluginAPI {
     panorama: {
       getView(): OhneGuessrPanoramaView | null;
-      captureViewport(): Promise<OhneGuessrPanoramaCapture>;
+      getMetadata(): OhneGuessrPanoramaMetadata | null;
+      captureViewport(options?: OhneGuessrPanoramaCaptureOptions): Promise<OhneGuessrPanoramaCapture>;
+      onRoundStart(listener: () => void): () => void;
       onViewChange(listener: (view: OhneGuessrPanoramaView) => void): () => void;
       createLayer(): HTMLElement;
+    };
+    location: {
+      reverse(position: { lat: number; lng: number }): Promise<OhneGuessrLocationDetails>;
     };
     hud: {
       addButton(options: {
