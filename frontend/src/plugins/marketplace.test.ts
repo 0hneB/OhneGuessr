@@ -26,4 +26,12 @@ describe('mergePluginEntries', () => {
     expect(entries[0].configured).toEqual(['apiKey']);
     expect(entries[0].settings[0].key).toBe('apiKey');
   });
+
+  it('lets the catalog remove a stale installed experimental flag', () => {
+    const entries = mergePluginEntries(
+      [manifest('example', '1.0.0')],
+      [{ ...manifest('example', '1.0.0'), experimental: true, enabled: true }]
+    );
+    expect(entries[0].experimental).toBe(false);
+  });
 });

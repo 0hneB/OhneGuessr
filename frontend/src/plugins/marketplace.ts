@@ -38,7 +38,7 @@ export function mergePluginEntries(
       icon: display.icon,
       version: current?.version || latest?.version || '',
       latestVersion: latest?.version || '',
-      experimental: Boolean(latest?.experimental ?? current?.experimental),
+      experimental: Boolean(latest ? latest.experimental : current?.experimental),
       installed: Boolean(current),
       enabled: Boolean(current?.enabled),
       updatable: Boolean(current && latest && current.version !== latest.version),

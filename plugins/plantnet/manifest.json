@@ -6,7 +6,6 @@
   "version": "0.0.1",
   "apiVersion": 1,
   "main": "index.js",
-  "experimental": true,
   "settings": [
     {
       "key": "apiKey",
