@@ -30,21 +30,8 @@ describe('panorama capture helpers', () => {
     ]))).not.toBeNull();
   });
 
-  it('renders and copies a stable offscreen frame', async () => {
-    let now = 0;
-    vi.spyOn(Date, 'now').mockImplementation(() => now);
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      now += 250;
-      callback(now);
-      return 1;
-    });
-    vi.stubGlobal('setTimeout', (callback: () => void) => {
-      callback();
-      return 1;
-    });
-    vi.stubGlobal('window', { devicePixelRatio: 2 });
-
-    const source = { width: 1940, height: 1091 };
+  it('copies an adequate live frame without creating another panorama', async () => {
+    const source = { width: 1920, height: 1080 };
     const sampleContext = {
       clearRect: vi.fn(),
       drawImage: vi.fn(),
@@ -60,37 +47,107 @@ describe('panorama capture helpers', () => {
       getContext: () => outputContext,
       toBlob: (callback: BlobCallback) => callback(new Blob(['png'], { type: 'image/png' }))
     };
-    const host = { style: {}, querySelector: vi.fn(() => source) };
+    const host = {
+      querySelectorAll: vi.fn(() => [source])
+    };
+    const createElement = vi.fn()
+      .mockReturnValueOnce(sample)
+      .mockReturnValueOnce(output);
+    vi.stubGlobal('document', { createElement });
+    const StreetViewPanorama = vi.fn();
+    vi.stubGlobal('google', { maps: { StreetViewPanorama } });
+
+    const capture = await capturePanoViewport(
+      { getPano: () => 'pano' } as unknown as google.maps.StreetViewPanorama,
+      host as unknown as HTMLElement,
+      800,
+      600,
+      { width: 1920, height: 1080 }
+    );
+
+    expect(capture).toMatchObject({ panoId: 'pano', width: 1920, height: 1080 });
+    expect(StreetViewPanorama).not.toHaveBeenCalled();
+    expect(outputContext.drawImage).toHaveBeenCalledOnce();
+  });
+
+  it('falls back immediately when the live WebGL buffer is cleared', async () => {
+    vi.stubGlobal('window', { devicePixelRatio: 2 });
+
+    const liveSource = { width: 800, height: 600 };
+    const renderedSource = { width: 800, height: 600 };
+    const renderedPixels = new Uint8ClampedArray([
+      0, 0, 0, 255, 255, 120, 10, 255,
+      30, 90, 150, 255, 20, 20, 20, 255
+    ]);
+    const sampleContext = {
+      clearRect: vi.fn(),
+      drawImage: vi.fn(),
+      getImageData: vi.fn()
+        .mockReturnValueOnce({ data: new Uint8ClampedArray(16) })
+        .mockReturnValue({ data: renderedPixels })
+    };
+    const outputContext = { drawImage: vi.fn() };
+    const sample = { width: 0, height: 0, getContext: () => sampleContext };
+    const output = {
+      width: 0, height: 0,
+      getContext: () => outputContext,
+      toBlob: (callback: BlobCallback) => callback(new Blob(['png'], { type: 'image/png' }))
+    };
+    const liveHost = { querySelectorAll: vi.fn(() => [liveSource]) };
     const container = {
-      style: {}, setAttribute: vi.fn(), appendChild: vi.fn(), remove: vi.fn()
+      style: {},
+      setAttribute: vi.fn(),
+      appendChild: vi.fn(),
+      remove: vi.fn()
+    };
+    const offscreenHost = {
+      style: {},
+      querySelectorAll: vi.fn(() => [renderedSource]),
     };
     let divIndex = 0;
     let canvasIndex = 0;
     const createElement = vi.fn((tag: string) => tag === 'div'
-      ? [container, host][divIndex++]
-      : canvasIndex++ === 0 ? sample : output);
+      ? [container, offscreenHost][divIndex++]
+      : canvasIndex++ < 2 ? sample : output);
     const appendChild = vi.fn();
     vi.stubGlobal('document', { createElement, body: { appendChild } });
+
+    let renderStable = () => {};
+    const removeListener = vi.fn();
     const setVisible = vi.fn();
+    const offscreen = {
+      setVisible,
+      addListener: vi.fn((_event: string, listener: () => void) => {
+        renderStable = listener;
+        return { remove: removeListener };
+      })
+    };
     const StreetViewPanorama = vi.fn(function StreetViewPanoramaMock() {
-      return { setVisible };
+      return offscreen;
     });
     vi.stubGlobal('google', { maps: { StreetViewPanorama } });
 
-    const capture = await capturePanoViewport(
+    const capturePromise = capturePanoViewport(
       {
         getPano: () => 'pano',
         getPov: () => ({ heading: 10, pitch: 5 }),
         getZoom: () => 1
       } as unknown as google.maps.StreetViewPanorama,
-      800, 600, { width: 1920, height: 1080 }
+      liveHost as unknown as HTMLElement,
+      800,
+      600
     );
 
-    expect(capture).toMatchObject({ panoId: 'pano', width: 1920, height: 1080 });
-    expect(StreetViewPanorama).toHaveBeenCalledWith(host, expect.objectContaining({
+    expect(outputContext.drawImage).not.toHaveBeenCalled();
+    renderStable();
+    const capture = await capturePromise;
+
+    expect(capture).toMatchObject({ panoId: 'pano', width: 800, height: 600 });
+    expect(StreetViewPanorama).toHaveBeenCalledWith(offscreenHost, expect.objectContaining({
       pano: 'pano', pov: { heading: 10, pitch: 5 }, zoom: 1, visible: true
     }));
-    expect(outputContext.drawImage).toHaveBeenCalled();
+    expect(outputContext.drawImage).toHaveBeenCalledOnce();
+    expect(removeListener).toHaveBeenCalledOnce();
     expect(setVisible).toHaveBeenCalledWith(false);
     expect(container.remove).toHaveBeenCalledOnce();
     expect(appendChild).toHaveBeenCalledWith(container);

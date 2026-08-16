@@ -254,7 +254,7 @@ export class OpenSvViewer {
 
   captureViewport(options?: PanoramaCaptureOptions) {
     const bounds = this._pluginRoot.getBoundingClientRect();
-    return capturePanoViewport(this.pano, bounds.width, bounds.height, options);
+    return capturePanoViewport(this.pano, this._host, bounds.width, bounds.height, options);
   }
 
   onRoundStart(listener: () => void) {
