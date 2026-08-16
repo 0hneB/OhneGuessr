@@ -66,7 +66,7 @@ Every location needs finite `lat` and `lng` values. Panorama ID, heading, pitch,
 
 ## Plugins
 
-The **Plugins** launcher tab enables or disables the built-in Challenges, Map Making App Sync, and Learnable Meta plugins. Sync configuration stays beside Maps and is shown only while its plugin is enabled. There is no plugin marketplace or third-party loader.
+The **Plugins** launcher tab manages the built-in Challenges, Map Making App Sync, and Learnable Meta plugins. Its **Additional** tab installs and updates curated plugins from this repository's GitHub-hosted marketplace. Sync configuration stays beside Maps and is shown only while its plugin is enabled.
 
 ## Challenges
 
@@ -148,19 +148,6 @@ Install Go 1.26 and Node.js 20.19+, 22.12+, or 24+. The Wails CLI is tracked in 
 Start the development app with:
 
 ```powershell
-go tool wails3 dev
-```
-
-To test installable plugins from the working tree, serve the plugin directory in one terminal:
-
-```powershell
-python -m http.server 8765 --directory plugins
-```
-
-Then point the development app at it from a second terminal:
-
-```powershell
-$env:OHNEGUESSR_PLUGIN_REPOSITORY = "http://127.0.0.1:8765"
 go tool wails3 dev
 ```
 
