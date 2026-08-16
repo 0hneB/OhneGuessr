@@ -3,7 +3,10 @@ import {
   capturePanoViewport, fitCaptureSize, frameFingerprint, requestedCaptureSize
 } from './panorama-capture.js';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('panorama capture helpers', () => {
   it('preserves the viewport aspect within 1920x1080', () => {
@@ -27,56 +30,69 @@ describe('panorama capture helpers', () => {
     ]))).not.toBeNull();
   });
 
-  it('redraws and copies a WebGL frame before its drawing buffer is cleared', async () => {
-    let live = false;
-    const source = { width: 800, height: 600 };
+  it('renders and copies a stable offscreen frame', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      now += 250;
+      callback(now);
+      return 1;
+    });
+    vi.stubGlobal('setTimeout', (callback: () => void) => {
+      callback();
+      return 1;
+    });
+    vi.stubGlobal('window', { devicePixelRatio: 2 });
+
+    const source = { width: 1940, height: 1091 };
     const sampleContext = {
       clearRect: vi.fn(),
       drawImage: vi.fn(),
-      getImageData: vi.fn(() => {
-        if (!live) return { data: new Uint8ClampedArray(16) };
-        queueMicrotask(() => { live = false; });
-        return { data: new Uint8ClampedArray([
-          0, 0, 0, 255, 255, 120, 10, 255,
-          30, 90, 150, 255, 20, 20, 20, 255
-        ]) };
-      })
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray([
+        0, 0, 0, 255, 255, 120, 10, 255,
+        30, 90, 150, 255, 20, 20, 20, 255
+      ]) }))
     };
-    const outputContext = {
-      drawImage: vi.fn(() => { if (!live) throw new Error('drawing buffer cleared'); })
-    };
+    const outputContext = { drawImage: vi.fn() };
     const sample = { width: 0, height: 0, getContext: () => sampleContext };
     const output = {
       width: 0, height: 0,
       getContext: () => outputContext,
       toBlob: (callback: BlobCallback) => callback(new Blob(['png'], { type: 'image/png' }))
     };
-    const createElement = vi.fn().mockReturnValueOnce(sample).mockReturnValueOnce(output);
-    vi.stubGlobal('document', { createElement });
-    let rendered = () => {};
-    const remove = vi.fn();
-    const setPov = vi.fn(() => {
-      live = true;
-      rendered();
+    const host = { style: {}, querySelector: vi.fn(() => source) };
+    const container = {
+      style: {}, setAttribute: vi.fn(), appendChild: vi.fn(), remove: vi.fn()
+    };
+    let divIndex = 0;
+    let canvasIndex = 0;
+    const createElement = vi.fn((tag: string) => tag === 'div'
+      ? [container, host][divIndex++]
+      : canvasIndex++ === 0 ? sample : output);
+    const appendChild = vi.fn();
+    vi.stubGlobal('document', { createElement, body: { appendChild } });
+    const setVisible = vi.fn();
+    const StreetViewPanorama = vi.fn(function StreetViewPanoramaMock() {
+      return { setVisible };
     });
+    vi.stubGlobal('google', { maps: { StreetViewPanorama } });
 
     const capture = await capturePanoViewport(
       {
         getPano: () => 'pano',
         getPov: () => ({ heading: 10, pitch: 5 }),
-        setPov,
-        addListener: (_event: string, listener: () => void) => {
-          rendered = listener;
-          return { remove };
-        }
+        getZoom: () => 1
       } as unknown as google.maps.StreetViewPanorama,
-      { querySelectorAll: () => [source] } as unknown as HTMLElement,
       800, 600, { width: 1920, height: 1080 }
     );
 
     expect(capture).toMatchObject({ panoId: 'pano', width: 1920, height: 1080 });
-    expect(setPov).toHaveBeenCalledOnce();
-    expect(remove).toHaveBeenCalledOnce();
-    expect(outputContext.drawImage).toHaveBeenCalledOnce();
+    expect(StreetViewPanorama).toHaveBeenCalledWith(host, expect.objectContaining({
+      pano: 'pano', pov: { heading: 10, pitch: 5 }, zoom: 1, visible: true
+    }));
+    expect(outputContext.drawImage).toHaveBeenCalled();
+    expect(setVisible).toHaveBeenCalledWith(false);
+    expect(container.remove).toHaveBeenCalledOnce();
+    expect(appendChild).toHaveBeenCalledWith(container);
   });
 });
