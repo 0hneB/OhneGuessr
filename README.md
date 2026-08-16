@@ -68,7 +68,7 @@ Every location needs finite `lat` and `lng` values. Panorama ID, heading, pitch,
 
 The **Plugins** launcher tab manages the built-in Challenges, Map Making App Sync, and Learnable Meta plugins. Its **Additional** tab installs and updates curated plugins from this repository's GitHub-hosted marketplace. Sync configuration stays beside Maps and is shown only while its plugin is enabled.
 
-Additional plugins are trusted ES modules that default-export an `activate(api)` function. The API in `plugins/types/ohneguessr.d.ts` supplies the shared in-game window and HUD button styles plus private game capabilities; plugins otherwise have normal access to the renderer's browser APIs and DOM.
+Additional plugins are authored in `plugins/<id>/src/index.ts` and built into trusted ES modules that default-export an `activate(api)` function. The API in `plugins/types/ohneguessr.d.ts` supplies the shared in-game window and HUD button styles plus private game capabilities; plugins otherwise have normal access to the renderer's browser APIs and DOM.
 
 ## Challenges
 
@@ -153,7 +153,7 @@ Start the development app with:
 go tool wails3 dev
 ```
 
-Run `node plugins/generate-registry.mjs` after changing a plugin's source or manifest.
+Run `npm --prefix plugins run build` after changing a plugin's TypeScript source or manifest.
 
 Development uses `%LOCALAPPDATA%\OhneGuessr` on Windows.
 

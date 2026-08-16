@@ -7,7 +7,7 @@
     "version": "0.0.1",
     "apiVersion": 1,
     "main": "index.js",
-    "sha256": "sha256:75c1af27f2cc695ac99229fcbfafbe21cc72f757634f13262feaa068074fc098"
+    "sha256": "sha256:b20f26cc248ad30dbbafd7d46617f5c4d2baed81dbcaafe41383397ecdce53d1"
   },
   {
     "id": "plantnet",
@@ -24,7 +24,7 @@
         "type": "password"
       }
     ],
-    "sha256": "sha256:88d1423a261b83a6b443d3055db6fcf23c622459eace7fc1b1322508ba4fe3b2"
+    "sha256": "sha256:919fd4518a41958791d594e9584a99b96f0de9fb57741232e82493b28521c71b"
   },
   {
     "id": "screenshot",
@@ -34,7 +34,7 @@
     "version": "0.0.1",
     "apiVersion": 1,
     "main": "index.js",
-    "sha256": "sha256:bd6e315277ee4f051e1a6849fea1986ec0b48c48837d71cf33d14da1def932a6"
+    "sha256": "sha256:032cb698d549047c9b4fd199a9114a3e66047e06ae5c43064b896e880488ce02"
   },
   {
     "id": "translator",
@@ -51,6 +51,6 @@
         "type": "password"
       }
     ],
-    "sha256": "sha256:ddc337f2827b0cb8d758b22136dfcfce0a2b845dad91d6be018bfe5c7ccac946"
+    "sha256": "sha256:35b000cbb157f5a8e6b7abab136046e26c9078024f0738d4111111979ece2e62"
   }
 ]

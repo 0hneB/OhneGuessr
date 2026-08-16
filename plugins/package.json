@@ -1,4 +1,9 @@
 {
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "typecheck": "node ../frontend/node_modules/typescript/bin/tsc -p tsconfig.json",
+    "build": "npm run typecheck && node build-plugin.mjs && node generate-registry.mjs",
+    "check": "npm run typecheck && node build-plugin.mjs --check && node generate-registry.mjs --check"
+  }
 }

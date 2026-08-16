@@ -96,7 +96,7 @@ declare global {
     };
   }
 
-  /** Default-export this object from an additional plugin's index.js module. */
+  /** Default-export this object from an additional plugin's source module. */
   interface OhneGuessrPlugin {
     activate(api: OhneGuessrPluginAPI):
       void | (() => void) | Promise<void | (() => void)>;

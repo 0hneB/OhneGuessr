@@ -24,8 +24,8 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
-      - name: Check plugin registry
-        run: node plugins/generate-registry.mjs --check
+      - name: Check plugins
+        run: npm --prefix plugins run check
       - uses: actions/setup-go@v7
         with:
           go-version: '1.26.x'
