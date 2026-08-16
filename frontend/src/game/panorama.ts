@@ -7,6 +7,7 @@
 import { publicAsset } from '../config.js';
 import type { Location, MovementMode, Point, Trail } from '../types.js';
 import { capturePanoViewport, type PanoramaCaptureOptions } from './panorama-capture.js';
+import { fetchPanoramaDetails, type PanoramaDetails } from './panorama-details.js';
 
 const OPENSV_SRC = publicAsset('vendor/opensv/opensv.js');
 const DEFAULT_ZOOM = 1;
@@ -105,6 +106,7 @@ export class OpenSvViewer {
   private readonly _roundListeners = new Set<() => void>();
   private readonly streetView: google.maps.StreetViewService;
   private readonly pano: google.maps.StreetViewPanorama;
+  private _details: PanoramaDetails | null = null;
   private defaultHeading = 0;
   private defaultPitch = 0;
   private _locationZoom = DEFAULT_ZOOM;
@@ -249,6 +251,22 @@ export class OpenSvViewer {
         pitch: typeof pitch === 'number' && Number.isFinite(pitch) ? pitch : null
       }
     };
+  }
+
+  async getDetails(): Promise<PanoramaDetails | null> {
+    const panoId = this.pano.getPano?.();
+    if (!panoId) return null;
+    if (this._details?.panoId === panoId) {
+      return { ...this._details, coverageDates: [...this._details.coverageDates] };
+    }
+    try {
+      const details = await fetchPanoramaDetails(panoId);
+      if (!details) return null;
+      if (this.pano.getPano?.() === panoId) this._details = details;
+      return { ...details, coverageDates: [...details.coverageDates] };
+    } catch {
+      return null;
+    }
   }
 
   captureViewport(options?: PanoramaCaptureOptions) {

@@ -24,6 +24,10 @@ const manifest = {
 function panoramaHost(): PanoramaPluginHost {
   return {
     getMetadata: () => null,
+    getDetails: vi.fn(async () => ({
+      panoId: 'test-pano', elevation: 123.4, cameraType: 'gen4' as const, panoType: 'official' as const,
+      uploader: null, drivingDirection: 90, coverageDates: ['2024-05'], copyright: '© Google'
+    })),
     captureViewport: vi.fn(),
     onRoundStart: vi.fn(() => vi.fn())
   };
@@ -41,6 +45,10 @@ describe('additional plugin host', () => {
     });
     pluginHudButtons[0].onClick();
     await vi.waitFor(() => expect(onClick).toHaveBeenCalledOnce());
+    await expect(host.api.panorama.getDetails()).resolves.toEqual({
+      panoId: 'test-pano', elevation: 123.4, cameraType: 'gen4', panoType: 'official',
+      uploader: null, drivingDirection: 90, coverageDates: ['2024-05'], copyright: '© Google'
+    });
     button.setPressed(false);
     expect(pluginHudButtons[0].pressed).toBe(false);
 

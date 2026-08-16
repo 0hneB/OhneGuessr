@@ -5,11 +5,13 @@ import {
 import { Browser } from '@wailsio/runtime';
 import type { PanoramaCapture, PanoramaCaptureOptions } from '../game/panorama-capture.js';
 import type { PanoramaMetadata } from '../game/panorama.js';
+import type { PanoramaDetails } from '../game/panorama-details.js';
 import { reverseLocation, type LocationDetails } from './location.js';
 import { createPluginWindow, type PluginWindowHandle } from './window.js';
 
 export interface PanoramaPluginHost {
   getMetadata(): PanoramaMetadata | null;
+  getDetails(): Promise<PanoramaDetails | null>;
   captureViewport(options?: PanoramaCaptureOptions): Promise<PanoramaCapture>;
   onRoundStart(listener: () => void): () => void;
 }
@@ -42,6 +44,7 @@ export type ExternalPluginWindow = Pick<
 export interface ExternalPluginAPI {
   panorama: {
     getMetadata(): PanoramaMetadata | null;
+    getDetails(): Promise<PanoramaDetails | null>;
     captureViewport(options?: PanoramaCaptureOptions): Promise<PanoramaCapture>;
     onRoundStart(listener: () => void): () => void;
   };
@@ -92,6 +95,7 @@ export function createPluginHost(manifest: PluginManifest, host: PanoramaPluginH
   const api: ExternalPluginAPI = {
     panorama: {
       getMetadata: () => host.getMetadata(),
+      getDetails: () => host.getDetails(),
       captureViewport: (options) => host.captureViewport(options),
       onRoundStart(listener) {
         const remove = host.onRoundStart(() => invoke(listener));

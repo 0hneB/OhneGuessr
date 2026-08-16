@@ -14,6 +14,10 @@ const ADDRESS_LABELS = {
   municipality: 'Municipality', county: 'County', state_district: 'State district',
   state: 'State / region', region: 'Region', postcode: 'Postal code', continent: 'Continent'
 };
+const CAMERA_LABELS = {
+  gen1: 'Gen 1', gen2: 'Gen 2', gen4: 'Gen 4', badcam: 'Bad cam', tripod: 'Tripod', trekker: 'Trekker'
+};
+const PANO_LABELS = { official: 'Official', 'user-uploaded': 'User-uploaded', unknown: 'Unknown' };
 const cleanText = (value) => typeof value === 'string' ? value.trim() : '';
 
 function addressLabel(key) {
@@ -91,6 +95,10 @@ function section(title, ...children) {
 
 const number = (value, digits = 1) => typeof value === 'number' && Number.isFinite(value)
   ? value.toFixed(digits) : '';
+const meters = (value) => {
+  const formatted = number(value);
+  return formatted ? `${formatted} m` : '';
+};
 const degrees = (value) => {
   const formatted = number(value);
   return formatted ? `${formatted}°` : '';
@@ -146,8 +154,15 @@ function render(api, content, metadata, location, locationState = {}) {
   });
   root.append(section('Street View coverage', panoramaLink, detailList([
     ['Imagery date', metadata.imageDate],
+    ['Historical coverage', metadata.coverageDates?.join(', ')],
+    ['Camera type', CAMERA_LABELS[metadata.cameraType] || ''],
+    ['Panorama type', PANO_LABELS[metadata.panoType] || ''],
     ['Panorama ID', metadata.panoId, 'coverage-info-code'],
     ['Coordinates', `${number(metadata.position.lat, 7)}, ${number(metadata.position.lng, 7)}`, 'coverage-info-code'],
+    ['Elevation', meters(metadata.elevation)],
+    ['Uploader', metadata.uploader],
+    ['Driving direction', degrees(metadata.drivingDirection)],
+    ['Attribution', metadata.copyright],
     ['Long description', metadata.description],
     ['Short description', metadata.shortDescription],
     ['Photographer heading', degrees(metadata.photographer.heading)],
@@ -217,11 +232,19 @@ function activate(api) {
     }
     render(api, panel.content, metadata, null, { loading: true });
     try {
-      const location = await api.location.reverse(metadata.position);
-      if (!controller.signal.aborted) render(api, panel.content, metadata, location);
-    } catch (error) {
-      if (error?.name !== 'AbortError' && !controller.signal.aborted) {
-        render(api, panel.content, metadata, null, {
+      const [detailsResult, locationResult] = await Promise.allSettled([
+        api.panorama.getDetails(),
+        api.location.reverse(metadata.position)
+      ]);
+      if (controller.signal.aborted) return;
+      const details = detailsResult.status === 'fulfilled' && detailsResult.value?.panoId === metadata.panoId
+        ? detailsResult.value : null;
+      const enrichedMetadata = details ? { ...metadata, ...details } : metadata;
+      if (locationResult.status === 'fulfilled') {
+        render(api, panel.content, enrichedMetadata, locationResult.value);
+      } else {
+        const error = locationResult.reason;
+        render(api, panel.content, enrichedMetadata, null, {
           error: error instanceof Error ? error.message : 'Could not load the full address.'
         });
       }
