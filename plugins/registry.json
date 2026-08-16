@@ -1,5 +1,15 @@
 [
   {
+    "id": "coverage-info",
+    "name": "Coverage Info",
+    "description": "Show Street View capture, camera, and full location details. Address lookups send the panorama coordinates to OpenStreetMap Nominatim.",
+    "icon": "M12,2C15.86,2 19,5.14 19,9C19,14.25 12,22 12,22C12,22 5,14.25 5,9C5,5.14 8.14,2 12,2M10.47,14L17,7.41L15.6,6L10.47,11.18L8.4,9.09L7,10.5L10.47,14Z",
+    "version": "0.0.1",
+    "apiVersion": 1,
+    "main": "index.js",
+    "sha256": "sha256:619b53e282d2abec25b4195a7a7d534bed93a5725aef3e11b94765884fefe18b"
+  },
+  {
     "id": "plantnet",
     "name": "PlantNet",
     "description": "Identify plants visible in the current panorama with Pl@ntNet. Requests send the current view and coordinates to Pl@ntNet.",
