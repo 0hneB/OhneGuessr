@@ -4,17 +4,17 @@ import {
 } from '../../bindings/github.com/0hneB/OhneGuessr/index.js';
 import { desktopRuntimeAvailable } from '../desktop.js';
 import {
-  connectPluginAPI,
-  pluginInitialState,
+  createPluginHost,
+  type ExternalPlugin,
   type PanoramaPluginHost
-} from './api.svelte.js';
-import { createPluginFrame, mountPluginFrame } from './sandbox.js';
-import { createPluginWindow } from './window.js';
+} from './host.svelte.js';
 
-type PluginBridge = ReturnType<typeof connectPluginAPI>;
+interface ActivePlugin {
+  deactivate(): void;
+}
 
 let modules: PluginModule[] = [];
-const active = new Map<string, PluginBridge>();
+const active = new Map<string, ActivePlugin>();
 
 export async function loadExternalPlugins() {
   if (!desktopRuntimeAvailable()) return;
@@ -30,34 +30,33 @@ export async function activateExternalPlugins(host: PanoramaPluginHost) {
   for (const module of [...modules].sort((a, b) =>
     a.manifest.name.localeCompare(b.manifest.name))) {
     if (active.has(module.manifest.id)) continue;
-    const iframe = createPluginFrame(module.manifest.name);
-    const pluginWindow = createPluginWindow({
-      title: module.manifest.name,
-      layoutKey: `ohneguessr.plugin.${module.manifest.id}.window.layout`
-    });
-    pluginWindow.content.classList.add('plugin-window-sandbox-content');
-    const channel = new MessageChannel();
-    const bridge = connectPluginAPI(module.manifest, host, iframe, channel.port1, pluginWindow);
-    active.set(module.manifest.id, bridge);
+    const pluginHost = createPluginHost(module.manifest, host);
+    let moduleURL = '';
     try {
-      await mountPluginFrame(
-        iframe,
-        module,
-        channel.port2,
-        await pluginInitialState(host),
-        pluginWindow.content,
-        () => {
-          if (active.get(module.manifest.id) !== bridge) return;
-          active.delete(module.manifest.id);
-          bridge.dispose();
-          console.error(`[plugin] stopped "${module.manifest.id}" after sandbox navigation`);
+      moduleURL = URL.createObjectURL(new Blob([
+        module.source,
+        `\n//# sourceURL=ohneguessr-plugin/${module.manifest.id}/index.js`
+      ], { type: 'application/javascript' }));
+      const loaded = await import(/* @vite-ignore */ moduleURL) as { default?: ExternalPlugin };
+      if (!loaded.default || typeof loaded.default.activate !== 'function') {
+        throw new Error('plugin module must default-export an activate function');
+      }
+      const cleanup = await loaded.default.activate(pluginHost.api);
+      if (cleanup !== undefined && typeof cleanup !== 'function') {
+        throw new Error('plugin activate must return a cleanup function or nothing');
+      }
+      active.set(module.manifest.id, {
+        deactivate() {
+          try { cleanup?.(); }
+          catch (error) { console.error(`[plugin] cleanup failed for "${module.manifest.id}":`, error); }
+          pluginHost.dispose();
         }
-      );
-      await bridge.ready;
+      });
     } catch (error) {
-      active.delete(module.manifest.id);
-      bridge.dispose();
+      pluginHost.dispose();
       console.error(`[plugin] failed to load "${module.manifest.id}":`, error);
+    } finally {
+      if (moduleURL) URL.revokeObjectURL(moduleURL);
     }
   }
 }

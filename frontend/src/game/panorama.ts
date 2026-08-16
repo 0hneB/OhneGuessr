@@ -103,7 +103,6 @@ export class OpenSvViewer {
   private readonly _host: HTMLDivElement;
   private readonly _lock: HTMLDivElement;
   private readonly _roundListeners = new Set<() => void>();
-  private readonly _viewListeners = new Set<(view: PanoramaView) => void>();
   private readonly streetView: google.maps.StreetViewService;
   private readonly pano: google.maps.StreetViewPanorama;
   private defaultHeading = 0;
@@ -154,11 +153,9 @@ export class OpenSvViewer {
     // Live heading for the compass.
     this.pano.addListener('pov_changed', () => {
       if (this.onChange) this.onChange(this.pano.getPov().heading);
-      this._emitView();
     });
     // Record each step so the result map can show where the player walked.
     this.pano.addListener('position_changed', () => {
-      this._emitView();
       if (!this._trailActive || this._checkpointBusy) return;
       const p = this.pano.getPosition?.();
       if (!p) return;
@@ -169,8 +166,6 @@ export class OpenSvViewer {
       if (last && last.lat === point.lat && last.lng === point.lng) return;
       segment.push(point);
     });
-    this.pano.addListener('zoom_changed', () => this._emitView());
-    window.addEventListener('resize', () => this._emitView());
     // Keyboard walking only in moving mode.
     host.addEventListener('keydown', (e) => {
       if (this.mode !== 'moving' && MOVE_KEYS.has(e.code)) { e.stopPropagation(); e.preventDefault(); }
@@ -264,13 +259,6 @@ export class OpenSvViewer {
   onRoundStart(listener: () => void) {
     this._roundListeners.add(listener);
     return () => { this._roundListeners.delete(listener); };
-  }
-
-  onViewChange(listener: (view: PanoramaView) => void) {
-    this._viewListeners.add(listener);
-    const view = this.getView();
-    if (view) listener(view);
-    return () => { this._viewListeners.delete(listener); };
   }
 
   // Separate walked paths; a checkpoint return starts a fresh segment.
@@ -574,9 +562,4 @@ export class OpenSvViewer {
     this._tweenId = 0;
   }
 
-  _emitView() {
-    const view = this.getView();
-    if (!view) return;
-    for (const listener of this._viewListeners) listener(view);
-  }
 }

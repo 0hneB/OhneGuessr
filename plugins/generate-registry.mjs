@@ -10,7 +10,7 @@ const registry = [];
 for (const entry of entries.filter((item) => item.isDirectory() && item.name !== 'types')) {
   const directory = join(root, entry.name);
   const manifest = JSON.parse(await readFile(join(directory, 'manifest.json'), 'utf8'));
-  if (manifest.id !== entry.name || manifest.main !== 'index.js' || manifest.apiVersion !== 2) {
+  if (manifest.id !== entry.name || manifest.main !== 'index.js' || manifest.apiVersion !== 3) {
     throw new Error(`Invalid manifest for ${entry.name}`);
   }
   const source = await readFile(join(directory, manifest.main));

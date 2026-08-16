@@ -1,4 +1,3 @@
-const ICON = 'M4,4H7L9,2H15L17,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9Z';
 const CAPTURE_SIZE = { width: 1920, height: 1080 };
 
 const text = (value) => typeof value === 'string' ? value.trim() : '';
@@ -36,6 +35,18 @@ export function screenshotFilename(panoId, location, savedAt = new Date()) {
   ].join('-') + '.png';
 }
 
+function saveFile(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.hidden = true;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function activate(api) {
   const style = document.createElement('style');
   style.textContent = `
@@ -69,7 +80,7 @@ function activate(api) {
       if (!metadata) throw new Error('No active panorama to capture.');
       const location = api.location.reverse(metadata.position).catch(() => null);
       const capture = await api.panorama.captureViewport(CAPTURE_SIZE);
-      await api.files.save(capture.blob, screenshotFilename(capture.panoId, await location));
+      saveFile(capture.blob, screenshotFilename(capture.panoId, await location));
     } catch (error) {
       showError(error instanceof Error && error.message === 'No active panorama to capture.'
         ? error.message : 'Screenshot failed. Wait for Street View to load and try again.');
@@ -79,8 +90,8 @@ function activate(api) {
     }
   };
 
-  button = api.hud.addButton({ icon: ICON, label: 'Save screenshot', onClick: save });
+  button = api.hud.addButton({ label: 'Save screenshot', onClick: save });
   return () => style.remove();
 }
 
-globalThis.OhneGuessr?.registerPlugin({ activate });
+export default { activate };

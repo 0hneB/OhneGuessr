@@ -15,6 +15,5 @@ export type {
     PluginInfo,
     PluginManifest,
     PluginModule,
-    PluginPermissions,
     PluginSetting
 } from "./models.js";

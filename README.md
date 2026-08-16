@@ -68,7 +68,7 @@ Every location needs finite `lat` and `lng` values. Panorama ID, heading, pitch,
 
 The **Plugins** launcher tab manages the built-in Challenges, Map Making App Sync, and Learnable Meta plugins. Its **Additional** tab installs and updates curated plugins from this repository's GitHub-hosted marketplace. Sync configuration stays beside Maps and is shown only while its plugin is enabled.
 
-Additional plugins run in opaque-origin sandboxed iframes. They receive game data and host actions only through the typed API in `plugins/types/ohneguessr.d.ts`; network and external-link origins must be declared in their manifest.
+Additional plugins are trusted ES modules that default-export an `activate(api)` function. The API in `plugins/types/ohneguessr.d.ts` supplies the shared in-game window and HUD button styles plus private game capabilities; plugins otherwise have normal access to the renderer's browser APIs and DOM.
 
 ## Challenges
 

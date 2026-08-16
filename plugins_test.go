@@ -158,9 +158,4 @@ func TestPluginValidationRejectsUnsafePaths(t *testing.T) {
 	if validatePluginManifest(manifest, manifest.ID, false) == nil {
 		t.Fatal("unsupported setting type was accepted")
 	}
-	manifest = testPluginManifest()
-	manifest.Permissions = &PluginPermissions{Network: []string{"https://example.com/path"}}
-	if validatePluginManifest(manifest, manifest.ID, false) == nil {
-		t.Fatal("network permission with a path was accepted")
-	}
 }

@@ -1,5 +1,4 @@
 const FLAG_ENDPOINT = 'https://flagcdn.com';
-const ICON = 'M12,2C15.86,2 19,5.14 19,9C19,14.25 12,22 12,22C12,22 5,14.25 5,9C5,5.14 8.14,2 12,2M10.47,14L17,7.41L15.6,6L10.47,11.18L8.4,9.09L7,10.5L10.47,14Z';
 const ADDRESS_ORDER = [
   'house_number', 'house_name', 'road', 'pedestrian', 'footway', 'path',
   'neighbourhood', 'quarter', 'suburb', 'borough', 'city_district', 'district',
@@ -97,22 +96,17 @@ const degrees = (value) => {
   return formatted ? `${formatted}°` : '';
 };
 
-function countryNode(api, location, signal) {
+function countryNode(location) {
   const country = element('span', 'coverage-info-country');
   const flag = flagSources(location.countryCode);
   if (flag) {
     const image = element('img', 'coverage-info-flag');
     image.width = 20;
     image.alt = '';
+    image.referrerPolicy = 'no-referrer';
     image.addEventListener('error', () => image.remove(), { once: true });
+    image.src = flag.src;
     country.append(image);
-    void api.network.request({ url: flag.src, response: 'blob', signal }).then((response) => {
-      if (!response.ok || !(response.data instanceof Blob)) throw new Error('flag unavailable');
-      const url = URL.createObjectURL(response.data);
-      image.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
-      image.addEventListener('error', () => URL.revokeObjectURL(url), { once: true });
-      image.src = url;
-    }).catch(() => image.remove());
   }
   country.append(document.createTextNode(location.country || '—'));
   return country;
@@ -126,7 +120,7 @@ function render(api, content, metadata, location, locationState = {}) {
       locationChildren.push(element('p', 'coverage-info-address', location.fullAddress));
     }
     const rows = [];
-    if (location.country) rows.push(['Country', countryNode(api, location, locationState.signal)]);
+    if (location.country) rows.push(['Country', countryNode(location)]);
     if (location.feature) rows.push(['Place', location.feature]);
     const featureType = [location.category, location.type].filter(Boolean).join(' · ');
     if (featureType) rows.push(['Place type', featureType]);
@@ -224,7 +218,7 @@ function activate(api) {
     render(api, panel.content, metadata, null, { loading: true });
     try {
       const location = await api.location.reverse(metadata.position);
-      if (!controller.signal.aborted) render(api, panel.content, metadata, location, { signal: controller.signal });
+      if (!controller.signal.aborted) render(api, panel.content, metadata, location);
     } catch (error) {
       if (error?.name !== 'AbortError' && !controller.signal.aborted) {
         render(api, panel.content, metadata, null, {
@@ -236,7 +230,7 @@ function activate(api) {
     }
   };
 
-  hudButton = api.hud.addButton({ icon: ICON, label: 'Show coverage info', onClick: showInfo });
+  hudButton = api.hud.addButton({ label: 'Show coverage info', onClick: showInfo });
   api.panorama.onRoundStart(() => { if (open) void showInfo(); });
   return () => {
     request?.abort();
@@ -244,4 +238,4 @@ function activate(api) {
   };
 }
 
-if (typeof window !== 'undefined') window.OhneGuessr?.registerPlugin({ activate });
+export default { activate };

@@ -43,7 +43,7 @@ declare global {
   }
 
   interface OhneGuessrPluginWindow {
-    /** This element belongs to the plugin's sandbox, never to the game document. */
+    /** Content element inside the host-styled in-game window. */
     readonly content: HTMLDivElement;
     show(): void;
     hide(): void;
@@ -52,15 +52,10 @@ declare global {
   }
 
   interface OhneGuessrPluginAPI {
-    environment: {
-      readonly origin: string;
-    };
     panorama: {
-      getView(): OhneGuessrPanoramaView | null;
       getMetadata(): OhneGuessrPanoramaMetadata | null;
       captureViewport(options?: OhneGuessrPanoramaCaptureOptions): Promise<OhneGuessrPanoramaCapture>;
       onRoundStart(listener: () => void): () => void;
-      onViewChange(listener: (view: OhneGuessrPanoramaView) => void): () => void;
     };
     location: {
       reverse(position: { lat: number; lng: number }): Promise<OhneGuessrLocationDetails>;
@@ -74,8 +69,8 @@ declare global {
       }): { setPressed(pressed: boolean): void; remove(): void };
     };
     ui: {
-      createWindow(options: {
-        title: string;
+      createWindow(options?: {
+        title?: string;
         ariaLabel?: string;
         closeLabel?: string;
         onClose?(): void;
@@ -85,22 +80,11 @@ declare global {
     settings: {
       get(key: string): Promise<string>;
     };
-    network: {
-      request<T = unknown>(options: {
-        url: string;
-        method?: 'GET' | 'POST';
-        query?: Record<string, string>;
-        file?: { field: string; blob: Blob; name: string };
-        response?: 'json' | 'blob';
-        signal?: AbortSignal;
-      }): Promise<{ ok: boolean; status: number; data: T }>;
-    };
-    files: {
-      save(blob: Blob, name: string): Promise<void>;
-    };
   }
 
-  var OhneGuessr: {
-    registerPlugin(plugin: { activate(api: OhneGuessrPluginAPI): void | (() => void) }): void;
-  };
+  /** Default-export this object from an additional plugin's index.js module. */
+  interface OhneGuessrPlugin {
+    activate(api: OhneGuessrPluginAPI):
+      void | (() => void) | Promise<void | (() => void)>;
+  }
 }
