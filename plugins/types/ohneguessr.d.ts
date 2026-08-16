@@ -24,7 +24,6 @@ declare global {
 
   interface OhneGuessrPanoramaMetadata extends OhneGuessrPanoramaView {
     panoId: string;
-    imageDate: string;
     description: string;
     shortDescription: string;
     photographer: { heading: number | null; pitch: number | null };

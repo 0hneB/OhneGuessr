@@ -6,7 +6,7 @@ import { Browser } from '@wailsio/runtime';
 import type { PanoramaCapture, PanoramaCaptureOptions } from '../game/panorama-capture.js';
 import type { PanoramaMetadata } from '../game/panorama.js';
 import type { PanoramaDetails } from '../game/panorama-details.js';
-import { reverseLocation, type LocationDetails } from './location.js';
+import { reverseLocation } from './location.js';
 import { createPluginWindow, type PluginWindowHandle } from './window.js';
 
 export interface PanoramaPluginHost {
@@ -24,53 +24,8 @@ export interface PluginHudButton {
   onClick(): void;
 }
 
-export interface PluginButtonHandle {
-  setPressed(pressed: boolean): void;
-  remove(): void;
-}
-
-export interface PluginWindowOptions {
-  title?: string;
-  ariaLabel?: string;
-  closeLabel?: string;
-  onClose?(): void;
-}
-
-export type ExternalPluginWindow = Pick<
-  PluginWindowHandle,
-  'content' | 'show' | 'hide' | 'resetLayout' | 'remove'
->;
-
-export interface ExternalPluginAPI {
-  panorama: {
-    getMetadata(): PanoramaMetadata | null;
-    getDetails(): Promise<PanoramaDetails | null>;
-    captureViewport(options?: PanoramaCaptureOptions): Promise<PanoramaCapture>;
-    onRoundStart(listener: () => void): () => void;
-  };
-  location: {
-    reverse(position: { lat: number; lng: number }): Promise<LocationDetails>;
-  };
-  hud: {
-    addButton(options: {
-      icon?: string;
-      label: string;
-      pressed?: boolean;
-      onClick(): void | Promise<void>;
-    }): PluginButtonHandle;
-  };
-  ui: {
-    createWindow(options?: PluginWindowOptions): ExternalPluginWindow;
-    openExternal(url: string): Promise<void>;
-  };
-  settings: {
-    get(key: string): Promise<string>;
-  };
-}
-
-export interface ExternalPlugin {
-  activate(api: ExternalPluginAPI): void | (() => void) | Promise<void | (() => void)>;
-}
+export type ExternalPluginAPI = OhneGuessrPluginAPI;
+export type ExternalPlugin = OhneGuessrPlugin;
 
 export const pluginHudButtons = $state<PluginHudButton[]>([]);
 
@@ -116,7 +71,7 @@ export function createPluginHost(manifest: PluginManifest, host: PanoramaPluginH
           onClick: () => invoke(options.onClick)
         });
         pluginHudButtons.push(button);
-        const handle: PluginButtonHandle = {
+        const handle: ReturnType<OhneGuessrPluginAPI['hud']['addButton']> = {
           setPressed(pressed) {
             if (!removed) button.pressed = Boolean(pressed);
           },

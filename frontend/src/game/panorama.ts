@@ -40,7 +40,6 @@ export interface PanoramaView {
 
 export interface PanoramaMetadata extends PanoramaView {
   panoId: string;
-  imageDate: string;
   description: string;
   shortDescription: string;
   photographer: { heading: number | null; pitch: number | null };
@@ -239,11 +238,9 @@ export class OpenSvViewer {
     const photographer = this.pano.getPhotographerPov?.();
     const heading = photographer?.heading;
     const pitch = photographer?.pitch;
-    const imageDate = this.pano.get('imageDate');
     return {
       ...view,
       panoId,
-      imageDate: typeof imageDate === 'string' ? imageDate : '',
       description: typeof location?.description === 'string' ? location.description : '',
       shortDescription: typeof location?.shortDescription === 'string' ? location.shortDescription : '',
       photographer: {
