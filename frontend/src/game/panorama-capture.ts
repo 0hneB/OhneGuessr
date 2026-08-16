@@ -42,20 +42,8 @@ export async function capturePanoViewport(
   const panoId = panorama.getPano();
   if (!panoId) throw new Error('Street View is not ready');
   const requestedSize = options ? requestedCaptureSize(options) : null;
-  const source = await waitForLiveCanvas(host);
-  const size = requestedSize || fitCaptureSize(
-    viewportWidth, viewportHeight,
-    Math.min(1920, source.width), Math.min(1080, source.height)
-  );
-  return { blob: await canvasToBlob(drawScaled(source, size.width, size.height)), panoId, ...size };
-}
-
-function nextFrame() {
-  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-}
-
-function delay(ms: number) {
-  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+  const frame = await captureLiveFrame(panorama, host, viewportWidth, viewportHeight, requestedSize);
+  return { blob: await canvasToBlob(frame.image), panoId, width: frame.width, height: frame.height };
 }
 
 export function frameFingerprint(pixels: Uint8ClampedArray): number | null {
@@ -77,16 +65,20 @@ export function frameFingerprint(pixels: Uint8ClampedArray): number | null {
   return visible > pixels.length / 8 && max - min > 4 ? hash >>> 0 : null;
 }
 
-async function waitForLiveCanvas(host: HTMLElement) {
+async function captureLiveFrame(
+  panorama: google.maps.StreetViewPanorama,
+  host: HTMLElement,
+  viewportWidth: number,
+  viewportHeight: number,
+  requestedSize: { width: number; height: number } | null
+) {
   const sample = document.createElement('canvas');
   sample.width = 64;
   sample.height = 36;
   const context = sample.getContext('2d', { willReadFrequently: true });
   if (!context) throw new Error('Could not inspect the Street View image');
 
-  const deadline = Date.now() + CANVAS_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    await nextFrame();
+  const copyFrame = () => {
     const canvases = [...host.querySelectorAll<HTMLCanvasElement>('canvas')]
       .filter((canvas) => canvas.width > 0 && canvas.height > 0)
       .sort((left, right) => right.width * right.height - left.width * left.height);
@@ -95,13 +87,37 @@ async function waitForLiveCanvas(host: HTMLElement) {
         context.clearRect(0, 0, sample.width, sample.height);
         context.drawImage(canvas, 0, 0, sample.width, sample.height);
         if (frameFingerprint(context.getImageData(0, 0, sample.width, sample.height).data) !== null) {
-          return canvas;
+          const size = requestedSize || fitCaptureSize(
+            viewportWidth, viewportHeight,
+            Math.min(1920, canvas.width), Math.min(1080, canvas.height)
+          );
+          // OpenSV does not preserve its WebGL drawing buffer, so copy it before yielding.
+          return { image: drawScaled(canvas, size.width, size.height), ...size };
         }
       } catch { /* try another rendered canvas */ }
     }
-    await delay(50);
-  }
-  throw new Error('Street View image is unavailable');
+    return null;
+  };
+
+  const current = copyFrame();
+  if (current) return current;
+
+  return new Promise<NonNullable<ReturnType<typeof copyFrame>>>((resolve, reject) => {
+    let listener: google.maps.MapsEventListener;
+    const timer = setTimeout(() => {
+      listener.remove();
+      reject(new Error('Street View image is unavailable'));
+    }, CANVAS_TIMEOUT_MS);
+    listener = panorama.addListener('iv_renderstable', () => {
+      const frame = copyFrame();
+      if (!frame) return;
+      clearTimeout(timer);
+      listener.remove();
+      resolve(frame);
+    });
+    // OpenSV emits iv_renderstable after this same-POV redraw completes.
+    panorama.setPov(panorama.getPov());
+  });
 }
 
 function drawScaled(source: HTMLCanvasElement, width: number, height: number) {
