@@ -31,12 +31,18 @@ export interface PluginManifest {
     "main": string;
     "experimental"?: boolean;
     "settings"?: PluginSetting[] | null;
+    "permissions"?: PluginPermissions | null;
     "sha256"?: string;
 }
 
 export interface PluginModule {
     "manifest": PluginManifest;
     "source": string;
+}
+
+export interface PluginPermissions {
+    "network"?: string[] | null;
+    "links"?: string[] | null;
 }
 
 export interface PluginSetting {

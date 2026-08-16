@@ -29,7 +29,7 @@
   } from '../../internal/plugins/challenges/game.svelte.js';
   import { gameMode } from '../../internal/plugins/game-mode.svelte.js';
   import { ui } from './ui.svelte.js';
-  import { pluginHudButtons } from './plugins/runtime.svelte.js';
+  import { pluginHudButtons } from './plugins/api.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);
   const modeActive = $derived(Boolean(gameMode.current));

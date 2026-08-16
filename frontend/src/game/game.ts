@@ -9,7 +9,7 @@ import { GAME_PHASE, state, settings } from './state.svelte.js';
 import { RoundTimer } from './timer.js';
 import { Keybindings } from '../settings/keybindings.js';
 import { createGuessPanel } from '../maps/guess-panel.js';
-import { activateExternalPlugins, loadExternalPlugins } from '../plugins/runtime.svelte.js';
+import { activateExternalPlugins, loadExternalPlugins } from '../plugins/runtime.js';
 import {
   initSettingsSync,
   onSettingsChanged,
@@ -876,7 +876,7 @@ export async function init() {
     return;
   }
   viewer = new OpenSvViewer($('pano'));
-  activateExternalPlugins(viewer);
+  await activateExternalPlugins(viewer);
   const faceNorth = () => {
     if (canInteractWithGuess()) viewer.faceNorth();
   };

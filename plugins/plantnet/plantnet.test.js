@@ -1,7 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { identifyPlants, parseAPIKey, parseIdentification } from './index.js';
 
-afterEach(() => vi.unstubAllGlobals());
+const pluginAPI = (response, origin = 'http://wails.localhost') => ({
+  environment: { origin },
+  network: { request: vi.fn().mockResolvedValue(response) }
+});
 
 describe('PlantNet plugin', () => {
   it('rejects a copied block instead of sending it as an API key', () => {
@@ -32,32 +35,30 @@ describe('PlantNet plugin', () => {
   });
 
   it('uploads one viewport to PlantNet identification', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ results: [] }), { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
+    const api = pluginAPI({ ok: true, status: 200, data: { results: [] } });
     const image = new Blob(['png'], { type: 'image/png' });
 
-    await expect(identifyPlants('secret', image)).resolves.toEqual({
+    await expect(identifyPlants(api, 'secret', image)).resolves.toEqual({
       results: [], remaining: null
     });
-    const identifyURL = new URL(String(fetchMock.mock.calls[0][0]));
+    const request = api.network.request.mock.calls[0][0];
+    const identifyURL = new URL(request.url);
     expect(identifyURL.pathname).toBe('/v2/identify/all');
-    expect(identifyURL.searchParams.get('nb-results')).toBe('5');
-    expect(fetchMock.mock.calls[0][1].body.get('images')).toBeInstanceOf(Blob);
+    expect(request.query['nb-results']).toBe('5');
+    expect(request.file.blob).toBe(image);
   });
 
   it('explains browser setup when PlantNet denies access', async () => {
-    vi.stubGlobal('location', { origin: 'http://wails.localhost:9245' });
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 403 })));
-    await expect(identifyPlants('rejected', new Blob(['png'])))
+    const api = pluginAPI({ ok: false, status: 403, data: null }, 'http://wails.localhost:9245');
+    await expect(identifyPlants(api, 'rejected', new Blob(['png'])))
       .rejects.toThrow(`PlantNet access denied. Check the key, enable "Expose my API key", and add these authorized domains:
 http://wails.localhost:9245
 http://wails.localhost`);
   });
 
   it('keeps other API errors broad', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 404 })));
-    await expect(identifyPlants('key', new Blob(['png'])))
+    const api = pluginAPI({ ok: false, status: 404, data: null });
+    await expect(identifyPlants(api, 'key', new Blob(['png'])))
       .rejects.toThrow('Plant identification failed. Please try again.');
   });
 });

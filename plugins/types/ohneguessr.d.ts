@@ -43,6 +43,7 @@ declare global {
   }
 
   interface OhneGuessrPluginWindow {
+    /** This element belongs to the plugin's sandbox, never to the game document. */
     readonly content: HTMLDivElement;
     show(): void;
     hide(): void;
@@ -51,13 +52,15 @@ declare global {
   }
 
   interface OhneGuessrPluginAPI {
+    environment: {
+      readonly origin: string;
+    };
     panorama: {
       getView(): OhneGuessrPanoramaView | null;
       getMetadata(): OhneGuessrPanoramaMetadata | null;
       captureViewport(options?: OhneGuessrPanoramaCaptureOptions): Promise<OhneGuessrPanoramaCapture>;
       onRoundStart(listener: () => void): () => void;
       onViewChange(listener: (view: OhneGuessrPanoramaView) => void): () => void;
-      createLayer(): HTMLElement;
     };
     location: {
       reverse(position: { lat: number; lng: number }): Promise<OhneGuessrLocationDetails>;
@@ -74,14 +77,26 @@ declare global {
       createWindow(options: {
         title: string;
         ariaLabel?: string;
-        link?: { href: string; label: string };
-        resetLabel?: string;
         closeLabel?: string;
         onClose?(): void;
       }): OhneGuessrPluginWindow;
+      openExternal(url: string): Promise<void>;
     };
     settings: {
       get(key: string): Promise<string>;
+    };
+    network: {
+      request<T = unknown>(options: {
+        url: string;
+        method?: 'GET' | 'POST';
+        query?: Record<string, string>;
+        file?: { field: string; blob: Blob; name: string };
+        response?: 'json' | 'blob';
+        signal?: AbortSignal;
+      }): Promise<{ ok: boolean; status: number; data: T }>;
+    };
+    files: {
+      save(blob: Blob, name: string): Promise<void>;
     };
   }
 

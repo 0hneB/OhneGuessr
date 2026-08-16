@@ -97,22 +97,28 @@ const degrees = (value) => {
   return formatted ? `${formatted}°` : '';
 };
 
-function countryNode(location) {
+function countryNode(api, location, signal) {
   const country = element('span', 'coverage-info-country');
   const flag = flagSources(location.countryCode);
   if (flag) {
     const image = element('img', 'coverage-info-flag');
-    image.src = flag.src;
     image.width = 20;
     image.alt = '';
     image.addEventListener('error', () => image.remove(), { once: true });
     country.append(image);
+    void api.network.request({ url: flag.src, response: 'blob', signal }).then((response) => {
+      if (!response.ok || !(response.data instanceof Blob)) throw new Error('flag unavailable');
+      const url = URL.createObjectURL(response.data);
+      image.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+      image.addEventListener('error', () => URL.revokeObjectURL(url), { once: true });
+      image.src = url;
+    }).catch(() => image.remove());
   }
   country.append(document.createTextNode(location.country || '—'));
   return country;
 }
 
-function render(content, metadata, location, locationState = {}) {
+function render(api, content, metadata, location, locationState = {}) {
   const root = element('div', 'coverage-info');
   const locationChildren = [];
   if (location) {
@@ -120,7 +126,7 @@ function render(content, metadata, location, locationState = {}) {
       locationChildren.push(element('p', 'coverage-info-address', location.fullAddress));
     }
     const rows = [];
-    if (location.country) rows.push(['Country', countryNode(location)]);
+    if (location.country) rows.push(['Country', countryNode(api, location, locationState.signal)]);
     if (location.feature) rows.push(['Place', location.feature]);
     const featureType = [location.category, location.type].filter(Boolean).join(' · ');
     if (featureType) rows.push(['Place type', featureType]);
@@ -140,6 +146,10 @@ function render(content, metadata, location, locationState = {}) {
   panoramaLink.href = streetViewURL(metadata);
   panoramaLink.target = '_blank';
   panoramaLink.rel = 'noopener noreferrer';
+  panoramaLink.addEventListener('click', (event) => {
+    event.preventDefault();
+    void api.ui.openExternal(panoramaLink.href);
+  });
   root.append(section('Street View coverage', panoramaLink, detailList([
     ['Imagery date', metadata.imageDate],
     ['Panorama ID', metadata.panoId, 'coverage-info-code'],
@@ -211,13 +221,13 @@ function activate(api) {
       request = null;
       return;
     }
-    render(panel.content, metadata, null, { loading: true });
+    render(api, panel.content, metadata, null, { loading: true });
     try {
       const location = await api.location.reverse(metadata.position);
-      if (!controller.signal.aborted) render(panel.content, metadata, location);
+      if (!controller.signal.aborted) render(api, panel.content, metadata, location, { signal: controller.signal });
     } catch (error) {
       if (error?.name !== 'AbortError' && !controller.signal.aborted) {
-        render(panel.content, metadata, null, {
+        render(api, panel.content, metadata, null, {
           error: error instanceof Error ? error.message : 'Could not load the full address.'
         });
       }

@@ -3,9 +3,9 @@ const SPECIES_ORIGIN = 'https://identify.plantnet.org/k-world-flora/species/';
 const ICON = 'M2,22V20C2,20 7,18 12,18C17,18 22,20 22,20V22H2M11.3,9.1C10.1,5.2 4,6.1 4,6.1C4,6.1 4.2,13.9 9.9,12.7C9.5,9.8 8,9 8,9C10.8,9 11,12.4 11,12.4V17C11.3,17 11.7,17 12,17C12.3,17 12.7,17 13,17V12.8C13,12.8 13,8.9 16,7.9C16,7.9 14,10.9 14,12.9C21,13.6 21,4 21,4C21,4 12.1,3 11.3,9.1Z';
 const SETTINGS_ERROR = 'Plant identification failed. Check the plugin settings and try again.';
 
-function accessError() {
-  const domains = location.origin === 'http://wails.localhost'
-    ? [location.origin] : [location.origin, 'http://wails.localhost'];
+function accessError(origin) {
+  const domains = origin === 'http://wails.localhost'
+    ? [origin] : [origin, 'http://wails.localhost'];
   return `PlantNet access denied. Check the key, enable "Expose my API key", and add these authorized domains:
 ${domains.join('\n')}`;
 }
@@ -53,28 +53,28 @@ function endpoint(path, apiKey) {
   return url;
 }
 
-async function responseJSON(response) {
+function responseJSON(response, origin) {
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) throw new Error(accessError());
+    if (response.status === 401 || response.status === 403) throw new Error(accessError(origin));
     if (response.status === 429) throw new Error('PlantNet API quota reached');
     throw new Error('Plant identification failed. Please try again.');
   }
-  try {
-    return await response.json();
-  } catch {
+  if (!response.data || typeof response.data !== 'object') {
     throw new Error('PlantNet returned an invalid response');
   }
+  return response.data;
 }
 
-export async function identifyPlants(apiKey, image, signal) {
-  const identifyURL = endpoint('/v2/identify/all', apiKey);
-  identifyURL.searchParams.set('lang', 'en');
-  identifyURL.searchParams.set('nb-results', '5');
-  const form = new FormData();
-  form.append('images', image, 'street-view.png');
-  return parseIdentification(await responseJSON(await fetch(identifyURL, {
-    method: 'POST', body: form, signal
-  })));
+export async function identifyPlants(api, apiKey, image, signal) {
+  const response = await api.network.request({
+    url: endpoint('/v2/identify/all', apiKey).href,
+    method: 'POST',
+    query: { lang: 'en', 'nb-results': '5' },
+    file: { field: 'images', blob: image, name: 'street-view.png' },
+    response: 'json',
+    signal
+  });
+  return parseIdentification(responseJSON(response, api.environment.origin));
 }
 
 function element(tag, className, text = '') {
@@ -156,6 +156,10 @@ function activate(api) {
         link.href = result.url;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
+        link.addEventListener('click', (event) => {
+          event.preventDefault();
+          void api.ui.openExternal(result.url);
+        });
         heading.appendChild(link);
         item.appendChild(heading);
         if (result.commonName && result.commonName.toLocaleLowerCase() !== result.scientificName.toLocaleLowerCase()) {
@@ -185,7 +189,7 @@ function activate(api) {
       if (controller.signal.aborted) return;
       previewURL = URL.createObjectURL(capture.blob);
       renderStatus('Asking Pl@ntNet…');
-      const result = await identifyPlants(apiKey, capture.blob, controller.signal);
+      const result = await identifyPlants(api, apiKey, capture.blob, controller.signal);
       if (!controller.signal.aborted) renderResults(result);
     } catch (error) {
       if (error?.name !== 'AbortError') {

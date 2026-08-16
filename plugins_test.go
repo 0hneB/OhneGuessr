@@ -13,7 +13,7 @@ import (
 func testPluginManifest() PluginManifest {
 	return PluginManifest{
 		ID: "example", Name: "Example", Description: "Example plugin.",
-		Icon: "M1 1L2 2", Version: "1.0.0", APIVersion: 1,
+		Icon: "M1 1L2 2", Version: "1.0.0", APIVersion: pluginAPIVersion,
 		Main: "index.js", Experimental: true,
 		Settings: []PluginSetting{{Key: "apiKey", Label: "API key", Type: "password"}},
 	}
@@ -157,5 +157,10 @@ func TestPluginValidationRejectsUnsafePaths(t *testing.T) {
 	manifest.Settings[0].Type = "text"
 	if validatePluginManifest(manifest, manifest.ID, false) == nil {
 		t.Fatal("unsupported setting type was accepted")
+	}
+	manifest = testPluginManifest()
+	manifest.Permissions = &PluginPermissions{Network: []string{"https://example.com/path"}}
+	if validatePluginManifest(manifest, manifest.ID, false) == nil {
+		t.Fatal("network permission with a path was accepted")
 	}
 }

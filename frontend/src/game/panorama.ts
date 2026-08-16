@@ -5,11 +5,6 @@
 //   nmpz   — no move, pan, or zoom (locked to the spawn view)
 
 import { publicAsset } from '../config.js';
-import type { PanoramaMetadata, PanoramaView } from '../plugins/runtime.svelte.js';
-import {
-  createPluginWindow,
-  type PluginWindowOptions
-} from '../plugins/window.js';
 import type { Location, MovementMode, Point, Trail } from '../types.js';
 import { capturePanoViewport, type PanoramaCaptureOptions } from './panorama-capture.js';
 
@@ -32,6 +27,23 @@ const streetViewReady = () =>
   Boolean(window.google?.maps?.StreetViewPanorama && window.google?.maps?.StreetViewService);
 
 type Position = Point | google.maps.LatLng | null | undefined;
+
+export interface PanoramaView {
+  position: Point;
+  heading: number;
+  pitch: number;
+  zoom: number;
+  width: number;
+  height: number;
+}
+
+export interface PanoramaMetadata extends PanoramaView {
+  panoId: string;
+  imageDate: string;
+  description: string;
+  shortDescription: string;
+  photographer: { heading: number | null; pitch: number | null };
+}
 
 function samePosition(a: Position, b: Position) {
   if (!a || !b) return false;
@@ -90,7 +102,6 @@ export class OpenSvViewer {
   public onChange: ((heading: number) => void) | null = null;
   private readonly _host: HTMLDivElement;
   private readonly _lock: HTMLDivElement;
-  private readonly _pluginRoot: HTMLDivElement;
   private readonly _roundListeners = new Set<() => void>();
   private readonly _viewListeners = new Set<(view: PanoramaView) => void>();
   private readonly streetView: google.maps.StreetViewService;
@@ -128,13 +139,6 @@ export class OpenSvViewer {
     Object.assign(lock.style, { position: 'absolute', inset: '0', zIndex: '1', pointerEvents: 'none' });
     container.appendChild(lock);
     this._lock = lock;
-    const pluginRoot = document.createElement('div');
-    pluginRoot.className = 'plugin-overlay-root';
-    Object.assign(pluginRoot.style, {
-      position: 'absolute', inset: '0', zIndex: '2', pointerEvents: 'none', overflow: 'hidden'
-    });
-    container.appendChild(pluginRoot);
-    this._pluginRoot = pluginRoot;
 
     const g = window.google;
     this.streetView = new g.maps.StreetViewService();
@@ -218,7 +222,7 @@ export class OpenSvViewer {
   getView(): PanoramaView | null {
     const position = this.pano.getPosition?.();
     const pov = this.pano.getPov?.();
-    const bounds = this._pluginRoot.getBoundingClientRect();
+    const bounds = this._host.getBoundingClientRect();
     if (!position || !pov || bounds.width <= 0 || bounds.height <= 0) return null;
     return {
       position: { lat: position.lat(), lng: position.lng() },
@@ -253,7 +257,7 @@ export class OpenSvViewer {
   }
 
   captureViewport(options?: PanoramaCaptureOptions) {
-    const bounds = this._pluginRoot.getBoundingClientRect();
+    const bounds = this._host.getBoundingClientRect();
     return capturePanoViewport(this.pano, this._host, bounds.width, bounds.height, options);
   }
 
@@ -267,17 +271,6 @@ export class OpenSvViewer {
     const view = this.getView();
     if (view) listener(view);
     return () => { this._viewListeners.delete(listener); };
-  }
-
-  createLayer() {
-    const layer = document.createElement('div');
-    Object.assign(layer.style, { position: 'absolute', inset: '0', pointerEvents: 'none' });
-    this._pluginRoot.appendChild(layer);
-    return layer;
-  }
-
-  createWindow(options: PluginWindowOptions) {
-    return createPluginWindow(options);
   }
 
   // Separate walked paths; a checkpoint return starts a fresh segment.

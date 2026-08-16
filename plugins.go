@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -24,7 +25,7 @@ import (
 
 const (
 	pluginRepositoryURL = "https://raw.githubusercontent.com/0hneB/OhneGuessr/main/plugins"
-	pluginAPIVersion    = 1
+	pluginAPIVersion    = 2
 	maxPluginCatalog    = 256 << 10
 	maxPluginManifest   = 64 << 10
 	maxPluginSource     = 2 << 20
@@ -36,17 +37,23 @@ type PluginSetting struct {
 	Type  string `json:"type"`
 }
 
+type PluginPermissions struct {
+	Network []string `json:"network,omitempty"`
+	Links   []string `json:"links,omitempty"`
+}
+
 type PluginManifest struct {
-	ID           string          `json:"id"`
-	Name         string          `json:"name"`
-	Description  string          `json:"description"`
-	Icon         string          `json:"icon"`
-	Version      string          `json:"version"`
-	APIVersion   int             `json:"apiVersion"`
-	Main         string          `json:"main"`
-	Experimental bool            `json:"experimental,omitempty"`
-	Settings     []PluginSetting `json:"settings,omitempty"`
-	SHA256       string          `json:"sha256,omitempty"`
+	ID           string             `json:"id"`
+	Name         string             `json:"name"`
+	Description  string             `json:"description"`
+	Icon         string             `json:"icon"`
+	Version      string             `json:"version"`
+	APIVersion   int                `json:"apiVersion"`
+	Main         string             `json:"main"`
+	Experimental bool               `json:"experimental,omitempty"`
+	Settings     []PluginSetting    `json:"settings,omitempty"`
+	Permissions  *PluginPermissions `json:"permissions,omitempty"`
+	SHA256       string             `json:"sha256,omitempty"`
 }
 
 type PluginInfo struct {
@@ -585,8 +592,33 @@ func validatePluginManifest(manifest PluginManifest, expectedID string, requireH
 		}
 		seenSettings[setting.Key] = true
 	}
+	if manifest.Permissions != nil {
+		if err := validatePluginOrigins(manifest.Permissions.Network); err != nil {
+			return fmt.Errorf("plugin manifest has invalid network permissions: %w", err)
+		}
+		if err := validatePluginOrigins(manifest.Permissions.Links); err != nil {
+			return fmt.Errorf("plugin manifest has invalid link permissions: %w", err)
+		}
+	}
 	if requireHash && !validPluginChecksum(manifest.SHA256) {
 		return errors.New("plugin manifest has an invalid checksum")
+	}
+	return nil
+}
+
+func validatePluginOrigins(origins []string) error {
+	if len(origins) > 16 {
+		return errors.New("too many origins")
+	}
+	seen := make(map[string]bool, len(origins))
+	for _, origin := range origins {
+		parsed, err := url.Parse(origin)
+		if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil ||
+			parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" ||
+			parsed.String() != origin || seen[origin] {
+			return errors.New("origins must be unique HTTPS origins without paths")
+		}
+		seen[origin] = true
 	}
 	return nil
 }

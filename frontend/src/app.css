@@ -229,7 +229,6 @@ button { font-family: inherit; }
 
 /* 'H' on the guess page leaves only the panorama. */
 body.ui-hidden #hudActions,
-body.ui-hidden .plugin-overlay-root,
 body.ui-hidden #topLeft,
 body.ui-hidden #compass-hud,
 body.ui-hidden #classicCompass,

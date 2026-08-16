@@ -68,6 +68,8 @@ Every location needs finite `lat` and `lng` values. Panorama ID, heading, pitch,
 
 The **Plugins** launcher tab manages the built-in Challenges, Map Making App Sync, and Learnable Meta plugins. Its **Additional** tab installs and updates curated plugins from this repository's GitHub-hosted marketplace. Sync configuration stays beside Maps and is shown only while its plugin is enabled.
 
+Additional plugins run in opaque-origin sandboxed iframes. They receive game data and host actions only through the typed API in `plugins/types/ohneguessr.d.ts`; network and external-link origins must be declared in their manifest.
+
 ## Challenges
 
 Enable **Challenges** under Plugins, finish a game, and select **Create challenge**. The resulting `.ohne` file contains the exact ordered rounds, locked movement/timer/scoring rules, and the creator's guesses. Open one with the Maps `+` button, drop it onto the map library, or double-click it after installing OhneGuessr. Challenge files are played directly and are not added to the map library.

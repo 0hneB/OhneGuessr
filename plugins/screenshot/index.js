@@ -36,18 +36,6 @@ export function screenshotFilename(panoId, location, savedAt = new Date()) {
   ].join('-') + '.png';
 }
 
-function download(blob, name) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  link.hidden = true;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 function activate(api) {
   const style = document.createElement('style');
   style.textContent = `
@@ -81,7 +69,7 @@ function activate(api) {
       if (!metadata) throw new Error('No active panorama to capture.');
       const location = api.location.reverse(metadata.position).catch(() => null);
       const capture = await api.panorama.captureViewport(CAPTURE_SIZE);
-      download(capture.blob, screenshotFilename(capture.panoId, await location));
+      await api.files.save(capture.blob, screenshotFilename(capture.panoId, await location));
     } catch (error) {
       showError(error instanceof Error && error.message === 'No active panorama to capture.'
         ? error.message : 'Screenshot failed. Wait for Street View to load and try again.');
