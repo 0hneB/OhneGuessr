@@ -1,7 +1,7 @@
 opensv.js
 
-Source: https://github.com/ccmdi/mma/tree/9d9161940af66909b3a426c05c41857f62a0441a/app/public/opensv
-Revision: 9d9161940af66909b3a426c05c41857f62a0441a
+Source: https://github.com/ccmdi/mma/tree/b0a971fe73d19c2b7d9ce8cdc729ff4ca6188de2/app/public/opensv
+Revision: b0a971fe73d19c2b7d9ce8cdc729ff4ca6188de2
 
 The hide-car shader and WebGL program-switching approach in
 frontend/src/game/car-mask.ts are adapted from:
