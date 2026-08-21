@@ -8,12 +8,14 @@ import {
 
 describe('normalizeSettings', () => {
   it('keeps valid values and replaces invalid persisted data', () => {
+    expect(DEFAULT_SETTINGS.hideCar).toBe(false);
     expect(normalizeSettings({
       ...DEFAULT_SETTINGS,
       rounds: '12',
       timer: '-5',
       accentColor: '#ABCDEF',
       mapZoomSpeed: 99,
+      hideCar: true,
       movement: 'broken',
       currentMap: 'stale'
     })).toMatchObject({
@@ -21,8 +23,10 @@ describe('normalizeSettings', () => {
       timer: DEFAULT_SETTINGS.timer,
       accentColor: '#abcdef',
       mapZoomSpeed: 3,
+      hideCar: true,
       movement: 'moving'
     });
+    expect(normalizeSettings({ hideCar: 'true' })).toMatchObject({ hideCar: false });
     expect(normalizeSettings({})).not.toHaveProperty('currentMap');
     expect(normalizeSettings({ challengesEnabled: true })).not.toHaveProperty('challengesEnabled');
     expect(normalizeSettings({ localPartyEnabled: true })).not.toHaveProperty('localPartyEnabled');

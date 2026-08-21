@@ -780,6 +780,7 @@ function applyLiveSettings(next: Settings, previous: Settings) {
   if (!gameMode.current && next.streetViewZoomedOut !== previous.streetViewZoomedOut) {
     viewer.setStartZoomedOut(next.streetViewZoomedOut);
   }
+  if (next.hideCar !== previous.hideCar) viewer.setCarHidden(next.hideCar);
   if (!gameMode.current && next.rounds !== previous.rounds) void applyRoundLimitChange();
   if (!gameMode.current && next.timer !== previous.timer) {
     if (state.phase === GAME_PHASE.GUESSING) roundTimer.start();
@@ -875,7 +876,7 @@ export async function init() {
     showGameLoadError(error);
     return;
   }
-  viewer = new OpenSvViewer($('pano'));
+  viewer = new OpenSvViewer($('pano'), settings.hideCar);
   await activateExternalPlugins(viewer);
   const faceNorth = () => {
     if (canInteractWithGuess()) viewer.faceNorth();

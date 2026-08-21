@@ -292,6 +292,13 @@
             <span class="switch" aria-hidden="true"></span>
           </label>
 
+          <label class="setting setting-toggle">
+            <span>Hide Street View car</span>
+            <input type="checkbox" checked={settings.hideCar}
+                   onchange={(event) => updateSettings({ hideCar: event.currentTarget.checked })} />
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+
           <label class="setting setting-toggle" class:disabled={!gameWindow.open}>
             <span>Game fullscreen</span>
             <input type="checkbox" checked={gameWindow.fullscreen} disabled={!gameWindow.open}

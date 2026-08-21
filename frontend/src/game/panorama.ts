@@ -7,6 +7,7 @@
 import { publicAsset } from '../config.js';
 import type { Location, MovementMode, Point, Trail } from '../types.js';
 import { capturePanoViewport, type PanoramaCaptureOptions } from './panorama-capture.js';
+import { installCarMask, setCarHidden } from './car-mask.js';
 import { fetchPanoramaDetails, type PanoramaDetails } from './panorama-details.js';
 
 const OPENSV_SRC = publicAsset('vendor/opensv/opensv.js');
@@ -58,6 +59,7 @@ function samePosition(a: Position, b: Position) {
 // Inject the vendored Maps JS API once. No tile-host rewrite => tiles hit Google
 // directly, which works in a plain browser (verified by the throwaway prototype).
 export function loadOpenSV(): Promise<typeof google> {
+  installCarMask();
   if (streetViewReady()) return Promise.resolve(window.google!);
   if (loadPromise) return loadPromise;
   loadPromise = new Promise<typeof google>((resolve, reject) => {
@@ -123,7 +125,8 @@ export class OpenSvViewer {
   private _roundToken = 0;
   private mode: MovementMode = 'moving';
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, hideCar = false) {
+    setCarHidden(hideCar);
 
     // Street View mutates the inline style of the element it's given (position, etc.),
     // which would collapse our fixed/inset #pano to 0 height. Hand it a dedicated
@@ -189,6 +192,8 @@ export class OpenSvViewer {
     this.pano.setOptions({ clickToGo: moving, linksControl: moving, scrollwheel: !nmpz });
     this._lock.style.pointerEvents = nmpz ? 'auto' : 'none';
   }
+
+  setCarHidden(hidden: boolean) { setCarHidden(hidden); }
 
   // Starting view for this location (and where R returns to).
   setDefaultView(heading = 0, pitch = 0) {

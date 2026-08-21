@@ -59,6 +59,7 @@ export interface Settings {
   compassStyle: CompassStyle;
   mapZoomSpeed: number;
   streetViewZoomedOut: boolean;
+  hideCar: boolean;
   movement: MovementMode;
   scoring: ScoringMode;
   keybindings?: Record<string, string[]>;

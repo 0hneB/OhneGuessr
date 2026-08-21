@@ -202,6 +202,7 @@ export const DEFAULT_SETTINGS: Settings = {
   compassStyle: 'bar',
   mapZoomSpeed: DEFAULT_MAP_ZOOM_SPEED,
   streetViewZoomedOut: false,
+  hideCar: false,
   movement: 'moving', // 'moving' | 'nm' (no move) | 'nmpz' (no move/pan/zoom)
   scoring: 'world' // 'world' fixed scale, 'country' per-map
 };
@@ -236,6 +237,7 @@ export function normalizeSettings(value: unknown): Settings {
     compassStyle: normalizeCompassStyle(input.compassStyle),
     mapZoomSpeed: normalizeMapZoomSpeed(input.mapZoomSpeed),
     streetViewZoomedOut: input.streetViewZoomedOut === true,
+    hideCar: input.hideCar === true,
     movement: input.movement === 'nm' || input.movement === 'nmpz'
       ? input.movement
       : 'moving',
