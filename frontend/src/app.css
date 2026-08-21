@@ -351,11 +351,9 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   height: var(--guess-map-h);
   flex: none;
   border-radius: 10px;
-  border: 2px solid rgba(24, 24, 24, 0.7);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   transition:
     border-radius 0.08s ease,
-    border-color 0.11s ease,
     box-shadow 0.11s ease;
 }
 
