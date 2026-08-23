@@ -18,6 +18,7 @@ Download the latest version from [GitHub Releases](https://github.com/0hneB/Ohne
 
 - Moving, No Moving, and NMPZ games with configurable rounds and timers.
 - World- or map-scaled scoring, result maps, and a final summary.
+- Optional Country Streak mode with persistent current and best streaks.
 - Shareable `.ohne` challenges with exact rounds and challenger comparisons.
 - Rebindable controls, configurable compass, map size, zoom speed, and accent color.
 - Optional Map Making App and Learnable Meta synchronization.
@@ -66,9 +67,15 @@ Every location needs finite `lat` and `lng` values. Panorama ID, heading, pitch,
 
 ## Plugins
 
-The **Plugins** launcher tab manages the built-in Challenges, Map Making App Sync, and Learnable Meta plugins. Its **Additional** tab installs and updates curated plugins from this repository's GitHub-hosted marketplace. Sync configuration stays beside Maps and is shown only while its plugin is enabled.
+The **Plugins** launcher tab manages the built-in Country Streak, Challenges, Map Making App Sync, and Learnable Meta plugins. Its **Additional** tab installs and updates curated plugins from this repository's GitHub-hosted marketplace. Sync configuration stays beside Maps and is shown only while its plugin is enabled.
 
 Additional plugins are authored in `plugins/<id>/src/index.ts` and built into trusted ES modules that default-export an `activate(api)` function. The API in `plugins/types/ohneguessr.d.ts` supplies the shared in-game window and HUD button styles plus private game capabilities; plugins otherwise have normal access to the renderer's browser APIs and DOM.
+
+## Country Streak
+
+Enable **Country Streak** under Plugins, then use the flag action beside any map. A round extends the streak when the guess and panorama are in the same country; a wrong guess or timeout resets it, while an unclassified panorama does not count. The mode keeps the normal round, timer, movement, and scoring settings and saves current and best streaks locally.
+
+Country lookup runs entirely in the game window using the bundled [Natural Earth 1:50m country boundaries](https://github.com/nvkelso/natural-earth-vector/releases/tag/v5.1.2); it does not call a reverse-geocoding service. Country flag SVGs live in `frontend/public/flags/` and are available app-wide at `/flags/<ISO_A2>.svg`.
 
 ## Challenges
 
@@ -187,10 +194,13 @@ OhneGuessr/
 |-- build/                 Wails build and packaging files
 |-- frontend/
 |   |-- src/               Svelte and TypeScript source
-|   |-- public/            static files and vendored OpenSV
+|   |-- public/            static assets, country flags, and vendored OpenSV
 |   |-- dist/              generated frontend (ignored)
 |   `-- package.json       frontend dependencies and scripts
-|-- internal/app/          Go backend and tests
+|-- internal/
+|   |-- app/               Go backend and tests
+|   `-- plugins/           built-in core plugins
+|-- plugins/               additional plugin sources and API types
 |-- main.go                Wails entry point
 |-- go.mod / go.sum        Go dependencies
 `-- Taskfile.yml           Wails build tasks

@@ -26,6 +26,11 @@ if (route.view === 'game' || challengeID) {
     await import('./launcher.css');
     const { setupLocalPartyHost } = await import('../../internal/plugins/local-party/host-game.js');
     setupLocalPartyHost(partyID);
+  } else if (!challengeID && params.get('mode')?.trim() === 'country-streak') {
+    const { installCountryStreakGame } = await import(
+      '../../internal/plugins/country-streak/game.svelte.js'
+    );
+    installCountryStreakGame();
   }
   const { default: GameApp } = await import('./GameApp.svelte');
   mount(GameApp, { target });

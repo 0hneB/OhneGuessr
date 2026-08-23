@@ -16,11 +16,13 @@ export function onDesktopEvent<T>(name: string, listener: (data: T) => void) {
   return Events.On(name, ({ data }) => listener(data as T));
 }
 
-export async function launchMap(mapID: string) {
+export async function launchMap(mapID: string, mode = '') {
   if (desktopRuntimeAvailable()) {
-    await DesktopService.LaunchMap(mapID);
+    await DesktopService.LaunchMap(mapID, mode);
   } else {
-    location.assign(`/?view=game&map=${encodeURIComponent(mapID)}`);
+    const query = new URLSearchParams({ view: 'game', map: mapID });
+    if (mode) query.set('mode', mode);
+    location.assign(`/?${query}`);
   }
 }
 

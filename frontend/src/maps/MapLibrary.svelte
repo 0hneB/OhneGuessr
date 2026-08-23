@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
   import { isChallengeFilename } from '../../../internal/plugins/challenges/challenge.js';
-  import { localPartyMapAction } from '../../../internal/plugins/local-party/map-action.js';
+  import { mapActions } from '../../../internal/plugins/map-actions.js';
   import {
     managedMapBadge,
     managedMapRemoveLabel,
@@ -13,7 +13,6 @@
     canStoreLocalMap,
     createFolder,
     exportMaps,
-    hostLocalParty,
     importFile,
     isManagedRoot,
     library,
@@ -25,6 +24,7 @@
     removeMap,
     renameFolder,
     renameMap,
+    runMapAction,
     selectFolder,
     toggleFolder
   } from './library.svelte.js';
@@ -421,14 +421,17 @@
               </div>
             {:else}
               <div class="row-actions">
-                {#if localPartyMapAction.visible()}
-                  <button class="row-action" type="button" title={localPartyMapAction.title}
-                          aria-label={localPartyMapAction.label(row.map)}
-                          disabled={library.hostingParty}
-                          onclick={() => hostLocalParty(row.map)}>
-                    <span class={`svg-icon ${localPartyMapAction.icon}`} aria-hidden="true"></span>
-                  </button>
-                {/if}
+                {#each mapActions as action (action.id)}
+                  {#if action.visible(row.map)}
+                    <button class="row-action" type="button" title={action.title}
+                            aria-label={action.label(row.map)}
+                            aria-busy={library.runningMapAction === `${action.id}:${row.map.id}`}
+                            disabled={Boolean(library.runningMapAction)}
+                            onclick={() => runMapAction(action, row.map)}>
+                      <span class={`svg-icon ${action.icon}`} aria-hidden="true"></span>
+                    </button>
+                  {/if}
+                {/each}
                 {#if row.canRename}
                   <button class="row-action" type="button" title="Rename map"
                           aria-label={`Rename ${row.map.name}`}

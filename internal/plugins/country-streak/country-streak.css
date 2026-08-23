@@ -1,0 +1,71 @@
+.country-streak-icon { --icon-url: url("./icon/country-streak.svg"); }
+
+.country-streak-status {
+  right: 14px;
+  height: auto;
+  gap: 12px;
+  padding: 5px 11px;
+  line-height: 1;
+}
+.country-streak-status > span { display: grid; justify-items: center; gap: 2px; }
+.country-streak-status small {
+  color: #9fa8b5;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.country-streak-status b { font-size: 15px; font-variant-numeric: tabular-nums; }
+
+.country-streak-result { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.country-streak-place { display: flex; align-items: center; gap: 9px; font-size: 18px; font-weight: 700; }
+.country-flags { display: inline-flex; align-items: center; gap: 3px; flex: none; }
+.country-streak-message { display: flex; gap: 8px; margin: 0; font-size: 13px; }
+.country-streak-message b { color: #d6dbe2; }
+.country-streak-message.hit b { color: var(--accent); }
+.country-streak-message.miss b { color: #fb7185; }
+.country-streak-message span { color: #9fa8b5; }
+.country-streak-stats { display: flex; gap: 36px; }
+.country-streak-stats > span { display: grid; min-width: 104px; justify-items: center; gap: 1px; }
+.country-streak-stats b {
+  color: #fff;
+  font-size: 27px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.country-streak-stats > span:last-child b { color: var(--accent); }
+.country-streak-stats small { color: #9fa8b5; font-size: 11px; }
+.country-streak-error { margin: 0; color: #fb7185; font-size: 12px; }
+
+.country-streak-final-stats { display: flex; justify-content: center; gap: 34px; margin: 0 0 8px; }
+.country-streak-final-stats > span { display: grid; justify-items: center; }
+.country-streak-final-stats b {
+  color: var(--accent);
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.country-streak-final-stats small {
+  color: #9fa8b5;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.country-streak-summary { margin: 0 0 13px; color: #b8c0cc; font-size: 12px; }
+.country-streak-summary strong { margin-left: 6px; color: var(--accent); }
+.country-streak-final-round { grid-template-columns: 20px minmax(0, 1fr) auto; }
+.country-streak-round-country { display: flex; align-items: center; min-width: 0; gap: 6px; color: #cbd2dd; }
+.country-streak-round-country > span:last-child {
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.country-streak-outcome {
+  color: #9fa8b5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.country-streak-outcome.hit { color: var(--accent); }
+.country-streak-outcome.miss { color: #fb7185; }

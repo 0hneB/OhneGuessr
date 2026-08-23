@@ -8,6 +8,7 @@
   import { desktopRuntimeAvailable } from '../../frontend/src/desktop.js';
   import { mergePluginEntries } from '../../frontend/src/plugins/marketplace.js';
   import ChallengeSettings from './challenges/SettingsRow.svelte';
+  import CountryStreakSettings from './country-streak/SettingsRow.svelte';
   import LearnableMetaSettings from './learnable-meta/SettingsRow.svelte';
   import LocalPartySettings from './local-party/SettingsRow.svelte';
   import MapMakingAppSettings from './map-making-app/SettingsRow.svelte';
@@ -84,6 +85,7 @@
   {#if tab === 'core'}
     <div class="plugin-list" role="tabpanel">
       <ChallengeSettings />
+      <CountryStreakSettings />
       <LocalPartySettings />
       <MapMakingAppSettings reportError={(next) => { error = next; }} />
       <LearnableMetaSettings reportError={(next) => { error = next; }} />

@@ -29,8 +29,8 @@ export function GetGameWindowState(): $CancellablePromise<$models.GameWindowStat
     return $Call.ByID(2485666454);
 }
 
-export function LaunchMap(mapID: string): $CancellablePromise<void> {
-    return $Call.ByID(2446668672, mapID);
+export function LaunchMap(mapID: string, mode: string): $CancellablePromise<void> {
+    return $Call.ByID(2446668672, mapID, mode);
 }
 
 export function SetGameFullscreen(enabled: boolean): $CancellablePromise<$models.GameWindowState> {

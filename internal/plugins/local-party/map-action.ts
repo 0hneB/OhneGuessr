@@ -5,6 +5,7 @@ import { launchParty } from './api.js';
 import { localPartySettings } from './settings.svelte.js';
 
 export const localPartyMapAction = {
+  id: 'local-party',
   title: 'Host local party',
   icon: 'link-icon',
   error: 'Could not host a local party.',

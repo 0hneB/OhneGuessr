@@ -3,7 +3,7 @@ import { closeGame, exportMaps as exportMapsToFile, launchMap } from '../desktop
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
 import { isChallengeFilename } from '../../../internal/plugins/challenges/challenge.js';
 import { openChallengeFile } from '../../../internal/plugins/challenges/open.js';
-import { localPartyMapAction } from '../../../internal/plugins/local-party/map-action.js';
+import type { MapAction } from '../../../internal/plugins/map-actions.js';
 import { mapSourceFor, refreshMapSourceRoot } from '../../../internal/plugins/map-sources.js';
 import type { MapItem } from '../types.js';
 import {
@@ -48,7 +48,7 @@ export const library = $state({
   loading: true,
   exporting: false,
   launchingMapID: '',
-  hostingParty: false,
+  runningMapAction: '',
   activeMapID: '',
   notice: '',
   noticeError: false
@@ -135,15 +135,15 @@ export async function playMap(map: MapItem) {
   }
 }
 
-export async function hostLocalParty(map: MapItem) {
-  library.hostingParty = true;
+export async function runMapAction(action: MapAction, map: MapItem) {
+  library.runningMapAction = `${action.id}:${map.id}`;
   setNotice('');
   try {
-    await localPartyMapAction.run(map);
+    await action.run(map);
   } catch (error) {
-    setNotice(errorMessage(error, localPartyMapAction.error), true);
+    setNotice(errorMessage(error, action.error), true);
   } finally {
-    library.hostingParty = false;
+    library.runningMapAction = '';
   }
 }
 

@@ -57,7 +57,7 @@ func (d *DesktopService) secondInstance(data application.SecondInstanceData) {
 	d.FocusLauncher()
 }
 
-func (d *DesktopService) LaunchMap(mapID string) error {
+func (d *DesktopService) LaunchMap(mapID, mode string) error {
 	if d.exclusiveSessionActive() {
 		return errors.New("end the current hosted session first")
 	}
@@ -65,7 +65,7 @@ func (d *DesktopService) LaunchMap(mapID string) error {
 	if mapID == "" || !d.backend.HasMap(mapID) {
 		return errors.New("map not found")
 	}
-	return d.launchGame(gameURL(mapID), mapID)
+	return d.launchGame(gameURL(mapID, mode), mapID)
 }
 
 func (d *DesktopService) launchGame(targetURL, mapID string) error {
@@ -233,6 +233,10 @@ func (d *DesktopService) emitGameState() {
 	}
 }
 
-func gameURL(mapID string) string {
-	return "/?view=game&map=" + url.QueryEscape(mapID)
+func gameURL(mapID, mode string) string {
+	target := "/?view=game&map=" + url.QueryEscape(mapID)
+	if mode = strings.TrimSpace(mode); mode != "" {
+		target += "&mode=" + url.QueryEscape(mode)
+	}
+	return target
 }
