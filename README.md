@@ -73,9 +73,9 @@ Additional plugins are authored in `plugins/<id>/src/index.ts` and built into tr
 
 ## Country Streak
 
-Enable **Country Streak** under Plugins, then use the flag action beside any map. A round extends the streak when the guess and panorama are in the same country; a wrong guess or timeout resets it, while an unclassified panorama does not count. The mode keeps the normal round, timer, movement, and scoring settings and saves current and best streaks locally.
+Enable **Country Streak** under Plugins, then use the flag action beside any map. A round extends the streak when the guess and panorama are in the same country; a wrong guess or timeout resets it. The mode keeps the normal round, timer, movement, and scoring settings and saves current and best streaks locally.
 
-Country lookup runs entirely in the game window using the bundled [Natural Earth 1:50m country boundaries](https://github.com/nvkelso/natural-earth-vector/releases/tag/v5.1.2); it does not call a reverse-geocoding service. Country flag SVGs live in `frontend/public/flags/` and are available app-wide at `/flags/<ISO_A2>.svg`.
+Country lookup runs entirely in the game window using the bundled [Natural Earth 1:50m country boundaries](https://github.com/nvkelso/natural-earth-vector/releases/tag/v5.1.2); coordinates outside every boundary resolve to the nearest country edge instead of being discarded. It does not call a reverse-geocoding service. Country flag SVGs live in `frontend/public/flags/` and are available app-wide at `/flags/<ISO_A2>.svg`.
 
 ## Challenges
 

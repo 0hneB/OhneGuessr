@@ -35,6 +35,10 @@ const index = buildCountryIndex({
         [[[10, 0], [20, 0], [20, 10], [10, 10], [10, 0]]],
         [[[30, 30], [31, 30], [31, 31], [30, 31], [30, 30]]]
       ]
+    }),
+    feature('CC', 'Gamma', [178, 0, 179, 10], {
+      type: 'Polygon',
+      coordinates: [[[178, 0], [179, 0], [179, 10], [178, 10], [178, 0]]]
     })
   ]
 });
@@ -42,12 +46,21 @@ const index = buildCountryIndex({
 const country = (code: string): Country => ({ code, name: code });
 
 describe('country boundary lookup', () => {
-  it('handles polygons, holes, multipolygons, borders, and invalid coordinates', () => {
+  it('handles polygons, holes, multipolygons, and borders', () => {
     expect(countriesAt(index, { lat: 2, lng: 2 }).map(({ code }) => code)).toEqual(['AA']);
-    expect(countriesAt(index, { lat: 5, lng: 5 })).toEqual([]);
+    expect(countriesAt(index, { lat: 5, lng: 5 }).map(({ code }) => code)).toEqual(['AA']);
     expect(countriesAt(index, { lat: 30.5, lng: 30.5 }).map(({ code }) => code)).toEqual(['BB']);
     expect(countriesAt(index, { lat: 5, lng: 10 }).map(({ code }) => code)).toEqual(['AA', 'BB']);
+  });
+
+  it('uses the nearest country outside every polygon', () => {
+    expect(countriesAt(index, { lat: -1, lng: 5 }).map(({ code }) => code)).toEqual(['AA']);
+    expect(countriesAt(index, { lat: -20, lng: 5 }).map(({ code }) => code)).toEqual(['AA']);
+    expect(countriesAt(index, { lat: -1, lng: 10 }).map(({ code }) => code)).toEqual(['AA', 'BB']);
+    expect(countriesAt(index, { lat: 5, lng: -179.5 }).map(({ code }) => code)).toEqual(['CC']);
     expect(countriesAt(index, { lat: 91, lng: 0 })).toEqual([]);
+    expect(countriesAt(index, { lat: 0, lng: 181 })).toEqual([]);
+    expect(countriesAt(index, { lat: NaN, lng: 0 })).toEqual([]);
   });
 
   it('rejects unusable boundary data', () => {
@@ -66,6 +79,11 @@ describe('country streak state', () => {
       .toEqual({ current: 0, best: 5, outcome: 'miss' });
     expect(advanceStreak({ current: 3, best: 5 }, [], [country('AA')]))
       .toEqual({ current: 3, best: 5, outcome: 'void' });
+    expect(advanceStreak(
+      { current: 3, best: 5 },
+      countriesAt(index, { lat: -1, lng: 5 }),
+      countriesAt(index, { lat: 2, lng: 2 })
+    )).toEqual({ current: 4, best: 5, outcome: 'hit' });
   });
 
   it('normalizes storage and resets only the current session', () => {

@@ -67,6 +67,9 @@ export function buildCountryIndex(value: unknown): CountryIndex {
 }
 
 const EPSILON = 1e-10;
+const RADIANS = Math.PI / 180;
+const EARTH_RADIUS_METERS = 6_371_000;
+const TIE_RADIANS = 1 / EARTH_RADIUS_METERS;
 
 function pointOnSegment(point: Position, start: Position, end: Position) {
   const [x, y] = point;
@@ -123,19 +126,76 @@ function featureContains(feature: CountryFeature, point: Position) {
   return polygons.some((polygon) => polygonContains(point, polygon));
 }
 
+const longitudeDelta = (degrees: number) => (degrees + 540) % 360 - 180;
+
+function ringDistanceSquared(point: Position, ring: Ring, longitudeScale: number) {
+  let closest = Infinity;
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
+    const start = ring[previous];
+    const end = ring[index];
+    const startLng = longitudeDelta(start[0] - point[0]);
+    const startX = startLng * RADIANS * longitudeScale;
+    const startY = (start[1] - point[1]) * RADIANS;
+    const endX = (startLng + longitudeDelta(end[0] - start[0])) * RADIANS * longitudeScale;
+    const endY = (end[1] - point[1]) * RADIANS;
+    const dx = endX - startX;
+    const dy = endY - startY;
+    const lengthSquared = dx * dx + dy * dy;
+    const amount = lengthSquared
+      ? Math.max(0, Math.min(1, -(startX * dx + startY * dy) / lengthSquared))
+      : 0;
+    const x = startX + amount * dx;
+    const y = startY + amount * dy;
+    closest = Math.min(closest, x * x + y * y);
+  }
+  return closest;
+}
+
+function featureDistanceSquared(feature: CountryFeature, point: Position) {
+  const polygons = feature.geometry.type === 'Polygon'
+    ? [feature.geometry.coordinates]
+    : feature.geometry.coordinates;
+  const longitudeScale = Math.cos(point[1] * RADIANS);
+  let closest = Infinity;
+  for (const polygon of polygons) {
+    for (const ring of polygon) {
+      closest = Math.min(closest, ringDistanceSquared(point, ring, longitudeScale));
+    }
+  }
+  return closest;
+}
+
 export function countriesAt(index: CountryIndex, point: Point): Country[] {
   if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng) ||
       point.lat < -90 || point.lat > 90 || point.lng < -180 || point.lng > 180) return [];
   const position: Position = [point.lng, point.lat];
   const countries = new Map<string, Country>();
-  // ponytail: a bbox scan over ~250 countries is enough for two points per round;
-  // add a spatial index only if profiling shows this lookup matters.
   for (const feature of index.features) {
     if (featureContains(feature, position)) {
       countries.set(feature.code, { code: feature.code, name: feature.name });
     }
   }
-  return [...countries.values()];
+  if (countries.size) return [...countries.values()];
+
+  const nearest = new Map<string, { country: Country; distanceSquared: number }>();
+  // ponytail: the ~98k-segment scan runs only for points outside every country;
+  // add a spatial index only if profiling shows this fallback matters.
+  for (const feature of index.features) {
+    const distanceSquared = featureDistanceSquared(feature, position);
+    const previous = nearest.get(feature.code);
+    if (!previous || distanceSquared < previous.distanceSquared) {
+      nearest.set(feature.code, {
+        country: { code: feature.code, name: feature.name },
+        distanceSquared
+      });
+    }
+  }
+  const closest = Math.min(...[...nearest.values()].map(({ distanceSquared }) => distanceSquared));
+  if (!Number.isFinite(closest)) return [];
+  const limit = Math.sqrt(closest) + TIE_RADIANS;
+  return [...nearest.values()]
+    .filter(({ distanceSquared }) => Math.sqrt(distanceSquared) <= limit)
+    .map(({ country }) => country);
 }
 
 let loading: Promise<CountryIndex> | null = null;
