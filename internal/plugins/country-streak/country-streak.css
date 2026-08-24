@@ -2,9 +2,8 @@
 
 .country-streak-status {
   right: 14px;
-  height: auto;
   gap: 12px;
-  padding: 5px 11px;
+  padding: 0 11px;
   line-height: 1;
 }
 .country-streak-status > span { display: grid; justify-items: center; gap: 2px; }
