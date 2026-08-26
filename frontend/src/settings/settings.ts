@@ -230,7 +230,9 @@ export function normalizeSettings(value: unknown): Settings {
       ? input.mapStyle
       : DEFAULT_SETTINGS.mapStyle,
     rounds: positiveInteger(input.rounds, DEFAULT_SETTINGS.rounds),
-    timer: positiveInteger(input.timer, DEFAULT_SETTINGS.timer),
+    timer: input.timer === 'countup'
+      ? input.timer
+      : positiveInteger(input.timer, DEFAULT_SETTINGS.timer),
     theme: normalizeLauncherTheme(input.theme),
     accentColor: normalizeAccentColor(input.accentColor),
     guessMapSize: normalizeGuessMapSize(input.guessMapSize),

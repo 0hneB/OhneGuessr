@@ -44,7 +44,7 @@
     { id: 'plugins', label: 'Plugins' }
   ];
   const roundPresets = ['unlimited', '5', '10'];
-  const timerPresets = ['unlimited', '120', '300'];
+  const timerPresets = ['unlimited', '120', 'countup'];
   const roundPreset = $derived(roundPresets.includes(settings.rounds) ? settings.rounds : 'custom');
   const timerPreset = $derived(timerPresets.includes(settings.timer) ? settings.timer : 'custom');
   let page = $state<Page>('maps');
@@ -168,14 +168,12 @@
           </div>
 
           <div class="setting">
-            <span>Time limit <small class="setting-sub">per location</small></span>
+            <span>Timer <small class="setting-sub">per location</small></span>
             <div class="segmented">
               <button type="button" class:active={timerPreset === 'unlimited'}
                       onclick={() => updateSettings({ timer: 'unlimited' })}>Unlimited</button>
               <button type="button" class:active={timerPreset === '120'}
                       onclick={() => updateSettings({ timer: '120' })}>2 min</button>
-              <button type="button" class:active={timerPreset === '300'}
-                      onclick={() => updateSettings({ timer: '300' })}>5 min</button>
               {#if timerPreset === 'custom'}
                 <input class="seg-custom" type="number" min="0.5" step="0.5"
                        value={timerDraft} aria-label="Custom time limit in minutes"
@@ -190,6 +188,8 @@
                   Custom
                 </button>
               {/if}
+              <button type="button" class:active={timerPreset === 'countup'}
+                      onclick={() => updateSettings({ timer: 'countup' })}>Count up</button>
             </div>
           </div>
 

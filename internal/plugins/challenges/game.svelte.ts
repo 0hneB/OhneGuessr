@@ -92,7 +92,9 @@ function currentRules(): ChallengeRules {
   if (challengeGame.challenge) return { ...challengeGame.challenge.rules };
   return {
     movement: settings.movement,
-    timerSeconds: settings.timer === 'unlimited' ? null : Number(settings.timer),
+    timerSeconds: settings.timer === 'unlimited' || settings.timer === 'countup'
+      ? null
+      : Number(settings.timer),
     scoreScaleKm: settings.scoring === 'country' && state.mapDiagonalKm > 0
       ? state.mapDiagonalKm
       : CONFIG.WORLD_SCALE_KM

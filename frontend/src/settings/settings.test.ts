@@ -30,6 +30,7 @@ describe('normalizeSettings', () => {
     expect(normalizeSettings({})).not.toHaveProperty('currentMap');
     expect(normalizeSettings({ challengesEnabled: true })).not.toHaveProperty('challengesEnabled');
     expect(normalizeSettings({ localPartyEnabled: true })).not.toHaveProperty('localPartyEnabled');
+    expect(normalizeSettings({ timer: 'countup' }).timer).toBe('countup');
   });
 
   it('normalizes launcher themes without discarding a legacy custom accent', () => {

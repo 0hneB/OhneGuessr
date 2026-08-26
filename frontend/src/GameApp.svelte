@@ -35,12 +35,12 @@
   const timerText = $derived(
     `${Math.floor(ui.timerRemaining / 60)}:${String(ui.timerRemaining % 60).padStart(2, '0')}`
   );
+  const timerLimit = $derived(gameMode.current?.timerSeconds?.() ?? (
+    settings.timer === 'unlimited' || settings.timer === 'countup' ? 0 : Number(settings.timer)
+  ));
   const timerProgress = $derived(
-    ui.timerVisible && (gameMode.current?.timerSeconds?.() || settings.timer !== 'unlimited')
-      ? Math.max(0, Math.min(
-          100,
-          ui.timerRemaining / (gameMode.current?.timerSeconds?.() || Number(settings.timer)) * 100
-        ))
+    ui.timerVisible && timerLimit > 0
+      ? Math.max(0, Math.min(100, ui.timerRemaining / timerLimit * 100))
       : 100
   );
   function handleWindowKeydown(event: KeyboardEvent) {

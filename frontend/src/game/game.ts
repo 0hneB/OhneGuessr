@@ -62,6 +62,7 @@ const movementForGame = () => gameMode.current?.movement ?? settings.movement;
 const activeTimerSeconds = () => gameMode.current?.timerSeconds?.() ?? (
   settings.timer === 'unlimited' ? 0 : (parseInt(settings.timer, 10) || 0)
 );
+const timerCountsUp = () => !gameMode.current?.timerSeconds && settings.timer === 'countup';
 const ACTIVE_GAME_PHASES = new Set<GamePhase>([
   GAME_PHASE.LOADING,
   GAME_PHASE.GUESSING,
@@ -107,9 +108,10 @@ const currentMapItem = (): MapItem | null => {
   return map ? { ...map, source: map.source ? { ...map.source } : null } : null;
 };
 
-// Countdown policy for the current round; RoundTimer handles the ticking.
+// Timer policy for the current round; RoundTimer handles the ticking.
 const roundTimer = new RoundTimer({
   getSeconds: activeTimerSeconds,
+  isCountUp: timerCountsUp,
   isActive: () => state.phase === GAME_PHASE.GUESSING,
   onExpire: () => { void finishRound(); }, // forfeit or hosted reveal
   onTick: ({ visible, remaining, low }) => {
