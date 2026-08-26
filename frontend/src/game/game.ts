@@ -537,8 +537,10 @@ const KEY_ACTIONS: Record<string, (event: KeyboardEvent) => void> = {
     else if (state.phase === GAME_PHASE.GUESSING) {
       if (gameMode.current?.completeRound) void finishRound();
       else if (gmap.guess) submitGuess();
-      else if (canInteractWithGuess()) onPlaceGuess(gmap.placeGuessAtCenter());
     }
+  },
+  placeGuessAtCenter: (event) => {
+    if (!event.repeat && canInteractWithGuess()) onPlaceGuess(gmap.placeGuessAtCenter());
   },
   zoomIn: () => { if (canInteractWithGuess()) viewer.zoomFull(1); },
   zoomOut: () => { if (canInteractWithGuess()) viewer.zoomFull(-1); },

@@ -8,6 +8,7 @@ export const CONFIG = {
 // KeyboardEvent.code values per action. Several codes = several keys; [] disables.
 export const KEYBINDINGS: Record<string, string[]> = {
   submitOrNext: ['Space'],
+  placeGuessAtCenter: [],
   zoomIn: ['KeyE'],
   zoomOut: ['KeyQ'],
   resetView: ['KeyR'],
