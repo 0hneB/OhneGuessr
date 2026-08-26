@@ -129,7 +129,7 @@ API keys stay only in `plugin-data/`; they are never included in `maps.json` or 
 
 | Input | Action |
 | --- | --- |
-| <kbd>Space</kbd> | Submit, continue, or replay |
+| <kbd>Space</kbd> | Place a map-center guess, submit, continue, or replay |
 | <kbd>E</kbd> / <kbd>Q</kbd> | Zoom in / out |
 | <kbd>N</kbd> | Face north; press again to look down |
 | <kbd>R</kbd> | Reset the view; in Moving, return to the start |

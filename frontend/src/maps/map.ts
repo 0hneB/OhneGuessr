@@ -320,6 +320,11 @@ export class GuessMap {
     this.syncGuess();
   }
 
+  placeGuessAtCenter() {
+    this.setGuess(this.map.getCenter());
+    return this.guess!;
+  }
+
   reset() {
     this.guess = null;
     this.syncGuess();

@@ -13,7 +13,7 @@ export interface ControlRow extends Partial<ControlItem> {
 }
 
 export const CONTROL_ROWS: ControlRow[] = [
-  { action: 'submitOrNext', label: 'Submit / Next / Replay' },
+  { action: 'submitOrNext', label: 'Submit / Next' },
   { action: 'zoomIn', label: 'Zoom in' },
   { action: 'zoomOut', label: 'Zoom out' },
   { action: 'resetView', label: 'Reset view' },

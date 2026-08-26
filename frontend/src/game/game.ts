@@ -525,7 +525,8 @@ function setGuessMapSizeFromShortcut(size: GuessMapSize, event: KeyboardEvent) {
 
 // What each shortcut does; names match keybindings.js.
 const KEY_ACTIONS: Record<string, (event: KeyboardEvent) => void> = {
-  submitOrNext: () => {
+  submitOrNext: (event) => {
+    if (event.repeat) return;
     if (state.phase === GAME_PHASE.FINAL) {
       if (gameMode.current) void rematchModeGame();
       else void startGame();
@@ -534,6 +535,7 @@ const KEY_ACTIONS: Record<string, (event: KeyboardEvent) => void> = {
     else if (state.phase === GAME_PHASE.GUESSING) {
       if (gameMode.current?.completeRound) void finishRound();
       else if (gmap.guess) submitGuess();
+      else if (canInteractWithGuess()) onPlaceGuess(gmap.placeGuessAtCenter());
     }
   },
   zoomIn: () => { if (canInteractWithGuess()) viewer.zoomFull(1); },
