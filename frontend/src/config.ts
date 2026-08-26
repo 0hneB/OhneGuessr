@@ -18,6 +18,7 @@ export const KEYBINDINGS: Record<string, string[]> = {
   toggleMapPinned: ['KeyM'],
   toggleMapFullscreen: ['KeyF'],
   toggleDesktopFullscreen: ['F11'],
+  openStreetView: [],
   mapSizeDefault: ['Digit1'],
   mapSizeLarge: ['Digit2'],
   mapSizeXl: ['Digit3'],

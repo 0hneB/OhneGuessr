@@ -6,7 +6,7 @@ import {
   setGameFullscreen
 } from '../desktop.js';
 import { OpenSvViewer, loadOpenSV } from './panorama.js';
-import { GuessMap, createRevealMaps } from '../maps/map.js';
+import { GuessMap, createRevealMaps, openStreetView } from '../maps/map.js';
 import { haversineKm, scoreFor } from './scoring.js';
 import { CompassHUD } from './compass.js';
 import { $, setLoading } from '../dom.js';
@@ -566,6 +566,12 @@ const KEY_ACTIONS: Record<string, (event: KeyboardEvent) => void> = {
     if (event.repeat || !desktopRuntimeAvailable()) return;
     event.preventDefault();
     void getGameWindowState().then(({ fullscreen }) => setGameFullscreen(!fullscreen));
+  },
+  openStreetView: (event) => {
+    if (!event.repeat && state.current &&
+        (state.phase === GAME_PHASE.GUESSING || state.phase === GAME_PHASE.RESULT)) {
+      openStreetView(state.current);
+    }
   },
   mapSizeDefault: (event) => setGuessMapSizeFromShortcut('default', event),
   mapSizeLarge: (event) => setGuessMapSizeFromShortcut('large', event),

@@ -24,6 +24,7 @@ export const CONTROL_ROWS: ControlRow[] = [
   { action: 'toggleMapPinned', label: 'Toggle pinned map' },
   { action: 'toggleMapFullscreen', label: 'Toggle map fullscreen' },
   { action: 'toggleDesktopFullscreen', label: 'Toggle desktop fullscreen' },
+  { action: 'openStreetView', label: 'Open actual Street View' },
   {
     label: 'Map size presets',
     items: [

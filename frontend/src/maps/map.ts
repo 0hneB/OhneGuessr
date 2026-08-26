@@ -338,7 +338,7 @@ function streetViewUrl(actual: Location) {
   return `https://www.google.com/maps/@?${params}`;
 }
 
-function openStreetView(actual: Location) {
+export function openStreetView(actual: Location) {
   window.open(streetViewUrl(actual), '_blank', 'noopener,noreferrer');
 }
 
