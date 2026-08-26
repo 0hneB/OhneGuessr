@@ -130,6 +130,7 @@ API keys stay only in `plugin-data/`; they are never included in `maps.json` or 
 | Input | Action |
 | --- | --- |
 | <kbd>Space</kbd> | Submit, continue, or replay |
+| _Unbound_ | Place a guess at the map center |
 | <kbd>E</kbd> / <kbd>Q</kbd> | Zoom in / out |
 | <kbd>N</kbd> | Face north; press again to look down |
 | <kbd>R</kbd> | Reset the view; in Moving, return to the start |
@@ -139,6 +140,7 @@ API keys stay only in `plugin-data/`; they are never included in `maps.json` or 
 | <kbd>M</kbd> | Pin / unpin the expanded map |
 | <kbd>F</kbd> | Toggle the fullscreen map |
 | <kbd>F11</kbd> | Toggle game-window fullscreen |
+| _Unbound_ | Open the current location in Google Street View |
 | <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>4</kbd> | Select expanded map size |
 | <kbd>H</kbd> | Hide / show the interface |
 | <kbd>Esc</kbd> | Focus the launcher |
