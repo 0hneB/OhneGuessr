@@ -2,11 +2,8 @@
   import { CONFIG } from './config.js';
   import { onMount } from 'svelte';
   import {
-    desktopRuntimeAvailable,
     focusLauncher,
-    gameReady,
-    getGameWindowState,
-    setGameFullscreen
+    gameReady
   } from './desktop.js';
   import { formatDistance } from './game/scoring.js';
   import { settings, state as gameState } from './game/state.svelte.js';
@@ -47,12 +44,6 @@
       : 100
   );
   function handleWindowKeydown(event: KeyboardEvent) {
-    if (event.code === 'F11' && !event.repeat && !event.defaultPrevented &&
-        desktopRuntimeAvailable()) {
-      event.preventDefault();
-      void getGameWindowState().then(({ fullscreen }) => setGameFullscreen(!fullscreen));
-      return;
-    }
     if (event.key !== 'Escape' || event.repeat || event.defaultPrevented) return;
     event.preventDefault();
     focusLauncher();

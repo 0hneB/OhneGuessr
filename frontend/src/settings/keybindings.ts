@@ -23,6 +23,7 @@ export const CONTROL_ROWS: ControlRow[] = [
   { action: 'faceNorth', label: 'Face north' },
   { action: 'toggleMapPinned', label: 'Toggle pinned map' },
   { action: 'toggleMapFullscreen', label: 'Toggle map fullscreen' },
+  { action: 'toggleDesktopFullscreen', label: 'Toggle desktop fullscreen' },
   {
     label: 'Map size presets',
     items: [

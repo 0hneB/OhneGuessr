@@ -1,5 +1,10 @@
 // Game hub: owns the view singletons and round lifecycle, wires the modules together.
 import { CONFIG } from '../config.js';
+import {
+  desktopRuntimeAvailable,
+  getGameWindowState,
+  setGameFullscreen
+} from '../desktop.js';
 import { OpenSvViewer, loadOpenSV } from './panorama.js';
 import { GuessMap, createRevealMaps } from '../maps/map.js';
 import { haversineKm, scoreFor } from './scoring.js';
@@ -556,6 +561,11 @@ const KEY_ACTIONS: Record<string, (event: KeyboardEvent) => void> = {
   },
   toggleMapFullscreen: () => {
     if (canInteractWithGuess()) guessPanel.setFullscreen(!guessPanel.isFullscreen());
+  },
+  toggleDesktopFullscreen: (event) => {
+    if (event.repeat || !desktopRuntimeAvailable()) return;
+    event.preventDefault();
+    void getGameWindowState().then(({ fullscreen }) => setGameFullscreen(!fullscreen));
   },
   mapSizeDefault: (event) => setGuessMapSizeFromShortcut('default', event),
   mapSizeLarge: (event) => setGuessMapSizeFromShortcut('large', event),
