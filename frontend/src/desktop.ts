@@ -41,8 +41,8 @@ export function closeGame() {
   else window.close();
 }
 
-export function gameReady(mapID: string) {
-  if (desktopRuntimeAvailable()) void DesktopService.GameReady(mapID);
+export async function gameReady(mapID: string) {
+  if (desktopRuntimeAvailable()) await DesktopService.GameReady(mapID);
 }
 
 export async function setGameFullscreen(enabled: boolean) {
