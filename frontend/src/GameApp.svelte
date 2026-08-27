@@ -50,7 +50,7 @@
   }
 
   onMount(async () => {
-    await gameReady(new URLSearchParams(location.search).get('map') || '');
+    gameReady(new URLSearchParams(location.search).get('map') || '');
     await init();
   });
 </script>
