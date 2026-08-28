@@ -1,4 +1,4 @@
-package main
+package pluginmanager
 
 import (
 	"crypto/sha256"
@@ -23,11 +23,11 @@ import (
 )
 
 const (
-	pluginRepositoryURL = "https://raw.githubusercontent.com/0hneB/OhneGuessr/main/plugins"
-	pluginAPIVersion    = 1
-	maxPluginCatalog    = 256 << 10
-	maxPluginManifest   = 64 << 10
-	maxPluginSource     = 2 << 20
+	repositoryURL     = "https://raw.githubusercontent.com/0hneB/OhneGuessr/main/plugins"
+	pluginAPIVersion  = 1
+	maxPluginCatalog  = 256 << 10
+	maxPluginManifest = 64 << 10
+	maxPluginSource   = 2 << 20
 )
 
 type PluginSetting struct {
@@ -87,6 +87,10 @@ func newPluginService(dataDir, baseURL string) *PluginService {
 		baseURL: strings.TrimRight(baseURL, "/"),
 		client:  &http.Client{Timeout: 20 * time.Second},
 	}
+}
+
+func New(dataDir string) *PluginService {
+	return newPluginService(dataDir, repositoryURL)
 }
 
 func (s *PluginService) Catalog() ([]PluginManifest, error) {

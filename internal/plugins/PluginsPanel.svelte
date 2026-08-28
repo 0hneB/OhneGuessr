@@ -4,7 +4,7 @@
     PluginService,
     type PluginInfo,
     type PluginManifest
-  } from '../../frontend/bindings/github.com/0hneB/OhneGuessr/index.js';
+  } from '../../frontend/bindings/github.com/0hneB/OhneGuessr/internal/pluginmanager/index.js';
   import { desktopRuntimeAvailable } from '../../frontend/src/desktop.js';
   import { mergePluginEntries } from '../../frontend/src/plugins/marketplace.js';
   import ChallengeSettings from './challenges/SettingsRow.svelte';

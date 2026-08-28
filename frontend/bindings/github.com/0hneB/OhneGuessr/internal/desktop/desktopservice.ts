@@ -10,29 +10,29 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as $models from "./models.js";
 
 export function CloseGame(): $CancellablePromise<void> {
-    return $Call.ByID(2054257745);
+    return $Call.ByID(3879623943);
 }
 
 export function ExportMaps(): $CancellablePromise<boolean> {
-    return $Call.ByID(1275126928);
+    return $Call.ByID(3698723838);
 }
 
 export function FocusLauncher(): $CancellablePromise<void> {
-    return $Call.ByID(1851256843);
+    return $Call.ByID(2985176669);
 }
 
 export function GameReady(mapID: string): $CancellablePromise<void> {
-    return $Call.ByID(589324950, mapID);
+    return $Call.ByID(4188255620, mapID);
 }
 
 export function GetGameWindowState(): $CancellablePromise<$models.GameWindowState> {
-    return $Call.ByID(2485666454);
+    return $Call.ByID(1408848652);
 }
 
 export function LaunchMap(mapID: string, mode: string): $CancellablePromise<void> {
-    return $Call.ByID(2446668672, mapID, mode);
+    return $Call.ByID(4127136374, mapID, mode);
 }
 
 export function SetGameFullscreen(enabled: boolean): $CancellablePromise<$models.GameWindowState> {
-    return $Call.ByID(1925625260, enabled);
+    return $Call.ByID(2531214782, enabled);
 }

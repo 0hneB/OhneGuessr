@@ -6,9 +6,9 @@
 import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
 
 export function CheckAvailable(): $CancellablePromise<string> {
-    return $Call.ByID(3012616611);
+    return $Call.ByID(2353321927);
 }
 
 export function OpenUpdater(): $CancellablePromise<void> {
-    return $Call.ByID(4026987649);
+    return $Call.ByID(3918368045);
 }

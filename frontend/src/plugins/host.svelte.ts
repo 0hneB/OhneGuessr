@@ -1,7 +1,7 @@
 import {
   PluginService,
   type PluginManifest
-} from '../../bindings/github.com/0hneB/OhneGuessr/index.js';
+} from '../../bindings/github.com/0hneB/OhneGuessr/internal/pluginmanager/index.js';
 import { Browser } from '@wailsio/runtime';
 import type { PanoramaCapture, PanoramaCaptureOptions } from '../game/panorama-capture.js';
 import type { PanoramaMetadata } from '../game/panorama.js';

@@ -1,4 +1,4 @@
-package main
+package updates
 
 import (
 	"context"
@@ -25,7 +25,7 @@ type UpdateService struct {
 	dataDir string
 }
 
-func newUpdateService(app *application.App, currentVersion, dataDir string) (*UpdateService, error) {
+func New(app *application.App, currentVersion, dataDir string) (*UpdateService, error) {
 	service := &UpdateService{app: app, dataDir: dataDir}
 	if currentVersion == "dev" || !platformUpdatesSupported() {
 		return service, nil

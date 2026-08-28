@@ -1,7 +1,7 @@
 import {
   PluginService,
   type PluginModule
-} from '../../bindings/github.com/0hneB/OhneGuessr/index.js';
+} from '../../bindings/github.com/0hneB/OhneGuessr/internal/pluginmanager/index.js';
 import { desktopRuntimeAvailable } from '../desktop.js';
 import {
   createPluginHost,
