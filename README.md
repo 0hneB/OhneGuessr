@@ -14,6 +14,8 @@
 
 Download the latest version from [GitHub Releases](https://github.com/0hneB/OhneGuessr/releases).
 
+Linux users who want in-app updates should install the `.deb`; AppImage updates remain manual. Upgrading from a release that predates Linux updates requires installing the new `.deb` once by hand.
+
 ## Features
 
 - Moving, No Moving, and NMPZ games with configurable rounds and timers.
@@ -220,7 +222,7 @@ Download the release executable rather than an individual source file. `go tool 
 
 ### An update fails
 
-Check the internet connection and restart OhneGuessr to check again. On Windows and macOS, an available version appears in the launcher footer; selecting it opens the update window. OhneGuessr refuses any update whose SHA-256 digest or Ed25519 signature does not match the release metadata.
+Check the internet connection and restart OhneGuessr to check again. On Windows, macOS, and Linux installations made from the `.deb`, an available version appears in the launcher footer. Linux downloads the signed `.deb` and asks for administrator authentication before APT installs it; AppImage updates remain manual. OhneGuessr refuses any update whose SHA-256 digest or Ed25519 signature does not match the release metadata.
 
 ### Panoramas are missing, blurry, or black
 

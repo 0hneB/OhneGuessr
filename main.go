@@ -121,7 +121,7 @@ func run() error {
 			ProgramName: "ohneguessr",
 		},
 	})
-	updates, err := newUpdateService(wailsApp, version)
+	updates, err := newUpdateService(wailsApp, version, dataDir)
 	if err != nil {
 		return err
 	}

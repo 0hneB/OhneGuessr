@@ -90,7 +90,7 @@ jobs:
             'Priority: optional' \
             'Architecture: amd64' \
             'Maintainer: OhneB' \
-            'Depends: libwebkitgtk-6.0-4' \
+            'Depends: libwebkitgtk-6.0-4, pkexec' \
             'Description: A free, lean, local GeoGuessr alternative.' > package/DEBIAN/control
           dpkg-deb --root-owner-group --build package "release/$DEB_NAME"
 
@@ -145,12 +145,19 @@ jobs:
         with:
           name: linux
           path: release
-      - name: Install and inspect DEB
+      - name: Upgrade and inspect DEB
         run: |
           sudo apt-get update
-          sudo apt-get install --yes dbus-x11 xvfb "./release/$DEB_NAME"
+          mkdir old-package
+          dpkg-deb --raw-extract "release/$DEB_NAME" old-package
+          sed -i 's/^Version:.*/Version: 0~update-smoke/' old-package/DEBIAN/control
+          dpkg-deb --root-owner-group --build old-package old.deb
+          sudo apt-get install --yes dbus-x11 xvfb ./old.deb
+          sudo apt-get --assume-yes --only-upgrade --no-remove install "$GITHUB_WORKSPACE/release/$DEB_NAME"
           test "$(dpkg-query --show --showformat='${Status}' ohneguessr)" = "install ok installed"
+          test "$(dpkg-query --show --showformat='${Version}' ohneguessr)" = "$RELEASE_VERSION"
           test -x /usr/bin/ohneguessr
+          test -x /usr/bin/pkexec
           test -f /usr/share/applications/ohneguessr.desktop
       - name: Launch AppImage
         run: |
@@ -290,6 +297,7 @@ jobs:
       PORTABLE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-windows-x64.exe
       SETUP_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-windows-x64-setup.exe
       MAC_UPDATE_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-macos-universal.app.tar.gz
+      DEB_NAME: OhneGuessr-${{ needs.prepare.outputs.version }}-linux-x64.deb
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -337,9 +345,11 @@ jobs:
           $setupName = $env:SETUP_NAME
           $portableName = $env:PORTABLE_NAME
           $macUpdateName = $env:MAC_UPDATE_NAME
+          $debName = $env:DEB_NAME
           $setup = Sign-Artifact "release/$setupName"
           $portable = Sign-Artifact "release/$portableName"
           $macUpdate = Sign-Artifact "release/$macUpdateName"
+          $deb = Sign-Artifact "release/$debName"
           $base = "https://github.com/0hneB/OhneGuessr/releases/download/$env:RELEASE_TAG"
           $manifest = [ordered]@{
             schemaVersion = 1
@@ -367,6 +377,17 @@ jobs:
                 digest = $portable.digest
                 signatureAlgo = "ed25519"
                 signature = $portable.signature
+              }
+              [ordered]@{
+                url = "$base/$debName"
+                filename = $debName
+                size = $deb.size
+                platform = "linux"
+                arch = "amd64"
+                digestAlgo = "sha256"
+                digest = $deb.digest
+                signatureAlgo = "ed25519"
+                signature = $deb.signature
               }
               [ordered]@{
                 url = "$base/$macUpdateName"
@@ -406,6 +427,17 @@ jobs:
             echo "Release files do not match the expected set" >&2
             exit 1
           fi
+          jq -e --arg filename "OhneGuessr-$RELEASE_VERSION-linux-x64.deb" '
+            .artifacts | any(
+              .platform == "linux" and
+              .arch == "amd64" and
+              .filename == $filename and
+              .digestAlgo == "sha256" and
+              .signatureAlgo == "ed25519" and
+              (.digest | length) > 0 and
+              (.signature | length) > 0
+            )
+          ' release/latest.json > /dev/null
       - name: Upload to draft release
         env:
           GH_TOKEN: ${{ github.token }}

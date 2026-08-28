@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"runtime"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -22,11 +21,13 @@ const (
 
 type UpdateService struct {
 	updater *updater.Updater
+	app     *application.App
+	dataDir string
 }
 
-func newUpdateService(app *application.App, currentVersion string) (*UpdateService, error) {
-	service := &UpdateService{}
-	if (runtime.GOOS != "windows" && runtime.GOOS != "darwin") || currentVersion == "dev" {
+func newUpdateService(app *application.App, currentVersion, dataDir string) (*UpdateService, error) {
+	service := &UpdateService{app: app, dataDir: dataDir}
+	if currentVersion == "dev" || !platformUpdatesSupported() {
 		return service, nil
 	}
 
@@ -69,5 +70,5 @@ func (u *UpdateService) OpenUpdater() error {
 	if u.updater == nil {
 		return nil
 	}
-	return u.updater.CheckAndInstall(context.Background())
+	return u.openUpdater()
 }

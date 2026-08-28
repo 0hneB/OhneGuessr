@@ -291,6 +291,8 @@
 .update-action:hover,
 .update-action:focus-visible { color: var(--launcher-text); }
 
+.update-action:disabled { cursor: wait; }
+
 .launcher-main {
   min-width: 0;
   min-height: 0;
