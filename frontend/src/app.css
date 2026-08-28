@@ -127,6 +127,7 @@ button { font-family: inherit; }
 .map-viewport {
   --map-overscan: 128px;
   position: relative;
+  isolation: isolate;
   overflow: hidden;
 }
 .map-overscan.maplibregl-map {
