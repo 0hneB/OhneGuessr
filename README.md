@@ -14,8 +14,6 @@
 
 Download the latest version from [GitHub Releases](https://github.com/0hneB/OhneGuessr/releases).
 
-Linux users who want in-app updates should install the `.deb`; AppImage updates remain manual. Upgrading from a release that predates Linux updates requires installing the new `.deb` once by hand.
-
 ## Features
 
 - Moving, No Moving, and NMPZ games with configurable rounds and timers.
