@@ -237,7 +237,10 @@ body.ui-hidden #timerBox,
 body.ui-hidden #scoreBox,
 body.ui-hidden #guessPanel { display: none !important; }
 
-/* OpenSV injects Street View navigation arrows as SVG paths. */
+/* OpenSV renders each link as shadow, visible arrow, then transparent [pano] hit target. */
+#pano svg > path:not([pano]):has(+ path[pano]:is(:hover, :focus)) {
+  fill: var(--accent) !important;
+}
 body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   display: none !important;
   pointer-events: none !important;
