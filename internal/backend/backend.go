@@ -1,4 +1,4 @@
-package app
+package backend
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/0hneB/OhneGuessr/internal/pluginhost"
 )
 
-type App struct {
+type Backend struct {
 	maps         *mapStore
 	coordinator  *syncCoordinator
 	mapPlugins   []pluginhost.MapPlugin
@@ -22,7 +22,7 @@ type App struct {
 	shutdownErr  error
 }
 
-func New(dataDir string, factories ...pluginhost.MapPluginFactory) (*App, error) {
+func New(dataDir string, factories ...pluginhost.MapPluginFactory) (*Backend, error) {
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return nil, fmt.Errorf("create data directory: %w", err)
 	}
@@ -41,7 +41,7 @@ func New(dataDir string, factories ...pluginhost.MapPluginFactory) (*App, error)
 	}
 
 	coordinator := &syncCoordinator{}
-	a := &App{
+	a := &Backend{
 		maps:        maps,
 		coordinator: coordinator,
 	}
@@ -81,7 +81,7 @@ func ResolveDataDir(args []string) (string, error) {
 	return *dataDir, nil
 }
 
-func (a *App) Shutdown(ctx context.Context) error {
+func (a *Backend) Shutdown(ctx context.Context) error {
 	a.shutdownOnce.Do(func() {
 		if err := a.coordinator.shutdown(ctx); err != nil {
 			if a.shutdownErr == nil {
@@ -95,7 +95,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 	return a.shutdownErr
 }
 
-func (a *App) Handler() http.Handler {
+func (a *Backend) Handler() http.Handler {
 	mux := http.NewServeMux()
 	a.registerMapRoutes(mux)
 	for _, plugin := range a.mapPlugins {
@@ -110,7 +110,7 @@ func (a *App) Handler() http.Handler {
 	return mux
 }
 
-func (a *App) HasMap(id string) bool {
+func (a *Backend) HasMap(id string) bool {
 	a.maps.mu.Lock()
 	defer a.maps.mu.Unlock()
 	manifest, err := a.maps.loadManifestLocked()
@@ -125,7 +125,7 @@ func (a *App) HasMap(id string) bool {
 	return false
 }
 
-func (a *App) ExportMaps(filename string) error {
+func (a *Backend) ExportMaps(filename string) error {
 	return a.maps.exportZIP(filename)
 }
 

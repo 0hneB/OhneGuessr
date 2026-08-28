@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0hneB/OhneGuessr/internal/app"
+	"github.com/0hneB/OhneGuessr/internal/backend"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
@@ -21,7 +21,7 @@ type GameWindowState struct {
 }
 
 type DesktopService struct {
-	backend               *app.App
+	backend               *backend.Backend
 	exclusiveActive       func() bool
 	stopExclusive         func()
 	secondInstanceHandler func(application.SecondInstanceData) bool

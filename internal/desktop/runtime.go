@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/0hneB/OhneGuessr/internal/app"
+	"github.com/0hneB/OhneGuessr/internal/backend"
 	"github.com/0hneB/OhneGuessr/internal/pluginmanager"
 	"github.com/0hneB/OhneGuessr/internal/plugins/challenges"
 	learnablemeta "github.com/0hneB/OhneGuessr/internal/plugins/learnable-meta"
@@ -49,11 +49,11 @@ func Run(frontendAssets fs.FS, version string, arguments []string) error {
 		}
 		configArgs = append(configArgs, argument)
 	}
-	dataDir, err := app.ResolveDataDir(configArgs)
+	dataDir, err := backend.ResolveDataDir(configArgs)
 	if err != nil {
 		return err
 	}
-	backend, err := app.New(
+	core, err := backend.New(
 		dataDir,
 		mapmakingapp.NewPlugin,
 		learnablemeta.NewPlugin,
@@ -61,8 +61,8 @@ func Run(frontendAssets fs.FS, version string, arguments []string) error {
 	if err != nil {
 		return err
 	}
-	desktop := &DesktopService{backend: backend}
-	party := localparty.New(frontend, backend.HasMap, desktop.launchGame, func(id string) {
+	desktop := &DesktopService{backend: core}
+	party := localparty.New(frontend, core.HasMap, desktop.launchGame, func(id string) {
 		desktop.mu.RLock()
 		wails := desktop.wails
 		desktop.mu.RUnlock()
@@ -86,7 +86,7 @@ func Run(frontendAssets fs.FS, version string, arguments []string) error {
 		return challenges.HandleSecondInstance(challengeService, data)
 	}
 
-	backendHandler := backend.Handler()
+	backendHandler := core.Handler()
 	handler := http.NewServeMux()
 	handler.Handle("/api", backendHandler)
 	handler.Handle("/api/", backendHandler)

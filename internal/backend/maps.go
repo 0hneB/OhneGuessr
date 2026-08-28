@@ -1,4 +1,4 @@
-package app
+package backend
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 	"github.com/0hneB/OhneGuessr/internal/httpjson"
 )
 
-func (a *App) registerMapRoutes(mux *http.ServeMux) {
+func (a *Backend) registerMapRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/maps", httpjson.Handler(func(r *http.Request) (any, int, error) {
 		body, err := httpjson.Decode[struct {
 			Name      string          `json:"name"`
@@ -126,7 +126,7 @@ func (a *App) registerMapRoutes(mux *http.ServeMux) {
 	}))
 }
 
-func (a *App) deleteFolder(folder string, recursive bool) ([]string, error) {
+func (a *Backend) deleteFolder(folder string, recursive bool) ([]string, error) {
 	clean, _ := normalizeRelative(folder)
 	var restore func()
 	for _, plugin := range a.mapPlugins {
@@ -169,7 +169,7 @@ func mapMutationResponse(err error, fallback string) error {
 	}
 }
 
-func (a *App) serveMapData(w http.ResponseWriter, r *http.Request) {
+func (a *Backend) serveMapData(w http.ResponseWriter, r *http.Request) {
 	file, info, err := a.maps.openPublic(r.PathValue("file"))
 	if err != nil {
 		http.NotFound(w, r)

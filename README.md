@@ -202,7 +202,7 @@ OhneGuessr/
 |   |-- dist/              generated frontend (ignored)
 |   `-- package.json       frontend dependencies and scripts
 |-- internal/
-|   |-- app/               Go backend and tests
+|   |-- backend/           map storage and local HTTP backend
 |   |-- desktop/           Wails runtime and window service
 |   |-- pluginmanager/     additional-plugin installation and state
 |   |-- plugins/           built-in core plugins

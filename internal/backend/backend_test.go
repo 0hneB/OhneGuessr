@@ -1,4 +1,4 @@
-package app
+package backend
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	mapmakingapp "github.com/0hneB/OhneGuessr/internal/plugins/map-making-app"
 )
 
-func newTestApp(t *testing.T) *App {
+func newTestBackend(t *testing.T) *Backend {
 	t.Helper()
 	a, err := New(t.TempDir(), mapmakingapp.NewPlugin, learnablemeta.NewPlugin)
 	if err != nil {
@@ -46,7 +46,7 @@ func perform(handler http.Handler, request *http.Request) *httptest.ResponseReco
 }
 
 func TestHTTPMapsAndInternalRouting(t *testing.T) {
-	a := newTestApp(t)
+	a := newTestBackend(t)
 	handler := a.Handler()
 
 	manifest := perform(handler, localRequest(http.MethodGet, "/data/maps.json", ""))
@@ -99,7 +99,7 @@ func TestHTTPMapsAndInternalRouting(t *testing.T) {
 }
 
 func TestHTTPRejectsBadBodiesAndPrivateData(t *testing.T) {
-	a := newTestApp(t)
+	a := newTestBackend(t)
 	handler := a.Handler()
 
 	wrongType := localRequest(http.MethodPost, "/api/maps", `{"name":"x","locations":[]}`)
@@ -131,7 +131,7 @@ func TestHTTPRejectsBadBodiesAndPrivateData(t *testing.T) {
 }
 
 func TestHTTPFolderAndMapMutations(t *testing.T) {
-	a := newTestApp(t)
+	a := newTestBackend(t)
 	handler := a.Handler()
 
 	createFolder := perform(handler, localRequest(
@@ -245,7 +245,7 @@ func TestHTTPFolderAndMapMutations(t *testing.T) {
 }
 
 func TestManagedRootDeleteDisablesSync(t *testing.T) {
-	a := newTestApp(t)
+	a := newTestBackend(t)
 	mma, learnable := a.mapPlugins[0], a.mapPlugins[1]
 	mmaPolicy, learnablePolicy := mma.MapPolicy(), learnable.MapPolicy()
 	_, err := mma.SetEnabled(true)
