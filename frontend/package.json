@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "7.3.0",
-    "@types/google.maps": "3.66.0",
+    "@types/google.maps": "3.66.2",
     "svelte-check": "4.7.6",
     "typescript": "6.0.3",
     "vite": "8.2.2",
