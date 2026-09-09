@@ -172,7 +172,7 @@
   height: 100%;
 }
 
-.launcher-shell {
+.launcher-app {
   --launcher-sidebar-width: 190px;
   --launcher-content-top-inset: 6px;
   display: grid;
@@ -967,7 +967,7 @@ a:focus-visible {
 }
 
 @media (max-width: 800px) {
-  .launcher-shell {
+  .launcher-app {
     --launcher-sidebar-width: 64px;
   }
 

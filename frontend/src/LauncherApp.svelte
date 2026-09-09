@@ -105,7 +105,7 @@
 
 <svelte:body class:launcher-body={true} />
 
-<div class="launcher-shell" data-theme={settings.theme}>
+<div class="launcher-shell launcher-app" data-theme={settings.theme}>
   <header class="launcher-titlebar">
     <div class="launcher-window-controls">
       <button type="button" class="minimise" aria-label="Minimise" title="Minimise"
