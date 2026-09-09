@@ -23,11 +23,11 @@
     "id": "nearby-explorer",
     "name": "Nearby Explorer",
     "description": "Browse Wikipedia places within 10 km in a simple in-game window.",
-    "icon": "M12,2A10,10 0 1,0 12,22A10,10 0 0,0 12,2M15.9,7.1L13.4,13.4L7.1,15.9L9.6,9.6L15.9,7.1M12,10.9A1.1,1.1 0 1,0 12,13.1A1.1,1.1 0 0,0 12,10.9Z",
-    "version": "0.0.1",
+    "icon": "M14.19,14.19L6,18L9.81,9.81L18,6M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,10.9A1.1,1.1 0 0,0 10.9,12A1.1,1.1 0 0,0 12,13.1A1.1,1.1 0 0,0 13.1,12A1.1,1.1 0 0,0 12,10.9Z",
+    "version": "0.0.2",
     "apiVersion": 1,
     "main": "index.js",
-    "sha256": "sha256:2d92410c91bf69cbf9a437205e16a750770e7057c90b1c1a8cf1d56cfdb34fc8"
+    "sha256": "sha256:42893ebb1f0a3985adbf46c337033a9cc6c90e6be9dbf555fa47c4c18654983b"
   },
   {
     "id": "plantnet",
