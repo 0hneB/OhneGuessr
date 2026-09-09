@@ -142,6 +142,38 @@ func TestPluginInstallRejectsCatalogMismatchWithoutReplacingCurrent(t *testing.T
 	}
 }
 
+func TestPluginInstallRevalidatesCachedFiles(t *testing.T) {
+	manifest := testPluginManifest()
+	manifest.Version = "1.1.0"
+	source := "globalThis.Example = 'current';\n"
+	origin := testPluginServer(t, &manifest, &source, nil)
+	cache := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Cache-Control") != "no-cache" {
+			switch r.URL.Path {
+			case "/example/manifest.json":
+				stale := manifest
+				stale.Version = "1.0.0"
+				_ = json.NewEncoder(w).Encode(stale)
+				return
+			case "/example/index.js":
+				_, _ = w.Write([]byte("globalThis.Example = 'stale';\n"))
+				return
+			}
+		}
+		origin.Config.Handler.ServeHTTP(w, r)
+	}))
+	t.Cleanup(cache.Close)
+	service := newPluginService(t.TempDir(), cache.URL)
+	installed, err := service.Install("example")
+	if err != nil || installed.Version != manifest.Version {
+		t.Fatalf("install with stale cached files = %#v, err = %v", installed, err)
+	}
+	modules, err := service.EnabledModules()
+	if err != nil || len(modules) != 1 || modules[0].Source != source {
+		t.Fatalf("installed modules = %#v, err = %v", modules, err)
+	}
+}
+
 func TestPluginCatalogSkipsIncompatibleAPIVersion(t *testing.T) {
 	manifest := testPluginManifest()
 	manifest.APIVersion++

@@ -360,7 +360,13 @@ func (s *PluginService) catalog() ([]PluginManifest, error) {
 }
 
 func (s *PluginService) fetch(url string, maximum int64) ([]byte, error) {
-	response, err := s.client.Get(url)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	// The catalog, manifest, and source can have different CDN cache ages after a release.
+	request.Header.Set("Cache-Control", "no-cache")
+	response, err := s.client.Do(request)
 	if err != nil {
 		return nil, err
 	}
