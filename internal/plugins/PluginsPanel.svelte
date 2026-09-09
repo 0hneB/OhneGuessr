@@ -47,8 +47,9 @@
     loading = false;
   }
 
-  async function run(id: string, action: () => Promise<unknown>) {
-    busy = id;
+  async function run(operation: string, action: () => Promise<unknown>) {
+    if (busy) return false;
+    busy = operation;
     error = '';
     try {
       await action();
@@ -66,7 +67,7 @@
     const field = `${pluginID}:${settingKey}`;
     const value = settingValues[field]?.trim();
     if (!value) return;
-    if (await run(pluginID, () => PluginService.SetSetting(pluginID, settingKey, value))) {
+    if (await run(`${field}:save`, () => PluginService.SetSetting(pluginID, settingKey, value))) {
       settingValues[field] = '';
     }
   }
@@ -109,26 +110,33 @@
                 {#if plugin.experimental}<span class="plugin-badge">Experimental</span>{/if}
               </span>
               <small>{plugin.description}</small>
-              <small class="plugin-version">v{plugin.version}{plugin.updatable ? ` → v${plugin.latestVersion}` : ''}</small>
             </span>
+            {#if plugin.installed}
+              <label class="plugin-switch setting-toggle" aria-label={`${plugin.enabled ? 'Disable' : 'Enable'} ${plugin.name}`}>
+                <input type="checkbox" checked={plugin.enabled} disabled={Boolean(busy)}
+                       onchange={(event) => run(`${plugin.id}:toggle`, () =>
+                         PluginService.SetEnabled(plugin.id, event.currentTarget.checked))} />
+                <span class="switch" aria-hidden="true"></span>
+                {#if busy === `${plugin.id}:toggle`}<small>{plugin.enabled ? 'Disabling…' : 'Enabling…'}</small>{/if}
+              </label>
+            {/if}
             <span class="plugin-actions">
+              <small class="plugin-version">v{plugin.version}{plugin.updatable ? ` → v${plugin.latestVersion}` : ''}</small>
               {#if plugin.installed}
-                <label class="plugin-switch setting-toggle" aria-label={`${plugin.enabled ? 'Disable' : 'Enable'} ${plugin.name}`}>
-                  <input type="checkbox" checked={plugin.enabled} disabled={Boolean(busy)}
-                         onchange={(event) => run(plugin.id, () =>
-                           PluginService.SetEnabled(plugin.id, event.currentTarget.checked))} />
-                  <span class="switch" aria-hidden="true"></span>
-                </label>
                 {#if plugin.updatable}
-                  <button type="button" disabled={Boolean(busy)}
-                          onclick={() => run(plugin.id, () => PluginService.Install(plugin.id))}>Update</button>
+                  <button type="button" class="plugin-primary" disabled={Boolean(busy)}
+                          onclick={() => run(`${plugin.id}:update`, () => PluginService.Install(plugin.id))}>
+                    {busy === `${plugin.id}:update` ? 'Updating…' : 'Update'}
+                  </button>
                 {/if}
                 <button type="button" class="plugin-remove" disabled={Boolean(busy)}
-                        onclick={() => run(plugin.id, () => PluginService.Uninstall(plugin.id))}>Remove</button>
+                        onclick={() => run(`${plugin.id}:remove`, () => PluginService.Uninstall(plugin.id))}>
+                  {busy === `${plugin.id}:remove` ? 'Removing…' : 'Remove'}
+                </button>
               {:else}
-                <button type="button" disabled={Boolean(busy) || !plugin.available}
-                        onclick={() => run(plugin.id, () => PluginService.Install(plugin.id))}>
-                  {busy === plugin.id ? 'Installing…' : 'Install'}
+                <button type="button" class="plugin-primary" disabled={Boolean(busy) || !plugin.available}
+                        onclick={() => run(`${plugin.id}:install`, () => PluginService.Install(plugin.id))}>
+                  {busy === `${plugin.id}:install` ? 'Installing…' : 'Install'}
                 </button>
               {/if}
             </span>
@@ -145,11 +153,15 @@
                              value={settingValues[field] || ''}
                              oninput={(event) => { settingValues[field] = event.currentTarget.value; }} />
                       <button type="button" disabled={Boolean(busy) || !settingValues[field]?.trim()}
-                              onclick={() => saveSetting(plugin.id, setting.key)}>Save</button>
+                              onclick={() => saveSetting(plugin.id, setting.key)}>
+                        {busy === `${field}:save` ? 'Saving…' : 'Save'}
+                      </button>
                       {#if configured}
                         <button type="button" class="plugin-remove" disabled={Boolean(busy)}
-                                onclick={() => run(plugin.id, () =>
-                                  PluginService.SetSetting(plugin.id, setting.key, ''))}>Forget</button>
+                                onclick={() => run(`${field}:forget`, () =>
+                                  PluginService.SetSetting(plugin.id, setting.key, ''))}>
+                          {busy === `${field}:forget` ? 'Forgetting…' : 'Forget'}
+                        </button>
                       {/if}
                     </div>
                   </div>

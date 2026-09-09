@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Plugin panel check</title>
+<!-- Run npm run dev, then open /plugin-panel.check.html. Add ?inspect for visual review. -->
+<body class="launcher-body">
+<div class="launcher-shell" data-theme="ohneguessr">
+  <aside class="launcher-sidebar">Plugin panel check</aside>
+  <main class="launcher-main" id="panel"></main>
+</div>
+<output id="result" style="position:fixed;bottom:12px;left:12px;color:white;background:#222;padding:8px">Checking…</output>
+<script type="module">
+  import { mount, tick } from 'svelte';
+  import { setTransport } from '@wailsio/runtime';
+  import catalog from '../plugins/registry.json';
+  import './src/app.css';
+  import './src/launcher.css';
+  import PluginsPanel from '../internal/plugins/PluginsPanel.svelte';
+  import { applyAccentColor, LAUNCHER_THEMES } from './src/settings/settings.js';
+
+  // All desktop calls stay in this page; nothing is installed or saved on disk.
+  window._wails.environment = { OS: 'windows' };
+  const inspect = location.search.includes('inspect');
+  if (inspect) {
+    document.querySelector('.launcher-shell').dataset.theme = 'ohneb';
+    applyAccentColor(LAUNCHER_THEMES.ohneb.accent);
+  }
+  let installed = catalog.filter(p => inspect || ['plantnet', 'translator'].includes(p.id))
+    .map(p => ({ ...p, version: inspect ? p.version : '0.0.0', enabled: inspect || p.id === 'plantnet', configured: ['apiKey'] }));
+  let settle;
+  setTransport({ async call(_object, _method, _window, request) {
+    if (request.methodID === 963638277) return catalog;
+    if (request.methodID === 4049877436) return structuredClone(installed);
+    await new Promise((resolve, reject) => { settle = { resolve, reject }; });
+    const [id, key, value] = request.args;
+    const plugin = installed.find(p => p.id === id);
+    if (request.methodID === 3978639093) {
+      if (plugin) plugin.version = catalog.find(p => p.id === id).version;
+      else installed.push({ ...catalog.find(p => p.id === id), enabled: true, configured: [] });
+    } else if (request.methodID === 2944278280) {
+      installed = installed.filter(p => p.id !== id);
+    } else if (request.methodID === 918422691) {
+      plugin.enabled = key;
+    } else if (request.methodID === 1733099010) {
+      plugin.configured = value ? [key] : [];
+    } else throw Error(`Unexpected call ${request.methodID}`);
+  }});
+  mount(PluginsPanel, { target: document.querySelector('#panel') });
+  const assert = (ok, message) => { if (!ok) throw Error(message); };
+  const waitFor = async check => {
+    for (let i = 0; i < 100; i++) {
+      await tick();
+      if (check()) return;
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    throw Error('Timed out waiting for panel');
+  };
+  const card = name => [...document.querySelectorAll('.external-plugin')]
+    .find(p => p.querySelector('b').textContent === name);
+  const button = (row, label) => [...row.querySelectorAll('button')]
+    .find(b => b.textContent.trim() === label);
+  async function act(control, label, fail = false) {
+    const row = control.closest('.external-plugin');
+    settle = null;
+    control.click();
+    await waitFor(() => settle && row.textContent.includes(label));
+    assert(control.disabled, `${label}: action is still clickable`);
+    assert([...row.querySelectorAll('button')].filter(b => b.textContent.includes('…')).length <= 1,
+      `${label}: another action shows progress`);
+    if (fail) settle.reject(Error('Check failure'));
+    else settle.resolve();
+    await waitFor(() => !document.querySelector('.external-plugin button:disabled:not(.plugin-setting-controls button)'));
+    assert(!row.isConnected || !row.textContent.includes(label), `${label}: progress did not clear`);
+  }
+  try {
+    document.querySelectorAll('[role="tab"]')[1].click();
+    await waitFor(() => card('PlantNet'));
+    if (!inspect) {
+      await act(button(card('Coverage Info'), 'Install'), 'Installing…');
+      assert(button(card('Coverage Info'), 'Remove'), 'Install did not finish');
+      await act(button(card('PlantNet'), 'Update'), 'Updating…');
+      assert(!button(card('PlantNet'), 'Update'), 'Update still offered');
+      const input = card('PlantNet').querySelector('input[type="password"]');
+      assert(input.getClientRects().length > 0, 'API key editor is hidden');
+      input.value = 'check-key'; input.dispatchEvent(new Event('input', { bubbles: true }));
+      await tick();
+      await act(button(card('PlantNet'), 'Save'), 'Saving…', true);
+      assert(input.value === 'check-key', 'Failed save discarded the draft');
+      assert(document.querySelector('[role="alert"]').textContent.includes('Check failure'), 'Failure is not shown');
+      await act(button(card('PlantNet'), 'Save'), 'Saving…');
+      assert(input.value === '', 'Successful save did not clear the draft');
+      await act(button(card('PlantNet'), 'Forget'), 'Forgetting…');
+      assert(!button(card('PlantNet'), 'Forget'), 'Key is still configured');
+      await act(card('PlantNet').querySelector('input[type="checkbox"]'), 'Disabling…');
+      assert(!card('PlantNet').classList.contains('enabled'), 'Disable did not finish');
+      await act(card('PlantNet').querySelector('input[type="checkbox"]'), 'Enabling…');
+      assert(card('PlantNet').classList.contains('enabled'), 'Enable did not finish');
+      await act(button(card('Coverage Info'), 'Remove'), 'Removing…');
+      assert(button(card('Coverage Info'), 'Install'), 'Remove did not finish');
+      const page = document.querySelector('.plugins-page');
+      for (const [width, columns] of [[620, 1], [980, 2]]) {
+        page.style.width = `${width}px`;
+        const rows = [...document.querySelectorAll('.external-plugin')];
+        await waitFor(() => rows.filter(row => row.offsetTop === rows[0].offsetTop).length === columns);
+        for (const row of document.querySelectorAll('.external-plugin')) {
+          assert(row.scrollWidth <= row.clientWidth, 'Card overflows');
+          assert(row.querySelector('.plugin-actions').getBoundingClientRect().top >= row.querySelector('.plugin-copy').getBoundingClientRect().bottom,
+            'Actions crowd the description');
+          const toggle = row.querySelector('.plugin-switch');
+          if (toggle) assert(toggle.getBoundingClientRect().top < row.querySelector('.plugin-copy').getBoundingClientRect().bottom,
+            'Switch is detached from the plugin heading');
+        }
+        if (columns === 2) for (let i = 0; i < rows.length; i += 2) {
+          assert(rows[i].getBoundingClientRect().bottom === rows[i + 1].getBoundingClientRect().bottom,
+            'Paired cards do not line up');
+        }
+      }
+      page.style.width = '';
+      const shell = document.querySelector('.launcher-shell');
+      const enabledStyle = {};
+      for (const theme of ['ohneguessr', 'ayu-light']) {
+        shell.dataset.theme = theme;
+        await new Promise(requestAnimationFrame);
+        enabledStyle[theme] = getComputedStyle(card('PlantNet')).borderColor;
+      }
+      document.querySelector('[role="tab"]').click();
+      await tick();
+      const core = document.querySelector('.plugin-row');
+      core.querySelector('input').checked = true;
+      for (const theme of Object.keys(enabledStyle)) {
+        shell.dataset.theme = theme;
+        await new Promise(requestAnimationFrame);
+        assert(getComputedStyle(core).borderColor === enabledStyle[theme], `Enabled border differs in ${theme}`);
+      }
+      shell.dataset.theme = 'ohneguessr';
+      document.querySelectorAll('[role="tab"]')[1].click();
+      await tick();
+    }
+    document.querySelector('#result').textContent = inspect ? 'Visual review' : 'PASS — plugin actions, responsive layout, and theme states';
+  } catch (error) {
+    document.querySelector('#result').textContent = `FAIL — ${error.message}`;
+    throw error;
+  }
+</script>
+</html>

@@ -233,7 +233,7 @@
 
 .launcher-sidebar nav button.active {
   color: var(--launcher-text);
-  background: transparent;
+  background: var(--launcher-ghost-hover);
 }
 
 .launcher-sidebar-footer {
