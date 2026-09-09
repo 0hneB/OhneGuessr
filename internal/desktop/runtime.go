@@ -132,6 +132,7 @@ func Run(frontendAssets fs.FS, version string, arguments []string) error {
 	launcher := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:                       "launcher",
 		Title:                      "OhneGuessr",
+		Frameless:                  true,
 		Width:                      1400,
 		Height:                     900,
 		MinWidth:                   760,
@@ -143,7 +144,8 @@ func Run(frontendAssets fs.FS, version string, arguments []string) error {
 		EnableFileDrop:             true,
 		URL:                        "/?view=launcher",
 		Windows: application.WindowsWindow{
-			Theme: application.Dark,
+			Theme:                      application.Dark,
+			WebView2CompositionHosting: true,
 		},
 		Linux: application.LinuxWindow{
 			WebviewGpuPolicy: application.WebviewGpuPolicyOnDemand,

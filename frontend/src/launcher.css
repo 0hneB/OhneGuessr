@@ -173,34 +173,109 @@
 }
 
 .launcher-shell {
+  --launcher-sidebar-width: 190px;
+  --launcher-content-top-inset: 6px;
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
+  grid-template-areas:
+    "sidebar titlebar"
+    "sidebar main";
+  grid-template-columns: var(--launcher-sidebar-width) minmax(0, 1fr);
+  grid-template-rows: 38px minmax(0, 1fr);
 }
 
-.launcher-sidebar {
+.launcher-titlebar {
+  --wails-draggable: drag;
+  --wails-non-client-region: caption;
+  grid-area: titlebar;
   display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: 18px 12px 14px;
-  background: var(--launcher-surface);
-  border-right: 1px solid var(--launcher-border);
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--launcher-text-soft);
+  background: var(--launcher-main);
+  user-select: none;
 }
 
 .launcher-brand {
   display: flex;
   align-items: center;
   gap: 5px;
-  height: 42px;
+  height: 32px;
   padding: 0 9px;
-  margin-bottom: 18px;
-  font-size: 18px;
+  margin-bottom: 8px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: -0.02em;
 }
 
 .launcher-brand img {
   width: 32px;
   height: 32px;
+}
+
+.launcher-window-controls {
+  --wails-draggable: no-drag;
+  display: flex;
+  align-self: stretch;
+}
+
+.launcher-window-controls button {
+  display: grid;
+  width: 46px;
+  padding: 0;
+  place-items: center;
+  color: var(--launcher-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: default;
+}
+
+.launcher-window-controls button::before {
+  font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets", sans-serif;
+  font-size: 10px;
+}
+
+.launcher-window-controls .minimise {
+  --wails-non-client-region: minimize;
+}
+
+.launcher-window-controls .minimise::before {
+  content: "\e921";
+}
+
+.launcher-window-controls .maximise {
+  --wails-non-client-region: maximize;
+}
+
+.launcher-window-controls .maximise::before {
+  content: "\e922";
+}
+
+.launcher-window-controls .close {
+  --wails-non-client-region: close;
+}
+
+.launcher-window-controls .close::before {
+  content: "\e8bb";
+}
+
+.launcher-window-controls button:hover {
+  color: var(--launcher-text);
+  background: var(--launcher-element-hover);
+}
+
+.launcher-window-controls button.close:hover {
+  color: #fff;
+  background: #c42b1c;
+}
+
+.launcher-sidebar {
+  grid-area: sidebar;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 10px 12px 14px;
+  background: var(--launcher-surface);
+  border-right: 1px solid var(--launcher-border);
 }
 
 .launcher-sidebar nav {
@@ -294,10 +369,11 @@
 .update-action:disabled { cursor: wait; }
 
 .launcher-main {
+  grid-area: main;
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  padding: clamp(18px, 2.3vw, 30px);
+  padding: var(--launcher-content-top-inset) clamp(18px, 2.3vw, 30px) clamp(18px, 2.3vw, 30px);
   background: var(--launcher-main);
 }
 
@@ -332,7 +408,7 @@
 .library-header {
   display: flex;
   align-items: center;
-  padding: 8px 8px 12px;
+  padding: 0 8px 12px;
 }
 
 .library-toolbar {
@@ -835,7 +911,7 @@
 }
 
 .settings-group {
-  padding: 20px;
+  padding: 0 20px 20px;
 }
 
 .settings-group > .setting:last-child,
@@ -892,7 +968,17 @@ a:focus-visible {
 
 @media (max-width: 800px) {
   .launcher-shell {
-    grid-template-columns: 64px minmax(0, 1fr);
+    --launcher-sidebar-width: 64px;
+  }
+
+  .launcher-brand {
+    justify-content: center;
+    width: 100%;
+    padding: 0;
+  }
+
+  .launcher-brand span {
+    display: none;
   }
 
   .launcher-sidebar {
@@ -900,12 +986,6 @@ a:focus-visible {
     padding-inline: 8px;
   }
 
-  .launcher-brand {
-    justify-content: center;
-    padding: 0;
-  }
-
-  .launcher-brand span,
   .nav-label {
     display: none;
   }
@@ -929,7 +1009,7 @@ a:focus-visible {
   }
 
   .launcher-main {
-    padding: 14px;
+    padding: var(--launcher-content-top-inset) 14px 14px;
   }
 
   .library-header {

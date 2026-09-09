@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Window } from '@wailsio/runtime';
   import { onMount } from 'svelte';
   import {
     getGameWindowState,
@@ -105,6 +106,17 @@
 <svelte:body class:launcher-body={true} />
 
 <div class="launcher-shell" data-theme={settings.theme}>
+  <header class="launcher-titlebar">
+    <div class="launcher-window-controls">
+      <button type="button" class="minimise" aria-label="Minimise" title="Minimise"
+              onclick={() => Window.Minimise()}></button>
+      <button type="button" class="maximise" aria-label="Maximise" title="Maximise"
+              onclick={() => Window.ToggleMaximise()}></button>
+      <button type="button" class="close" aria-label="Close" title="Close"
+              onclick={() => Window.Close()}></button>
+    </div>
+  </header>
+
   <aside class="launcher-sidebar">
     <div class="launcher-brand">
       <img src="/images/ohneguessr-logo.svg" alt="" />
