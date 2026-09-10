@@ -3,6 +3,8 @@ const FETCH_TIMEOUT_MS = 15_000;
 const SEARCH_RADIUS_METERS = 10_000;
 const EARTH_RADIUS_METERS = 6_371_008.8;
 const ICON = 'M14.19,14.19L6,18L9.81,9.81L18,6M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,10.9A1.1,1.1 0 0,0 10.9,12A1.1,1.1 0 0,0 12,13.1A1.1,1.1 0 0,0 13.1,12A1.1,1.1 0 0,0 12,10.9Z';
+const BACK_ICON = 'M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z';
+const OPEN_IN_NEW_ICON = 'M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z';
 const cleanText = (value, maximum = 1_200) => (typeof value === 'string' ? value : '').replace(/\s+/gu, ' ').trim().slice(0, maximum);
 const radians = (degrees) => degrees * Math.PI / 180;
 const degrees = (value) => value * 180 / Math.PI;
@@ -173,6 +175,15 @@ function element(tag, className = '', text = '') {
         node.textContent = text;
     return node;
 }
+function svgIcon(pathData) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathData);
+    svg.append(path);
+    return svg;
+}
 function imageFor(place, className) {
     if (!place.thumbnail)
         return null;
@@ -210,18 +221,21 @@ function activate(api) {
     .nearby-explorer-card-title { display:-webkit-box; overflow:hidden; color:var(--launcher-text,#fff); font-size:13px; font-weight:750;
       line-height:1.3; -webkit-box-orient:vertical; -webkit-line-clamp:2 }
     .nearby-explorer-card-meta { display:block; margin-top:4px; color:var(--launcher-text-muted,#aeb7c2); font-size:11px }
-    .nearby-explorer-place { overflow:hidden; background:var(--launcher-main,#22262b);
-      border:1px solid var(--launcher-border,rgba(255,255,255,.1)); border-radius:9px }
-    .nearby-explorer-hero { display:block; width:100%; max-height:230px; object-fit:cover; background:var(--launcher-background,#15171a) }
-    .nearby-explorer-place-copy { padding:13px }
-    .nearby-explorer-place-meta { margin:0 0 4px; color:var(--accent); font-size:12px; font-weight:750; letter-spacing:.02em }
-    .nearby-explorer-place h3 { margin:0; color:var(--launcher-text,#fff); font-size:21px; line-height:1.22 }
-    .nearby-explorer-extract { margin:10px 0 0; color:var(--launcher-text-soft,#d3d9e1); font-size:14px; line-height:1.5 }
-    .nearby-explorer-actions { display:flex; flex-wrap:wrap; gap:7px }
-    .nearby-explorer-actions button { min-height:36px; padding:0 13px; color:var(--launcher-text,#fff);
-      background:var(--launcher-element,#292e34); border:1px solid var(--launcher-control-border,rgba(255,255,255,.13));
-      border-radius:7px; font:700 13px/1 system-ui,sans-serif; cursor:pointer }
-    .nearby-explorer-actions button:hover { background:var(--launcher-element-hover,#343a42) }
+    .nearby-explorer-place { min-width:0 }
+    .nearby-explorer-hero { display:block; width:100%; max-height:230px; object-fit:cover;
+      background:var(--launcher-background,#15171a); border-radius:6px }
+    .nearby-explorer-place-copy { display:grid; gap:6px; padding:10px 1px 0 }
+    .nearby-explorer-place-heading { display:flex; min-width:0; align-items:center; gap:6px }
+    .nearby-explorer-place h3 { min-width:0; margin:0; color:var(--launcher-text,#fff); font-size:21px; line-height:1.22 }
+    .nearby-explorer-place h3 a { color:inherit; text-decoration:none }
+    .nearby-explorer-place h3 a:hover { text-decoration:underline }
+    .nearby-explorer-detail-action { display:grid; width:30px; height:30px; flex:none; padding:0; place-items:center;
+      color:var(--launcher-text-muted,#aeb7c2); background:transparent; border:0; border-radius:50%; cursor:pointer }
+    .nearby-explorer-detail-action:hover { color:var(--launcher-text,#fff); background:var(--launcher-element-hover,#343a42) }
+    .nearby-explorer-detail-action svg { width:18px; height:18px; fill:currentColor }
+    .nearby-explorer-place-meta { margin:0; padding-left:36px; color:var(--accent); font-size:12px;
+      font-weight:750; letter-spacing:.02em }
+    .nearby-explorer-extract { margin:4px 0 0; color:var(--launcher-text-soft,#d3d9e1); font-size:14px; line-height:1.5 }
     @keyframes nearby-explorer-spin { to { transform:rotate(360deg) } }
     @media (max-width:520px) {
       .nearby-explorer-grid { grid-template-columns:1fr }
@@ -294,19 +308,36 @@ function activate(api) {
         const image = imageFor(place, 'nearby-explorer-hero');
         if (image)
             article.append(image);
+        const wikipediaLink = (className = '', text = '') => {
+            const link = element('a', className, text);
+            link.href = place.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.addEventListener('click', (event) => {
+                event.preventDefault();
+                void api.ui.openExternal(place.url);
+            });
+            return link;
+        };
         const copy = element('div', 'nearby-explorer-place-copy');
-        copy.append(element('p', 'nearby-explorer-place-meta', vectorLabel(vectorFromCurrent(place))), element('h3', '', place.title));
+        const heading = element('div', 'nearby-explorer-place-heading');
+        const back = element('button', 'nearby-explorer-detail-action');
+        back.type = 'button';
+        back.title = 'Back to nearby entries';
+        back.setAttribute('aria-label', back.title);
+        back.append(svgIcon(BACK_ICON));
+        back.addEventListener('click', renderBrowse);
+        const title = element('h3');
+        title.append(wikipediaLink('', place.title));
+        const open = wikipediaLink('nearby-explorer-detail-action');
+        open.title = 'Open in Wikipedia';
+        open.setAttribute('aria-label', open.title);
+        open.append(svgIcon(OPEN_IN_NEW_ICON));
+        heading.append(back, title, open);
+        copy.append(heading, element('p', 'nearby-explorer-place-meta', vectorLabel(vectorFromCurrent(place))));
         copy.append(element('p', 'nearby-explorer-extract', place.extract || 'Wikipedia has no short summary for this place.'));
         article.append(copy);
-        const actions = element('div', 'nearby-explorer-actions');
-        const back = element('button', '', 'All nearby places');
-        back.type = 'button';
-        back.addEventListener('click', renderBrowse);
-        const open = element('button', '', 'Open Wikipedia');
-        open.type = 'button';
-        open.addEventListener('click', () => void api.ui.openExternal(place.url));
-        actions.append(back, open);
-        root.append(article, actions);
+        root.append(article);
         panel.content.replaceChildren(root);
         panel.show();
     };
