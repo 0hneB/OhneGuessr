@@ -58,6 +58,8 @@ declare global {
   interface OhneGuessrPluginWindow {
     /** Content element inside the host-styled in-game window. */
     readonly content: HTMLDivElement;
+    /** Plugin-owned actions shown before the window reset and close controls. */
+    readonly headerActions: HTMLDivElement;
     show(): void;
     hide(): void;
     resetLayout(): void;

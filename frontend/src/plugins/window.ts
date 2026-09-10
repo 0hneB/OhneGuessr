@@ -28,6 +28,7 @@ export interface PluginWindowOptions extends PluginWindowChrome {
 
 export interface PluginWindowHandle {
   readonly content: HTMLDivElement;
+  readonly headerActions: HTMLDivElement;
   configure(options: PluginWindowChrome): void;
   show(): void;
   hide(): void;
@@ -60,6 +61,7 @@ export function createPluginWindow(options: PluginWindowOptions): PluginWindowHa
   const header = element('div', 'plugin-window-header');
   const heading = element('h2');
   const actions = element('div', 'plugin-window-header-actions');
+  const headerActions = element('div', 'plugin-window-header-plugin-actions');
   const content = element('div', 'plugin-window-content');
   content.setAttribute('aria-live', 'polite');
 
@@ -149,7 +151,7 @@ export function createPluginWindow(options: PluginWindowOptions): PluginWindowHa
     onClose = next.onClose;
   };
   configure(options);
-  actions.append(reset, close);
+  actions.append(headerActions, reset, close);
   header.append(heading, actions);
   root.append(header, content);
   document.body.append(root);
@@ -205,6 +207,7 @@ export function createPluginWindow(options: PluginWindowOptions): PluginWindowHa
 
   return {
     content,
+    headerActions,
     configure,
     show,
     hide,

@@ -62,6 +62,7 @@ describe('additional plugin host', () => {
     const remove = vi.fn();
     vi.mocked(createPluginWindow).mockReturnValue({
       content: {} as HTMLDivElement,
+      headerActions: {} as HTMLDivElement,
       configure: vi.fn(), show: vi.fn(), hide: vi.fn(), resetLayout: vi.fn(), remove
     } as PluginWindowHandle);
     const host = createPluginHost(manifest, panoramaHost());
