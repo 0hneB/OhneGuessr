@@ -225,14 +225,10 @@ function activate(api) {
     .nearby-explorer-hero { display:block; width:100%; max-height:230px; object-fit:cover;
       background:var(--launcher-background,#15171a); border-radius:6px }
     .nearby-explorer-place-copy { display:grid; gap:6px; padding:10px 1px 0 }
-    .nearby-explorer-place-actions { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px }
     .nearby-explorer-place h3 { min-width:0; margin:0; color:var(--launcher-text,#fff); font-size:21px; line-height:1.22 }
     .nearby-explorer-place h3 a { color:inherit; text-decoration:none }
     .nearby-explorer-place h3 a:hover { text-decoration:underline }
-    .nearby-explorer-detail-action { display:grid; width:30px; height:30px; flex:none; padding:0; place-items:center;
-      color:var(--launcher-text-muted,#aeb7c2); background:transparent; border:0; border-radius:50%; cursor:pointer }
-    .nearby-explorer-detail-action:hover { color:var(--launcher-text,#fff); background:var(--launcher-element-hover,#343a42) }
-    .nearby-explorer-detail-action svg { width:18px; height:18px; fill:currentColor }
+    .nearby-explorer-header-action svg { width:17px; height:17px; fill:currentColor }
     .nearby-explorer-place-meta { margin:0; color:var(--accent); font-size:12px;
       font-weight:750; letter-spacing:.02em }
     .nearby-explorer-extract { margin:4px 0 0; color:var(--launcher-text-soft,#d3d9e1); font-size:14px; line-height:1.5 }
@@ -256,6 +252,24 @@ function activate(api) {
             hudButton?.setPressed(false);
         }
     });
+    const headerActions = panel.headerActions;
+    headerActions.classList.add('hidden');
+    const back = element('button', 'icon-action plugin-window-action nearby-explorer-header-action');
+    back.type = 'button';
+    back.title = 'Back to nearby entries';
+    back.setAttribute('aria-label', back.title);
+    back.append(svgIcon(BACK_ICON));
+    const open = element('a', 'icon-action plugin-window-action nearby-explorer-header-action');
+    open.target = '_blank';
+    open.rel = 'noopener noreferrer';
+    open.title = 'Open in Wikipedia';
+    open.setAttribute('aria-label', open.title);
+    open.append(svgIcon(OPEN_IN_NEW_ICON));
+    open.addEventListener('click', (event) => {
+        event.preventDefault();
+        void api.ui.openExternal(open.href);
+    });
+    headerActions.append(back, open);
     const currentView = () => api.panorama.getMetadata();
     const vectorFromCurrent = (place) => {
         const view = currentView();
@@ -263,6 +277,7 @@ function activate(api) {
     };
     const vectorLabel = (vector) => `${formatDistance(vector.distance)} · ${compassDirection(vector.bearing)} ${Math.round(vector.bearing)}°`;
     const renderStatus = (message, error = false, loading = false) => {
+        headerActions.classList.add('hidden');
         const root = element('div', 'nearby-explorer-root');
         const status = element('div', `nearby-explorer-status${error ? ' error' : loading ? ' loading' : ''}`, message);
         status.setAttribute('role', error ? 'alert' : 'status');
@@ -277,6 +292,7 @@ function activate(api) {
         panel.show();
     };
     const renderBrowse = () => {
+        headerActions.classList.add('hidden');
         const root = element('div', 'nearby-explorer-root');
         const view = currentView();
         const ranked = [...places].sort((left, right) => view
@@ -302,7 +318,10 @@ function activate(api) {
         panel.content.replaceChildren(root);
         panel.show();
     };
+    back.addEventListener('click', renderBrowse);
     const showPlace = (place) => {
+        open.href = place.url;
+        headerActions.classList.remove('hidden');
         const root = element('div', 'nearby-explorer-root');
         const article = element('article', 'nearby-explorer-place');
         const image = imageFor(place, 'nearby-explorer-hero');
@@ -320,21 +339,9 @@ function activate(api) {
             return link;
         };
         const copy = element('div', 'nearby-explorer-place-copy');
-        const actions = element('div', 'nearby-explorer-place-actions');
-        const back = element('button', 'nearby-explorer-detail-action');
-        back.type = 'button';
-        back.title = 'Back to nearby entries';
-        back.setAttribute('aria-label', back.title);
-        back.append(svgIcon(BACK_ICON));
-        back.addEventListener('click', renderBrowse);
         const title = element('h3');
         title.append(wikipediaLink('', place.title));
-        const open = wikipediaLink('nearby-explorer-detail-action');
-        open.title = 'Open in Wikipedia';
-        open.setAttribute('aria-label', open.title);
-        open.append(svgIcon(OPEN_IN_NEW_ICON));
-        actions.append(back, open);
-        copy.append(actions, title, element('p', 'nearby-explorer-place-meta', vectorLabel(vectorFromCurrent(place))));
+        copy.append(title, element('p', 'nearby-explorer-place-meta', vectorLabel(vectorFromCurrent(place))));
         copy.append(element('p', 'nearby-explorer-extract', place.extract || 'Wikipedia has no short summary for this place.'));
         article.append(copy);
         root.append(article);
