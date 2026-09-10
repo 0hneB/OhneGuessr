@@ -1,0 +1,153 @@
+@font-face {
+  font-family: "Ubuntu Sans";
+  src: url("/vendor/ubuntu-sans/UbuntuSans-Variable.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+}
+
+.launcher-shell,
+.plugin-window {
+  --launcher-color-scheme: dark;
+  --launcher-font-family: "Manrope", system-ui, sans-serif;
+  --launcher-background: #232723;
+  --launcher-main: var(--launcher-background);
+  --launcher-surface: rgba(18, 18, 18, 0.96);
+  --launcher-elevated: var(--launcher-surface);
+  --launcher-element: #222;
+  --launcher-field: var(--launcher-element);
+  --launcher-element-hover: rgba(255, 255, 255, 0.07);
+  --launcher-ghost-hover: var(--launcher-element-hover);
+  --launcher-row-hover: var(--launcher-element-hover);
+  --launcher-segment-hover: var(--launcher-element-hover);
+  --launcher-element-active: rgba(255, 255, 255, 0.1);
+  --launcher-drop-target: color-mix(in srgb, var(--launcher-text-muted) 50%, transparent);
+  --launcher-border: rgba(255, 255, 255, 0.09);
+  --launcher-border-variant: rgba(255, 255, 255, 0.12);
+  --launcher-border-focused: rgba(255, 255, 255, 0.22);
+  --launcher-control-border: var(--launcher-border);
+  --launcher-field-border: var(--launcher-border);
+  --launcher-section-border: var(--launcher-border);
+  --launcher-text: #fff;
+  --launcher-text-soft: var(--launcher-text);
+  --launcher-text-muted: #969da6;
+  --launcher-control-text: var(--launcher-text-muted);
+  --launcher-text-placeholder: #8e8c83;
+  --launcher-disabled: var(--launcher-text-placeholder);
+  --launcher-danger: #fb7185;
+  --launcher-error: var(--launcher-danger);
+  --launcher-switch: var(--launcher-element-active);
+  --launcher-range-track: var(--launcher-border);
+  --launcher-nav-icon-filter: invert(1);
+}
+
+.launcher-shell[data-theme="ohneguessr"],
+:root[data-theme="ohneguessr"] .plugin-window {
+  --launcher-surface: #1e221f;
+  --launcher-elevated: #343934;
+  --launcher-element: #292e2a;
+  --launcher-field: #2d322e;
+  --launcher-ghost-hover: rgba(255, 255, 255, 0.045);
+  --launcher-row-hover: rgba(255, 255, 255, 0.035);
+  --launcher-segment-hover: rgba(255, 255, 255, 0.06);
+  --launcher-drop-target: rgba(255, 255, 255, 0.1);
+  --launcher-control-border: rgba(255, 255, 255, 0.18);
+  --launcher-field-border: rgba(255, 255, 255, 0.08);
+  --launcher-section-border: rgba(255, 255, 255, 0.1);
+  --launcher-text-soft: #f4f3ef;
+  --launcher-control-text: #cbd2dd;
+  --launcher-disabled: #6b7280;
+  --launcher-error: #f87171;
+  --launcher-switch: #303631;
+  --launcher-range-track: rgba(255, 255, 255, 0.16);
+}
+
+.launcher-shell[data-theme="ohneb"],
+:root[data-theme="ohneb"] .plugin-window {
+  --launcher-font-family: "Ubuntu Sans", "Segoe UI", Arial, sans-serif;
+  --launcher-background: #2d2521;
+  --launcher-main: #1d1a18;
+  --launcher-surface: #25211e;
+  --launcher-element: #302925;
+  --launcher-element-hover: #3b302b;
+  --launcher-element-active: #4a3930;
+  --launcher-border: #4d3d35;
+  --launcher-border-variant: #3c312c;
+  --launcher-border-focused: #7f4f36;
+  --launcher-text: #f2ebe6;
+  --launcher-text-muted: #b7a79d;
+  --launcher-text-placeholder: #807168;
+  --launcher-danger: #ef7065;
+}
+
+.launcher-shell[data-theme="gruvbox-dark-soft"],
+:root[data-theme="gruvbox-dark-soft"] .plugin-window {
+  --launcher-background: #4c4642;
+  --launcher-main: #32302f;
+  --launcher-surface: #3b3735;
+  --launcher-element: #3b3735;
+  --launcher-element-hover: #494340;
+  --launcher-element-active: #5b524c;
+  --launcher-border: #5b534d;
+  --launcher-border-variant: #494340;
+  --launcher-border-focused: #303a36;
+  --launcher-text: #fbf1c7;
+  --launcher-text-muted: #c5b597;
+  --launcher-text-placeholder: #998b78;
+  --launcher-danger: #fb4a35;
+}
+
+.launcher-shell[data-theme="gruvbox-light-soft"],
+:root[data-theme="gruvbox-light-soft"] .plugin-window {
+  --launcher-color-scheme: light;
+  --launcher-background: #d9c8a4;
+  --launcher-main: #f2e5bc;
+  --launcher-surface: #ecdcb3;
+  --launcher-element: #ecdcb3;
+  --launcher-element-hover: #ddcca7;
+  --launcher-element-active: #c8b899;
+  --launcher-border: #c8b899;
+  --launcher-border-variant: #ddcca7;
+  --launcher-border-focused: #adc5cc;
+  --launcher-text: #282828;
+  --launcher-text-muted: #5f5650;
+  --launcher-text-placeholder: #897b6e;
+  --launcher-danger: #9d0308;
+  --launcher-nav-icon-filter: none;
+}
+
+.launcher-shell[data-theme="ayu-light"],
+:root[data-theme="ayu-light"] .plugin-window {
+  --launcher-color-scheme: light;
+  --launcher-background: #dcddde;
+  --launcher-main: #fcfcfc;
+  --launcher-surface: #ececed;
+  --launcher-element: #ececed;
+  --launcher-element-hover: #dfe0e1;
+  --launcher-element-active: #cfd0d2;
+  --launcher-border: #cfd1d2;
+  --launcher-border-variant: #dfe0e1;
+  --launcher-border-focused: #c4daf6;
+  --launcher-text: #5c6166;
+  --launcher-text-muted: #8b8e92;
+  --launcher-text-placeholder: #a9acae;
+  --launcher-danger: #ef7271;
+  --launcher-nav-icon-filter: none;
+}
+
+.launcher-shell[data-theme="ayu-mirage"],
+:root[data-theme="ayu-mirage"] .plugin-window {
+  --launcher-background: #464a52;
+  --launcher-main: #242835;
+  --launcher-surface: #353944;
+  --launcher-element: #353944;
+  --launcher-element-hover: #43464f;
+  --launcher-element-active: #53565d;
+  --launcher-border: #53565d;
+  --launcher-border-variant: #43464f;
+  --launcher-border-focused: #24556f;
+  --launcher-text: #cccac2;
+  --launcher-text-muted: #9a9a98;
+  --launcher-text-placeholder: #7b7d7f;
+  --launcher-danger: #f18779;
+}

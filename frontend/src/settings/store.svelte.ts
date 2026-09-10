@@ -16,6 +16,7 @@ const listeners = new Set<SettingsListener>();
 const sourceID = crypto.randomUUID();
 let syncing = false;
 
+document.documentElement.dataset.theme = settings.theme;
 applyAccentColor(settings.accentColor);
 
 const snapshot = () => ({
@@ -26,6 +27,7 @@ const snapshot = () => ({
 function apply(value: unknown) {
   const previous = snapshot();
   Object.assign(settings, normalizeSettings(value));
+  document.documentElement.dataset.theme = settings.theme;
   applyAccentColor(settings.accentColor);
   const next = snapshot();
   for (const listener of listeners) listener(next, previous);

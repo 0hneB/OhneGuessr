@@ -16,6 +16,7 @@ beforeAll(() => {
   vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('offline'))));
   vi.stubGlobal('document', {
     documentElement: {
+      dataset: {},
       style: { setProperty: vi.fn() }
     },
     querySelectorAll: vi.fn(() => [])
@@ -36,6 +37,7 @@ describe('settings store', () => {
     stop();
     expect(settings.mapZoomSpeed).toBe(3);
     expect(settings.accentColor).toBe('#3b9ee5');
+    expect(document.documentElement.dataset.theme).toBe('ayu-light');
     expect(observed).toBe('ayu-light');
     expect(localStorage.setItem).toHaveBeenCalled();
   });

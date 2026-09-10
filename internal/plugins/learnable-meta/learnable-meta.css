@@ -9,13 +9,13 @@
 .lm-clue-note, .lm-clue-footer { overflow-wrap: anywhere; }
 .lm-clue-note > :first-child, .lm-clue-footer > :first-child { margin-top: 0; }
 .lm-clue-note > :last-child, .lm-clue-footer > :last-child { margin-bottom: 0; }
-.lm-clue-note a, .lm-clue-footer a { color: #7dd3fc; }
-.lm-clue-footer { margin-top: 6px; color: #b9c0cc; font-size: 12px; }
-.lm-clue-footer.before-images { padding-bottom: 5px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.lm-clue-note a, .lm-clue-footer a { color: var(--accent); }
+.lm-clue-footer { margin-top: 6px; color: var(--launcher-text-muted); font-size: 12px; }
+.lm-clue-footer.before-images { padding-bottom: 5px; border-bottom: 1px solid var(--launcher-border); }
 .lm-clue-footer.before-images + .lm-clue-carousel { margin-top: 5px; }
 .lm-clue-loading { display: grid; min-height: 100%; place-items: center; }
-.lm-clue-message { display: grid; min-height: 100%; place-items: center; margin: 0; color: #c8ced8; text-align: center; }
-.lm-clue-message.error { color: #fca5a5; }
+.lm-clue-message { display: grid; min-height: 100%; place-items: center; margin: 0; color: var(--launcher-text-muted); text-align: center; }
+.lm-clue-message.error { color: var(--launcher-error); }
 .lm-clue-carousel { position: relative; display: grid; min-height: 150px; margin-top: 8px; overflow: hidden; place-items: center; background: var(--settings-bg); border-radius: 5px; }
 .lm-clue-image-wrapper { position: relative; width: fit-content; max-width: 100%; cursor: zoom-in; }
 .lm-clue-image { display: block; width: auto; max-width: 100%; height: auto; }
@@ -24,4 +24,4 @@
 .lm-clue-image-nav:hover { background: rgba(0, 0, 0, 0.78); }
 .lm-clue-image-nav.previous { left: 7px; }
 .lm-clue-image-nav.next { right: 7px; }
-.lm-clue-image-count { position: absolute; right: 8px; bottom: 7px; padding: 3px 7px; background: rgba(0, 0, 0, 0.68); border-radius: 4px; font-size: 11px; }
+.lm-clue-image-count { position: absolute; right: 8px; bottom: 7px; padding: 3px 7px; color: #fff; background: rgba(0, 0, 0, 0.68); border-radius: 4px; font-size: 11px; }
