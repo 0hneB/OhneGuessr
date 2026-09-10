@@ -225,7 +225,7 @@ function activate(api) {
     .nearby-explorer-hero { display:block; width:100%; max-height:230px; object-fit:cover;
       background:var(--launcher-background,#15171a); border-radius:6px }
     .nearby-explorer-place-copy { display:grid; gap:6px; padding:10px 1px 0 }
-    .nearby-explorer-place-heading { display:flex; min-width:0; align-items:center; gap:6px }
+    .nearby-explorer-place-actions { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px }
     .nearby-explorer-place h3 { min-width:0; margin:0; color:var(--launcher-text,#fff); font-size:21px; line-height:1.22 }
     .nearby-explorer-place h3 a { color:inherit; text-decoration:none }
     .nearby-explorer-place h3 a:hover { text-decoration:underline }
@@ -233,7 +233,7 @@ function activate(api) {
       color:var(--launcher-text-muted,#aeb7c2); background:transparent; border:0; border-radius:50%; cursor:pointer }
     .nearby-explorer-detail-action:hover { color:var(--launcher-text,#fff); background:var(--launcher-element-hover,#343a42) }
     .nearby-explorer-detail-action svg { width:18px; height:18px; fill:currentColor }
-    .nearby-explorer-place-meta { margin:0; padding-left:36px; color:var(--accent); font-size:12px;
+    .nearby-explorer-place-meta { margin:0; color:var(--accent); font-size:12px;
       font-weight:750; letter-spacing:.02em }
     .nearby-explorer-extract { margin:4px 0 0; color:var(--launcher-text-soft,#d3d9e1); font-size:14px; line-height:1.5 }
     @keyframes nearby-explorer-spin { to { transform:rotate(360deg) } }
@@ -320,7 +320,7 @@ function activate(api) {
             return link;
         };
         const copy = element('div', 'nearby-explorer-place-copy');
-        const heading = element('div', 'nearby-explorer-place-heading');
+        const actions = element('div', 'nearby-explorer-place-actions');
         const back = element('button', 'nearby-explorer-detail-action');
         back.type = 'button';
         back.title = 'Back to nearby entries';
@@ -333,8 +333,8 @@ function activate(api) {
         open.title = 'Open in Wikipedia';
         open.setAttribute('aria-label', open.title);
         open.append(svgIcon(OPEN_IN_NEW_ICON));
-        heading.append(back, title, open);
-        copy.append(heading, element('p', 'nearby-explorer-place-meta', vectorLabel(vectorFromCurrent(place))));
+        actions.append(back, open);
+        copy.append(actions, title, element('p', 'nearby-explorer-place-meta', vectorLabel(vectorFromCurrent(place))));
         copy.append(element('p', 'nearby-explorer-extract', place.extract || 'Wikipedia has no short summary for this place.'));
         article.append(copy);
         root.append(article);
