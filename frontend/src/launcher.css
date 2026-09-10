@@ -952,13 +952,14 @@ a:focus-visible {
 @media (max-width: 1120px) {
   .maps-layout {
     grid-template-columns: minmax(0, 1fr);
+    row-gap: 0;
     height: auto;
     min-height: 100%;
     overflow: visible;
   }
 
-  .library-card {
-    min-height: 560px;
+  .maps-layout:not(.maps-only) {
+    align-content: start;
   }
 
   .sync-panel {
