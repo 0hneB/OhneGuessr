@@ -16,6 +16,8 @@
   font-family: var(--launcher-font-family);
   flex-direction: column;
 }
+
+.plugin-window.front { z-index: 841; }
 .plugin-window-header {
   position: relative;
   display: flex;

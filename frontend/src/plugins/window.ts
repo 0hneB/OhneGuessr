@@ -114,8 +114,13 @@ export function createPluginWindow(options: PluginWindowOptions): PluginWindowHa
     applyLayout(defaultLayout());
     persistLayout();
   };
+  const bringToFront = () => {
+    document.querySelector('.plugin-window.front')?.classList.remove('front');
+    root.classList.add('front');
+  };
   const hide = () => root.classList.add('hidden');
   const show = () => {
+    bringToFront();
     root.classList.remove('hidden');
     clampLayout();
   };
@@ -148,6 +153,7 @@ export function createPluginWindow(options: PluginWindowOptions): PluginWindowHa
   header.append(heading, actions);
   root.append(header, content);
   document.body.append(root);
+  root.addEventListener('pointerdown', bringToFront, { capture: true });
 
   let stored: unknown = null;
   try { stored = JSON.parse(localStorage.getItem(options.layoutKey) || 'null'); } catch { /* use default */ }
