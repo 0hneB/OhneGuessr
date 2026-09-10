@@ -1,7 +1,8 @@
 // MapLibre maps:
 //   GuessMap     - permanent in-game map for dropping a guess
 //   RevealEngine - one lazy map shared by the round and final result screens
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type { FeatureCollection, Point as GeoJsonPoint } from 'geojson';
 import type {
   FitBoundsOptions,
@@ -20,6 +21,8 @@ import {
 import { buildMapStyle } from './map-style.js';
 import { ResultLayers } from './result-layers.js';
 import type { Location, Point, RevealResult, Trail } from '../types.js';
+
+maplibregl.setWorkerUrl(workerUrl);
 
 const INITIAL_CENTER: [number, number] = [0, 20];
 const INITIAL_ZOOM = 1;
