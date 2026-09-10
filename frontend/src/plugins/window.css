@@ -31,6 +31,6 @@
 .plugin-window-header::after { position: absolute; right: 12px; bottom: 0; left: 12px; height: 1px; background: var(--launcher-border); content: ''; }
 .plugin-window-header h2 { margin: 0; font-size: 18px; letter-spacing: 0.01em; }
 .plugin-window-header-actions { display: flex; align-items: center; gap: 2px; }
-.plugin-window-action { width: 26px; height: 26px; }
+.plugin-window-action { width: 26px; height: 26px; border-radius: 50%; }
 .plugin-window-action .close-icon { width: 19px; height: 19px; }
 .plugin-window-content { flex: 1; min-height: 0; padding: 6px 12px 10px; overflow: auto; background: var(--settings-bg); font-size: 16px; line-height: 1.5; }

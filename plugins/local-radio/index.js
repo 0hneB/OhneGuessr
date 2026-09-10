@@ -109,32 +109,35 @@ function storedVolume() {
 function activate(api) {
     const style = document.createElement('style');
     style.textContent = `
-    .local-radio { --launcher-control-text:#cbd2dd; --launcher-range-track:rgba(255,255,255,.16);
-      display:grid; gap:12px; color:#e8ebf0 }
+    .local-radio { --launcher-control-text:var(--launcher-text-muted,#cbd2dd);
+      --launcher-range-track:var(--launcher-border,rgba(255,255,255,.16));
+      display:grid; gap:12px; color:var(--launcher-text,#e8ebf0) }
     .local-radio-status { display:grid; height:132px; place-items:center; padding:14px; overflow:auto;
-      color:#d5dae2; background:#202020; border:1px solid rgba(255,255,255,.09);
+      color:var(--launcher-text-muted,#d5dae2); background:var(--launcher-main,#202020);
+      border:1px solid var(--launcher-border,rgba(255,255,255,.09));
       border-radius:6px; text-align:center }
     .local-radio-status.loading::before { width:18px; height:18px; margin-bottom:7px;
-      border:2px solid rgba(255,255,255,.18); border-top-color:var(--accent);
+      border:2px solid var(--launcher-border,rgba(255,255,255,.18)); border-top-color:var(--accent);
       border-radius:50%; animation:local-radio-spin .8s linear infinite; content:'' }
-    .local-radio-status.error { color:#fca5a5 }
+    .local-radio-status.error { color:var(--launcher-error,#fca5a5) }
     .local-radio-status.revealed { place-items:start; align-content:center; gap:3px; text-align:left }
-    .local-radio-status h3 { margin:0; color:#fff; font-size:17px }
-    .local-radio-meta { margin:0; color:#b9c0ca; font-size:13px }
+    .local-radio-status h3 { margin:0; color:var(--launcher-text,#fff); font-size:17px }
+    .local-radio-meta { margin:0; color:var(--launcher-text-muted,#b9c0ca); font-size:13px }
     .local-radio-player { display:grid; grid-template-columns:34px auto minmax(0,1fr);
       align-items:center; gap:10px }
     .local-radio-player .setting-range-control { min-width:0 }
     .local-radio-playback { display:grid; width:34px; height:34px; padding:0; place-items:center;
       color:var(--accent); background:transparent; border:0; cursor:pointer }
     .local-radio-playback svg { width:29px; height:29px; fill:currentColor }
-    .local-radio-playback.playing { color:#f87171 }
+    .local-radio-playback.playing { color:var(--launcher-error,#f87171) }
     .local-radio-playback:hover, .local-radio-playback:focus-visible { filter:brightness(1.18); outline:0 }
     .local-radio-actions { display:flex; gap:8px }
     .local-radio-actions .local-radio-button { flex:1 }
-    .local-radio-button { min-height:38px; padding:8px 12px; color:#eef1f6; background:#292929;
-      border:1px solid rgba(255,255,255,.14); border-radius:6px; font:600 14px system-ui,sans-serif;
+    .local-radio-button { min-height:38px; padding:8px 12px; color:var(--launcher-text-soft,#eef1f6);
+      background:var(--launcher-element,#292929); border:1px solid var(--launcher-control-border,rgba(255,255,255,.14));
+      border-radius:6px; font:600 14px system-ui,sans-serif;
       cursor:pointer }
-    .local-radio-button:hover:not(:disabled) { background:#333 }
+    .local-radio-button:hover:not(:disabled) { background:var(--launcher-element-hover,#333) }
     .local-radio-button:disabled { opacity:.45; cursor:default }
     .local-radio-button:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
     .local-radio-button[hidden] { display:none }

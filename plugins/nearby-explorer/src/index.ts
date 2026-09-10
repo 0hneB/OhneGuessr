@@ -209,32 +209,41 @@ function imageFor(place: NearbyPlace, className: string) {
 function activate(api: OhneGuessrPluginAPI) {
   const style = document.createElement('style');
   style.textContent = `
-    .nearby-explorer-root { display:grid; gap:12px; color:#e9edf2; font-family:system-ui,sans-serif }
-    .nearby-explorer-retry { min-height:32px; padding:0 11px; color:#fff; background:#292e34;
-      border:1px solid rgba(255,255,255,.13); border-radius:7px; font:700 12px/1 system-ui,sans-serif; cursor:pointer }
-    .nearby-explorer-retry:hover { background:#343a42 }
-    .nearby-explorer-status { padding:18px; color:#cbd2da; background:#22262b;
-      border:1px solid rgba(255,255,255,.1); border-radius:9px; font-size:14px; text-align:center }
-    .nearby-explorer-status.error { color:#ffb4b4 }
+    .nearby-explorer-root { display:grid; gap:12px; color:var(--launcher-text,#e9edf2) }
+    .nearby-explorer-retry { min-height:32px; padding:0 11px; color:var(--launcher-text,#fff);
+      background:var(--launcher-element,#292e34); border:1px solid var(--launcher-control-border,rgba(255,255,255,.13));
+      border-radius:7px; font:700 12px/1 system-ui,sans-serif; cursor:pointer }
+    .nearby-explorer-retry:hover { background:var(--launcher-element-hover,#343a42) }
+    .nearby-explorer-status { padding:18px; color:var(--launcher-text-muted,#cbd2da); background:var(--launcher-main,#22262b);
+      border:1px solid var(--launcher-border,rgba(255,255,255,.1)); border-radius:9px; font-size:14px; text-align:center }
+    .nearby-explorer-status.loading { display:grid; place-items:center }
+    .nearby-explorer-status.loading::before { width:26px; height:26px; margin-bottom:10px;
+      border:3px solid var(--launcher-border,rgba(255,255,255,.18)); border-top-color:var(--accent);
+      border-radius:50%; animation:nearby-explorer-spin .8s linear infinite; content:'' }
+    .nearby-explorer-status.error { color:var(--launcher-error,#ffb4b4) }
     .nearby-explorer-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px }
-    .nearby-explorer-card { display:grid; min-width:0; overflow:hidden; padding:0; color:#edf1f6; background:#22262b;
-      border:1px solid rgba(255,255,255,.1); border-radius:8px; cursor:pointer; text-align:left }
+    .nearby-explorer-card { display:grid; min-width:0; overflow:hidden; padding:0; color:var(--launcher-text-soft,#edf1f6);
+      background:var(--launcher-main,#22262b); border:1px solid var(--launcher-border,rgba(255,255,255,.1));
+      border-radius:8px; cursor:pointer; text-align:left }
     .nearby-explorer-card:hover, .nearby-explorer-card:focus-visible { border-color:rgba(var(--accent-rgb),.75); outline:none }
-    .nearby-explorer-card img { width:100%; height:100px; object-fit:cover; background:#15171a }
+    .nearby-explorer-card img { width:100%; height:100px; object-fit:cover; background:var(--launcher-background,#15171a) }
     .nearby-explorer-card-copy { min-width:0; padding:8px 9px }
-    .nearby-explorer-card-title { display:-webkit-box; overflow:hidden; color:#fff; font-size:13px; font-weight:750;
+    .nearby-explorer-card-title { display:-webkit-box; overflow:hidden; color:var(--launcher-text,#fff); font-size:13px; font-weight:750;
       line-height:1.3; -webkit-box-orient:vertical; -webkit-line-clamp:2 }
-    .nearby-explorer-card-meta { display:block; margin-top:4px; color:#aeb7c2; font-size:11px }
-    .nearby-explorer-place { overflow:hidden; background:#22262b; border:1px solid rgba(255,255,255,.1); border-radius:9px }
-    .nearby-explorer-hero { display:block; width:100%; max-height:230px; object-fit:cover; background:#15171a }
+    .nearby-explorer-card-meta { display:block; margin-top:4px; color:var(--launcher-text-muted,#aeb7c2); font-size:11px }
+    .nearby-explorer-place { overflow:hidden; background:var(--launcher-main,#22262b);
+      border:1px solid var(--launcher-border,rgba(255,255,255,.1)); border-radius:9px }
+    .nearby-explorer-hero { display:block; width:100%; max-height:230px; object-fit:cover; background:var(--launcher-background,#15171a) }
     .nearby-explorer-place-copy { padding:13px }
     .nearby-explorer-place-meta { margin:0 0 4px; color:var(--accent); font-size:12px; font-weight:750; letter-spacing:.02em }
-    .nearby-explorer-place h3 { margin:0; color:#fff; font-size:21px; line-height:1.22 }
-    .nearby-explorer-extract { margin:10px 0 0; color:#d3d9e1; font-size:14px; line-height:1.5 }
+    .nearby-explorer-place h3 { margin:0; color:var(--launcher-text,#fff); font-size:21px; line-height:1.22 }
+    .nearby-explorer-extract { margin:10px 0 0; color:var(--launcher-text-soft,#d3d9e1); font-size:14px; line-height:1.5 }
     .nearby-explorer-actions { display:flex; flex-wrap:wrap; gap:7px }
-    .nearby-explorer-actions button { min-height:36px; padding:0 13px; color:#fff; background:#292e34;
-      border:1px solid rgba(255,255,255,.13); border-radius:7px; font:700 13px/1 system-ui,sans-serif; cursor:pointer }
-    .nearby-explorer-actions button:hover { background:#343a42 }
+    .nearby-explorer-actions button { min-height:36px; padding:0 13px; color:var(--launcher-text,#fff);
+      background:var(--launcher-element,#292e34); border:1px solid var(--launcher-control-border,rgba(255,255,255,.13));
+      border-radius:7px; font:700 13px/1 system-ui,sans-serif; cursor:pointer }
+    .nearby-explorer-actions button:hover { background:var(--launcher-element-hover,#343a42) }
+    @keyframes nearby-explorer-spin { to { transform:rotate(360deg) } }
     @media (max-width:520px) {
       .nearby-explorer-grid { grid-template-columns:1fr }
     }
@@ -265,9 +274,9 @@ function activate(api: OhneGuessrPluginAPI) {
   const vectorLabel = (vector: GeoVector) =>
     `${formatDistance(vector.distance)} · ${compassDirection(vector.bearing)} ${Math.round(vector.bearing)}°`;
 
-  const renderStatus = (message: string, error = false) => {
+  const renderStatus = (message: string, error = false, loading = false) => {
     const root = element('div', 'nearby-explorer-root');
-    const status = element('div', `nearby-explorer-status${error ? ' error' : ''}`, message);
+    const status = element('div', `nearby-explorer-status${error ? ' error' : loading ? ' loading' : ''}`, message);
     status.setAttribute('role', error ? 'alert' : 'status');
     root.append(status);
     if (error) {
@@ -342,7 +351,7 @@ function activate(api: OhneGuessrPluginAPI) {
     }
     const controller = new AbortController();
     request = controller;
-    renderStatus('Finding Wikipedia places within 10 km…');
+    renderStatus('Finding nearby entries', false, true);
     let timedOut = false;
     const timeout = window.setTimeout(() => {
       timedOut = true;

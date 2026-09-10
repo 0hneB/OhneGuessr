@@ -94,20 +94,23 @@ function activate(api) {
     const style = document.createElement('style');
     style.textContent = `
     .plantnet-preview { display:block; width:100%; height:auto; margin:0 0 12px;
-      border-radius:5px; background:#101010 }
-    .plantnet-status { display:grid; min-height:160px; place-items:center; color:#c8ced8;
+      border-radius:5px; background:var(--launcher-background,#101010) }
+    .plantnet-status { display:grid; min-height:160px; place-items:center; color:var(--launcher-text-muted,#c8ced8);
       text-align:center; white-space:pre-line }
-    .plantnet-status.error { color:#fca5a5 }
-    .plantnet-spinner { width:26px; height:26px; margin:0 auto 10px; border:3px solid rgba(255,255,255,.18);
+    .plantnet-status.error { color:var(--launcher-error,#fca5a5) }
+    .plantnet-spinner { width:26px; height:26px; margin:0 auto 10px;
+      border:3px solid var(--launcher-border,rgba(255,255,255,.18));
       border-top-color:var(--accent); border-radius:50%; animation:plantnet-spin .8s linear infinite }
     .plantnet-results { display:grid; gap:9px; margin:0; padding:0; list-style:none }
-    .plantnet-result { padding:10px 11px; background:#222; border:1px solid rgba(255,255,255,.1); border-radius:5px }
-    .plantnet-result h3 { margin:0 0 2px; color:#fff; font-size:16px }
+    .plantnet-result { padding:10px 11px; background:var(--launcher-main,#222);
+      border:1px solid var(--launcher-border,rgba(255,255,255,.1)); border-radius:5px }
+    .plantnet-result h3 { margin:0 0 2px; color:var(--launcher-text,#fff); font-size:16px }
     .plantnet-result h3 a { color:inherit; text-decoration:none }
     .plantnet-result h3 a:hover { text-decoration:underline }
-    .plantnet-scientific { color:#bec5cf; font-style:italic }
-    .plantnet-meta { display:flex; flex-wrap:wrap; gap:5px 12px; margin-top:6px; color:#aeb6c2; font-size:12px }
-    .plantnet-summary { margin:0 0 10px; color:#cdd3dc }
+    .plantnet-scientific { color:var(--launcher-text-muted,#bec5cf); font-style:italic }
+    .plantnet-meta { display:flex; flex-wrap:wrap; gap:5px 12px; margin-top:6px;
+      color:var(--launcher-text-muted,#aeb6c2); font-size:12px }
+    .plantnet-summary { margin:0 0 10px; color:var(--launcher-text-soft,#cdd3dc) }
     @keyframes plantnet-spin { to { transform:rotate(360deg) } }
   `;
     document.head.appendChild(style);
