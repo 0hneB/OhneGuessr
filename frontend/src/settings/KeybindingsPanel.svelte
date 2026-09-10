@@ -5,7 +5,7 @@
     CONTROL_ROWS,
     codeLabel,
     currentBindings,
-    resetBindings,
+    resetControls,
     setBinding
   } from './keybindings.js';
 
@@ -77,7 +77,10 @@
 
 <button type="button" class="icon-action controls-reset"
         aria-label="Reset controls to defaults" title="Reset controls to defaults"
-        onclick={() => { capturing = null; resetBindings(); }}>
+        onclick={() => {
+          capturing = null;
+          resetControls();
+        }}>
   <span class="svg-icon reset-icon" aria-hidden="true"></span>
 </button>
 <a class="settings-info-link controls-info-link" href="https://github.com/0hneB/OhneGuessr#controls"

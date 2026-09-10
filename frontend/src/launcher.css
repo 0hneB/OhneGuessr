@@ -929,7 +929,7 @@
 
 .controls-group {
   position: relative;
-  padding-bottom: 52px;
+  padding-bottom: 68px;
 }
 
 .controls-group .controls-reset {
@@ -938,8 +938,12 @@
 }
 
 .controls-group .controls-info-link {
+  display: grid;
+  place-items: center;
   right: 20px;
   bottom: 18px;
+  width: 30px;
+  height: 30px;
 }
 
 button:focus-visible,
@@ -952,7 +956,7 @@ a:focus-visible {
 @media (max-width: 1120px) {
   .maps-layout {
     grid-template-columns: minmax(0, 1fr);
-    row-gap: 0;
+    row-gap: 8px;
     height: auto;
     min-height: 100%;
     overflow: visible;

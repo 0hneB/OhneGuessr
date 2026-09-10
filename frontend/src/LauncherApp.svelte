@@ -305,17 +305,6 @@
             </div>
           </div>
 
-          <div class="setting setting-range">
-            <label for="mapZoomSpeed">Map zoom speed</label>
-            <div class="setting-range-control">
-              <input id="mapZoomSpeed" type="range" min="0.5" max="3" step="0.1"
-                     value={settings.mapZoomSpeed}
-                     style={`--range-progress:${((settings.mapZoomSpeed - 0.5) / 2.5) * 100}%`}
-                     oninput={(event) => updateSettings({ mapZoomSpeed: Number(event.currentTarget.value) })} />
-              <output for="mapZoomSpeed">{settings.mapZoomSpeed}×</output>
-            </div>
-          </div>
-
           <label class="setting setting-toggle">
             <span>Street View starts zoomed out</span>
             <input type="checkbox" checked={settings.streetViewZoomedOut}
@@ -344,6 +333,18 @@
       <section class="launcher-settings-page controls-settings" aria-label="Controls settings">
         <div class="settings-group controls-group">
           <KeybindingsPanel />
+          <div class="split-settings">
+            <div class="setting setting-range">
+              <label for="mapZoomSpeed">Map zoom speed</label>
+              <div class="setting-range-control">
+                <input id="mapZoomSpeed" type="range" min="0.5" max="3" step="0.1"
+                       value={settings.mapZoomSpeed}
+                       style={`--range-progress:${((settings.mapZoomSpeed - 0.5) / 2.5) * 100}%`}
+                       oninput={(event) => updateSettings({ mapZoomSpeed: Number(event.currentTarget.value) })} />
+                <output for="mapZoomSpeed">{settings.mapZoomSpeed}×</output>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     {/if}

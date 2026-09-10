@@ -1,4 +1,5 @@
 import { KEYBINDINGS } from '../config.js';
+import { DEFAULT_MAP_ZOOM_SPEED } from './settings.js';
 import { settings, updateSettings } from './store.svelte.js';
 import type { Settings } from '../types.js';
 
@@ -90,8 +91,8 @@ export function setBinding(action: string, code: string | null) {
   updateSettings({ keybindings: next });
 }
 
-export function resetBindings() {
-  updateSettings({ keybindings: {} });
+export function resetControls() {
+  updateSettings({ keybindings: {}, mapZoomSpeed: DEFAULT_MAP_ZOOM_SPEED });
 }
 
 export class Keybindings {
