@@ -99,7 +99,7 @@ function activate(api) {
       text-align:center; white-space:pre-line }
     .plantnet-status.error { color:#fca5a5 }
     .plantnet-spinner { width:26px; height:26px; margin:0 auto 10px; border:3px solid rgba(255,255,255,.18);
-      border-top-color:#79c267; border-radius:50%; animation:plantnet-spin .8s linear infinite }
+      border-top-color:var(--accent); border-radius:50%; animation:plantnet-spin .8s linear infinite }
     .plantnet-results { display:grid; gap:9px; margin:0; padding:0; list-style:none }
     .plantnet-result { padding:10px 11px; background:#222; border:1px solid rgba(255,255,255,.1); border-radius:5px }
     .plantnet-result h3 { margin:0 0 2px; color:#fff; font-size:16px }
