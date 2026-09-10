@@ -17,6 +17,7 @@ describe('normalizeSettings', () => {
       mapZoomSpeed: 99,
       hideCar: true,
       movement: 'broken',
+      roundResults: 'final',
       currentMap: 'stale'
     })).toMatchObject({
       rounds: '12',
@@ -24,13 +25,15 @@ describe('normalizeSettings', () => {
       accentColor: '#abcdef',
       mapZoomSpeed: 3,
       hideCar: true,
-      movement: 'moving'
+      movement: 'moving',
+      roundResults: 'final'
     });
     expect(normalizeSettings({ hideCar: 'true' })).toMatchObject({ hideCar: false });
     expect(normalizeSettings({})).not.toHaveProperty('currentMap');
     expect(normalizeSettings({ challengesEnabled: true })).not.toHaveProperty('challengesEnabled');
     expect(normalizeSettings({ localPartyEnabled: true })).not.toHaveProperty('localPartyEnabled');
     expect(normalizeSettings({ timer: 'countup' }).timer).toBe('countup');
+    expect(normalizeSettings({ roundResults: 'invalid' })).toMatchObject({ roundResults: 'each' });
   });
 
   it('normalizes launcher themes without discarding a legacy custom accent', () => {

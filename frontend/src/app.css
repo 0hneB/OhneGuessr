@@ -594,6 +594,11 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   color: var(--launcher-text);
   background: var(--launcher-segment-hover);
 }
+.segmented button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.segmented button:disabled:hover { color: var(--launcher-control-text); background: none; }
 .segmented button.active { background: var(--accent); color: var(--accent-ink); }
 .segmented button.active .svg-icon { background: var(--accent-ink); }
 .segmented .unlimited-icon {

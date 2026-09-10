@@ -204,7 +204,8 @@ export const DEFAULT_SETTINGS: Settings = {
   streetViewZoomedOut: false,
   hideCar: false,
   movement: 'moving', // 'moving' | 'nm' (no move) | 'nmpz' (no move/pan/zoom)
-  scoring: 'world' // 'world' fixed scale, 'country' per-map
+  scoring: 'world', // 'world' fixed scale, 'country' per-map
+  roundResults: 'each'
 };
 
 function positiveInteger(value: unknown, fallback: string) {
@@ -244,6 +245,7 @@ export function normalizeSettings(value: unknown): Settings {
       ? input.movement
       : 'moving',
     scoring: input.scoring === 'country' ? 'country' : 'world',
+    roundResults: input.roundResults === 'final' ? 'final' : 'each',
     keybindings: cleanKeybindings(input.keybindings)
   };
 }

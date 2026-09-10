@@ -17,7 +17,7 @@ Download the latest version from [GitHub Releases](https://github.com/0hneB/Ohne
 ## Features
 
 - Moving, No Moving, and NMPZ games with configurable rounds and timers.
-- World- or map-scaled scoring, result maps, and a final summary.
+- World- or map-scaled scoring with per-round or final-only results.
 - Optional Country Streak mode with persistent current and best streaks.
 - Shareable `.ohne` challenges with exact rounds and challenger comparisons.
 - Rebindable controls, configurable compass, map size, zoom speed, and accent color.

@@ -649,6 +649,10 @@ async function finishRound() {
   };
   recordModeResult(state.round, result);
   state.results.push(result);
+  if (!gameMode.current && !state.unlimited && settings.roundResults === 'final') {
+    await nextRound();
+    return;
+  }
   showRoundResult(result, trail);
 }
 
