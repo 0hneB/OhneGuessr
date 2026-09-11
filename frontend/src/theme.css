@@ -103,6 +103,8 @@
   --launcher-error: #f87171;
   --launcher-switch: #303631;
   --launcher-range-track: rgba(255, 255, 255, 0.16);
+  --hud-compass-ring: rgba(244, 243, 239, 0.34);
+  --hud-compass-ring-hover: rgba(244, 243, 239, 0.44);
 }
 
 /* The original neutral-dark launcher and HUD palette. */
@@ -213,6 +215,8 @@
   --launcher-text-muted: #b7a79d;
   --launcher-text-placeholder: #807168;
   --launcher-danger: #ef7065;
+  --hud-compass-ring: rgba(242, 235, 230, 0.34);
+  --hud-compass-ring-hover: rgba(242, 235, 230, 0.44);
 }
 
 .launcher-shell[data-theme="gruvbox-dark-soft"],
@@ -231,6 +235,8 @@
   --launcher-text-muted: #c5b597;
   --launcher-text-placeholder: #998b78;
   --launcher-danger: #fb4a35;
+  --hud-compass-ring: rgba(251, 241, 199, 0.34);
+  --hud-compass-ring-hover: rgba(251, 241, 199, 0.44);
 }
 
 .launcher-shell[data-theme="gruvbox-light-soft"],
@@ -251,6 +257,8 @@
   --launcher-text-placeholder: #897b6e;
   --launcher-danger: #9d0308;
   --launcher-nav-icon-filter: none;
+  --hud-compass-ring: rgba(251, 241, 199, 0.58);
+  --hud-compass-ring-hover: rgba(251, 241, 199, 0.72);
 }
 
 .launcher-shell[data-theme="ayu-light"],
@@ -271,6 +279,8 @@
   --launcher-text-placeholder: #a9acae;
   --launcher-danger: #ef7271;
   --launcher-nav-icon-filter: none;
+  --hud-compass-ring: rgba(252, 252, 252, 0.64);
+  --hud-compass-ring-hover: rgba(252, 252, 252, 0.78);
 }
 
 .launcher-shell[data-theme="ayu-mirage"],
@@ -289,4 +299,6 @@
   --launcher-text-muted: #9a9a98;
   --launcher-text-placeholder: #7b7d7f;
   --launcher-danger: #f18779;
+  --hud-compass-ring: rgba(204, 202, 194, 0.36);
+  --hud-compass-ring-hover: rgba(204, 202, 194, 0.46);
 }
