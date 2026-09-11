@@ -969,7 +969,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   align-items: center;
   width: 100%;
   gap: 10px;
-  padding: 7px 12px;
+  padding: 9px 14px;
   font-family: inherit;
   color: var(--hud-text);
   background: var(--hud-round-bg);
