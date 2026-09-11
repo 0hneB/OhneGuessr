@@ -186,7 +186,7 @@ npm --prefix frontend run build
 
 This creates the ignored `frontend/dist/` directory. The **Check** workflow runs source checks on pushes and pull requests; its temporary Windows package is manual. The **Release** workflow builds Windows, Linux, and macOS files and uploads them to a draft release.
 
-Run frontend logic tests with `npm --prefix frontend test`.
+Frontend and plugin tests live in `frontend/test`. Run them with `npm --prefix frontend test`.
 
 Run backend checks with `go vet ./...` and `go test ./...`. CI also runs `go test -race ./...` (requires CGO and a C compiler). To measure map sampling time and allocations, run `go test ./internal/backend -run '^$' -bench BenchmarkSampleMapLocations -benchmem`.
 
