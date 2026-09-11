@@ -1,10 +1,10 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { LearnableMetaClues } from '../../../../internal/plugins/learnable-meta/clues.js';
+import { LearnableMetaClues } from '../../../src/features/learnable-meta/clues.js';
 
 const mocks = vi.hoisted(() => ({ getClue: vi.fn() }));
 
-vi.mock('../../../../internal/plugins/learnable-meta/api.js', async (importOriginal) => ({
-  ...await importOriginal<typeof import('../../../../internal/plugins/learnable-meta/api.js')>(),
+vi.mock('../../../src/features/learnable-meta/api.js', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../../src/features/learnable-meta/api.js')>(),
   getClue: mocks.getClue
 }));
 

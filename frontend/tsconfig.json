@@ -16,8 +16,6 @@
     "src/**/*.ts",
     "src/**/*.svelte",
     "test/**/*.ts",
-    "../internal/plugins/**/*.ts",
-    "../internal/plugins/**/*.svelte",
     "../plugins/types/**/*.d.ts",
     "vite.config.ts"
   ]

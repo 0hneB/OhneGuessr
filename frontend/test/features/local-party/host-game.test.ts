@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { partyHost, partyRevealResults, partyRoundScores } from '../../../../internal/plugins/local-party/host.svelte.js';
+import { partyHost, partyRevealResults, partyRoundScores } from '../../../src/features/local-party/host.svelte.js';
 
 afterEach(() => {
   partyHost.state = null;

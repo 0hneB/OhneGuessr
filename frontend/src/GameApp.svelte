@@ -24,8 +24,8 @@
     challengeAction,
     challengeActionVisible,
     runChallengeAction
-  } from '../../internal/plugins/challenges/game.svelte.js';
-  import { gameMode } from '../../internal/plugins/game-mode.svelte.js';
+  } from './features/challenges/game.svelte.js';
+  import { gameMode } from './game/game-mode.svelte.js';
   import { finalRoundFromWheel, ui } from './ui.svelte.js';
   import { pluginHudButtons } from './plugins/host.svelte.js';
   import { onSettingsChanged } from './settings/store.svelte.js';

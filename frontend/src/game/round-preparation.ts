@@ -1,5 +1,5 @@
 // Panorama resolution shared by foreground round loads and result preloads.
-import { gameMode } from '../../../internal/plugins/game-mode.svelte.js';
+import { gameMode } from './game-mode.svelte.js';
 import {
   ensureDeckIndex, hasNextRound, nextRoundFallback, PANORAMA_RETRIES, replaceDeckLocation
 } from './deck.js';

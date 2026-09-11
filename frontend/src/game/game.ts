@@ -29,8 +29,8 @@ import {
   cancelRoundPreload, preparationMatches, prepareRound, scheduleNextRoundPreload,
   takeRoundPreload, type RoundPreparation
 } from './round-preparation.js';
-import { challengeAction } from '../../../internal/plugins/challenges/game.svelte.js';
-import { gameMode } from '../../../internal/plugins/game-mode.svelte.js';
+import { challengeAction } from '../features/challenges/game.svelte.js';
+import { gameMode } from './game-mode.svelte.js';
 import {
   resetLearnableMetaClues,
   selectLearnableMetaFinalRound,
@@ -38,7 +38,7 @@ import {
   setupLearnableMeta,
   showLearnableMetaResult,
   startLearnableMetaRound
-} from '../../../internal/plugins/learnable-meta/index.js';
+} from '../features/learnable-meta/index.js';
 import type {
   GamePhase,
   GuessMapSize,

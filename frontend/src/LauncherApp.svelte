@@ -14,8 +14,8 @@
     showLibraryNotice
   } from './maps/library.svelte.js';
   import { onLauncherPageRequested } from './launcher-events.js';
-  import MapSyncLayout from '../../internal/plugins/MapSyncLayout.svelte';
-  import PluginsPanel from '../../internal/plugins/PluginsPanel.svelte';
+  import MapSyncLayout from './features/map-sync/MapSyncLayout.svelte';
+  import PluginsPanel from './plugins/PluginsPanel.svelte';
   import KeybindingsPanel from './settings/KeybindingsPanel.svelte';
   import {
     initSettingsSync,

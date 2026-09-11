@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { gameMode, type GameMode } from '../../../internal/plugins/game-mode.svelte.js';
+import { gameMode, type GameMode } from '../../src/game/game-mode.svelte.js';
 import { sampleMap } from '../../src/maps/api.js';
 import type { MapItem } from '../../src/types.js';
 import { createSampledDeck, selectSampledMap, useFixedDeck } from '../../src/game/deck.js';
@@ -11,7 +11,7 @@ import { state } from '../../src/game/state.svelte.js';
 
 vi.mock('../../src/maps/api.js', () => ({ sampleMap: vi.fn() }));
 vi.mock('../../src/game/state.svelte.js', () => ({ state: {}, GAME_PHASE: { RESULT: 'result' } }));
-vi.mock('../../../internal/plugins/game-mode.svelte.js', () => ({ gameMode: { current: null } }));
+vi.mock('../../src/game/game-mode.svelte.js', () => ({ gameMode: { current: null } }));
 
 const map: MapItem = { id: 'map', name: 'Map', file: 'map.json', folder: '', count: 10, managed: false, source: null };
 const location = (index: number) => ({ lat: index, lng: index, panoid: `pano-${index}` });

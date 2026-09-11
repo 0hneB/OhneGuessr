@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
-  import { isChallengeFilename } from '../../../internal/plugins/challenges/challenge.js';
-  import { mapActions } from '../../../internal/plugins/map-actions.js';
+  import { isChallengeFilename } from '../features/challenges/challenge.js';
+  import { mapActions } from '../library/map-actions.js';
   import {
     managedMapBadge,
     managedMapRemoveLabel,
     managedMapRemovePrompt
-  } from '../../../internal/plugins/map-sources.js';
+  } from '../library/map-sources.js';
   import type { MapItem } from '../types.js';
   import {
     canCreateFolder,

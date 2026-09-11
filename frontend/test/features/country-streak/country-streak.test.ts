@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildCountryIndex, countriesAt, type Country } from '../../../../internal/plugins/country-streak/classifier.js';
+import { buildCountryIndex, countriesAt, type Country } from '../../../src/features/country-streak/classifier.js';
 import {
   advanceStreak,
   countryStreakGame,
   normalizeStreakStats,
   resetCountryStreakSession
-} from '../../../../internal/plugins/country-streak/state.svelte.js';
+} from '../../../src/features/country-streak/state.svelte.js';
 
 const feature = (
   code: string,

@@ -11,7 +11,7 @@ import {
   managedFolderName,
   managedMapMoveTargets,
   managedRootRank
-} from '../../../internal/plugins/map-sources.js';
+} from '../library/map-sources.js';
 
 export { canStoreLocalMap, isManagedRoot };
 
