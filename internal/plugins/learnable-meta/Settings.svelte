@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import SyncControls from '../SyncControls.svelte';
+  import { runSyncAction, type SyncActions } from '../sync-actions.js';
   import { reloadLibrary } from '../../../frontend/src/maps/library.svelte.js';
   import {
     addMap,
@@ -10,32 +11,20 @@
     type LearnableMetaStatus
   } from './api.js';
   import './learnable-meta.css';
-  import { onLearnableMetaStatus, publishLearnableMetaStatus } from './status.svelte.js';
+  import { learnableMetaPlugin, publishLearnableMetaStatus } from './status.svelte.js';
 
-  const POLL_MS = 650;
-  const errorMessage = (error: unknown, fallback: string) =>
-    error instanceof Error && error.message ? error.message : fallback;
-
-  let status = $state<LearnableMetaStatus | null>(null);
-  let apiKey = $state('');
+  const status = $derived(learnableMetaPlugin.status);
   let mapName = $state('');
   let mapId = $state('');
-  let replacingKey = $state(false);
-  let busy = $state(false);
-  let actionMessage = $state<{ text: string; error: boolean } | null>(null);
-  let wasRunning = false;
-  let pollTimer = 0;
-  let keyInput: HTMLInputElement;
+  const actions = $state<SyncActions>({ busy: false, message: null });
 
   const available = $derived(status?.available !== false);
   const enabled = $derived(Boolean(status?.enabled));
   const hasKey = $derived(Boolean(status?.hasKey));
   const running = $derived(Boolean(status?.running));
-  const replaceLabel = $derived(replacingKey ? 'Cancel key replacement' : 'Replace key');
-  const syncLabel = $derived(running ? 'Syncing…' : 'Sync now');
 
   const statusMessage = $derived.by(() => {
-    if (actionMessage) return actionMessage;
+    if (actions.message) return actions.message;
     if (status?.error) return { text: status.error, error: true };
     if (!available) {
       return {
@@ -81,15 +70,10 @@
     };
   });
 
-  function schedulePoll() {
-    window.clearTimeout(pollTimer);
-    if (status?.running) pollTimer = window.setTimeout(refreshStatus, POLL_MS);
-  }
-
   async function accept(next: LearnableMetaStatus, reloadAfter = false) {
-    const completed = wasRunning && !next.running &&
+    const completed = status?.running && !next.running &&
       (next.phase === 'complete' || next.phase === 'cancelled');
-    actionMessage = null;
+    actions.message = null;
     publishLearnableMetaStatus(next);
     if (reloadAfter || completed) await reloadLibrary();
   }
@@ -98,8 +82,7 @@
     try {
       await accept(await getStatus());
     } catch {
-      window.clearTimeout(pollTimer);
-      actionMessage = {
+      actions.message = {
         text: 'Start the OhneGuessr app to use Learnable Meta sync.',
         error: true
       };
@@ -113,120 +96,39 @@
     }
   }
 
-  async function run(action: () => Promise<LearnableMetaStatus>, fallback: string, reloadAfter = false) {
-    busy = true;
-    try {
-      await accept(await action(), reloadAfter);
-    } catch (error) {
-      actionMessage = { text: errorMessage(error, fallback), error: true };
-    } finally {
-      busy = false;
-    }
-  }
-
-  async function submitKey() {
-    const key = apiKey.trim();
-    if (!key) {
-      actionMessage = { text: 'Paste an API key first.', error: true };
-      return;
-    }
-    actionMessage = { text: 'Saving API key…', error: false };
-    await run(() => saveKey(key), 'Could not save that API key.');
-    if (!actionMessage) {
-      apiKey = '';
-      replacingKey = false;
-    }
-  }
-
-  async function forgetApiKey() {
-    actionMessage = { text: 'Forgetting API key…', error: false };
-    await run(forgetKey, 'Could not forget the API key.');
-    if (!actionMessage) {
-      apiKey = '';
-      replacingKey = false;
-    }
-  }
-
   async function addLearnableMap() {
     const name = mapName.trim();
     const id = mapId.trim();
     if (!name || !id) {
-      actionMessage = { text: 'Enter both a local name and map ID.', error: true };
+      actions.message = { text: 'Enter both a local name and map ID.', error: true };
       return;
     }
-    actionMessage = { text: 'Checking and downloading the Learnable Meta map…', error: false };
-    await run(() => addMap(id, name), 'Could not add that map.', true);
-    if (!actionMessage) {
+    if (await runSyncAction(actions, () => addMap(id, name).then((next) => accept(next, true)),
+      'Checking and downloading the Learnable Meta map…', 'Could not add that map.')) {
       mapName = '';
       mapId = '';
     }
   }
 
-  async function synchronize() {
-    actionMessage = { text: 'Starting synchronization…', error: false };
-    await run(runSync, 'Could not start synchronization.');
-  }
-
-  async function toggleReplacement() {
-    replacingKey = !replacingKey;
-    if (!replacingKey) apiKey = '';
-    else {
-      await tick();
-      keyInput.focus();
-    }
-  }
-
-  onMount(() => {
-    const unsubscribe = onLearnableMetaStatus((next) => {
-      status = next;
-      actionMessage = null;
-      wasRunning = Boolean(next.running);
-      schedulePoll();
-    });
-    void refreshStatus();
-    return () => {
-      unsubscribe();
-      window.clearTimeout(pollTimer);
-    };
+  $effect(() => {
+    if (status) actions.message = null;
   });
 </script>
 
 <section class="sync-section">
   <h2>Learnable Meta</h2>
   <div class="sync-details" class:hidden={!enabled || !available}>
-    <div class="sync-account-row" class:hidden={!hasKey}>
-      <div class="sync-account">{hasKey ? 'API key saved locally' : ''}</div>
-      <div class="sync-actions">
-        <button type="button" class="icon-action" disabled={busy || running}
-                aria-label={syncLabel} title={syncLabel} onclick={synchronize}>
-          <span class="svg-icon sync-icon" aria-hidden="true"></span>
-        </button>
-        <button type="button" class="icon-action" aria-label={replaceLabel} title={replaceLabel}
-                aria-pressed={replacingKey} disabled={busy} onclick={toggleReplacement}>
-          <span class="svg-icon pencil-icon" aria-hidden="true"></span>
-        </button>
-        <button type="button" class="icon-action" aria-label="Forget key" title="Forget key"
-                disabled={busy} onclick={forgetApiKey}>
-          <span class="svg-icon close-icon" aria-hidden="true"></span>
-        </button>
-      </div>
-    </div>
-    <form class="sync-key-form" class:hidden={hasKey && !replacingKey}
-          onsubmit={(event) => { event.preventDefault(); void submitKey(); }}>
-      <input bind:this={keyInput} bind:value={apiKey} type="password" autocomplete="off"
-             placeholder="API key" aria-label="Learnable Meta API key" />
-      <button type="submit" class="icon-action" disabled={busy || running}
-              aria-label="Save key" title="Save key">
-        <span class="svg-icon save-icon" aria-hidden="true"></span>
-      </button>
-    </form>
+    <SyncControls provider="Learnable Meta" {status} account={hasKey ? 'API key saved locally' : ''}
+      {actions} refresh={refreshStatus}
+      saveKey={(key) => saveKey(key).then(accept)}
+      forgetKey={() => forgetKey().then(accept)} sync={() => runSync().then(accept)} />
     <form class="sync-key-form lm-map-form" class:hidden={!hasKey}
           onsubmit={(event) => { event.preventDefault(); void addLearnableMap(); }}>
       <input bind:value={mapName} type="text" maxlength="120" autocomplete="off"
-             placeholder="Local map name" aria-label="Local map name" disabled={busy || running} />
+             placeholder="Local map name" aria-label="Local map name" disabled={actions.busy || running} />
       <input bind:value={mapId} type="text" maxlength="200" autocomplete="off" spellcheck="false"
-             placeholder="GeoGuessr ID" aria-label="Learnable Meta GeoGuessr ID" disabled={busy || running} />
-      <button type="submit" class="icon-action lm-map-add" disabled={busy || running}
+             placeholder="GeoGuessr ID" aria-label="Learnable Meta GeoGuessr ID" disabled={actions.busy || running} />
+      <button type="submit" class="icon-action lm-map-add" disabled={actions.busy || running}
               aria-label="Add map" title="Add map">
         <span class="svg-icon plus-icon" aria-hidden="true"></span>
       </button>
@@ -235,7 +137,7 @@
 </section>
 <div class="sync-footer">
   <div class="settings-note sync-status" class:error={statusMessage.error}
-       class:hidden={!enabled && available && !actionMessage}>{statusMessage.text}</div>
+       class:hidden={!enabled && available && !actions.message}>{statusMessage.text}</div>
   <a class="settings-info-link sync-info-link"
      href="https://github.com/0hneB/OhneGuessr#learnable-meta-sync"
      target="_blank" rel="noopener noreferrer"

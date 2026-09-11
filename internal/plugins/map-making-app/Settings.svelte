@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import SyncControls from '../SyncControls.svelte';
+  import { type SyncActions } from '../sync-actions.js';
   import { reloadLibrary } from '../../../frontend/src/maps/library.svelte.js';
   import {
     forgetKey,
@@ -8,35 +9,22 @@
     saveKey,
     type MapMakingAppStatus
   } from './api.js';
-  import { publishMapMakingAppStatus } from './status.svelte.js';
+  import { mapMakingAppPlugin, publishMapMakingAppStatus } from './status.svelte.js';
 
-  const POLL_MS = 650;
-  const errorMessage = (error: unknown, fallback: string) =>
-    error instanceof Error && error.message ? error.message : fallback;
-
-  let status = $state<MapMakingAppStatus | null>(null);
-  let apiKey = $state('');
-  let replacingKey = $state(false);
-  let busy = $state(false);
-  let actionMessage = $state<{ text: string; error: boolean } | null>(null);
-  let wasRunning = false;
-  let pollTimer = 0;
-  let keyInput: HTMLInputElement;
+  const status = $derived(mapMakingAppPlugin.status);
+  const actions = $state<SyncActions>({ busy: false, message: null });
 
   const available = $derived(status?.available !== false);
   const enabled = $derived(Boolean(status?.enabled));
   const hasKey = $derived(Boolean(status?.hasKey));
-  const running = $derived(Boolean(status?.running));
-  const replaceLabel = $derived(replacingKey ? 'Cancel key replacement' : 'Replace key');
-  const syncLabel = $derived(running ? 'Syncing…' : 'Sync now');
 
   const statusMessage = $derived.by(() => {
-    if (actionMessage) return actionMessage;
+    if (actions.message) return actions.message;
     if (status?.error) return { text: status.error, error: true };
     if (!available) {
       return { text: 'Start the OhneGuessr app to use sync.', error: true };
     }
-    if (running) {
+    if (status?.running) {
       const phases: Record<string, string> = {
         catalog: 'Loading map catalog…',
         publishing: 'Saving synchronized maps…'
@@ -68,17 +56,9 @@
     };
   });
 
-  function schedulePoll() {
-    window.clearTimeout(pollTimer);
-    if (status?.running) pollTimer = window.setTimeout(refreshStatus, POLL_MS);
-  }
-
   async function accept(next: MapMakingAppStatus) {
-    const completed = wasRunning && !next.running && next.phase === 'complete';
-    status = next;
+    const completed = status?.running && !next.running && next.phase === 'complete';
     publishMapMakingAppStatus(next);
-    wasRunning = Boolean(next.running);
-    schedulePoll();
     if (completed) await reloadLibrary();
   }
 
@@ -86,107 +66,24 @@
     try {
       await accept(await getStatus());
     } catch {
-      window.clearTimeout(pollTimer);
-      status = { available: false, enabled: false, hasKey: false, running: false };
+      publishMapMakingAppStatus({ available: false, enabled: false, hasKey: false, running: false });
     }
   }
-
-  async function submitKey() {
-    const key = apiKey.trim();
-    if (!key) {
-      actionMessage = { text: 'Paste an API key first.', error: true };
-      return;
-    }
-    busy = true;
-    actionMessage = { text: 'Checking API key…', error: false };
-    try {
-      await accept(await saveKey(key));
-      apiKey = '';
-      replacingKey = false;
-      actionMessage = null;
-    } catch (error) {
-      actionMessage = { text: errorMessage(error, 'Could not save that API key.'), error: true };
-    } finally {
-      busy = false;
-    }
-  }
-
-  async function forgetApiKey() {
-    busy = true;
-    try {
-      await accept(await forgetKey());
-      apiKey = '';
-      replacingKey = false;
-      actionMessage = null;
-    } catch (error) {
-      actionMessage = { text: errorMessage(error, 'Could not forget the API key.'), error: true };
-    } finally {
-      busy = false;
-    }
-  }
-
-  async function synchronize() {
-    busy = true;
-    actionMessage = { text: 'Starting sync…', error: false };
-    try {
-      await accept(await runSync());
-      actionMessage = null;
-    } catch (error) {
-      actionMessage = { text: errorMessage(error, 'Could not start synchronization.'), error: true };
-    } finally {
-      busy = false;
-    }
-  }
-
-  async function toggleReplacement() {
-    replacingKey = !replacingKey;
-    if (!replacingKey) apiKey = '';
-    else {
-      await tick();
-      keyInput.focus();
-    }
-  }
-
-  onMount(() => {
-    void refreshStatus();
-    return () => window.clearTimeout(pollTimer);
-  });
 </script>
 
 <section class="sync-section">
   <h2>Map Making App Sync</h2>
   <div class="sync-details" class:hidden={!enabled || !available}>
-    <div class="sync-account-row" class:hidden={!hasKey}>
-      <div class="sync-account">{status?.user?.username ? `Connected as ${status.user.username}` : ''}</div>
-      <div class="sync-actions">
-        <button type="button" class="icon-action" disabled={busy || running}
-                aria-label={syncLabel} title={syncLabel} onclick={synchronize}>
-          <span class="svg-icon sync-icon" aria-hidden="true"></span>
-        </button>
-        <button type="button" class="icon-action" aria-label={replaceLabel} title={replaceLabel}
-                aria-pressed={replacingKey} disabled={busy} onclick={toggleReplacement}>
-          <span class="svg-icon pencil-icon" aria-hidden="true"></span>
-        </button>
-        <button type="button" class="icon-action" aria-label="Forget key" title="Forget key"
-                disabled={busy} onclick={forgetApiKey}>
-          <span class="svg-icon close-icon" aria-hidden="true"></span>
-        </button>
-      </div>
-    </div>
-    <form class="sync-key-form" class:hidden={hasKey && !replacingKey}
-          onsubmit={(event) => { event.preventDefault(); void submitKey(); }}>
-      <input bind:this={keyInput} bind:value={apiKey} type="password" autocomplete="off"
-             placeholder="API key" aria-label="Map Making App API key" />
-      <button type="submit" class="icon-action" disabled={busy || running}
-              aria-label="Save key" title="Save key">
-        <span class="svg-icon save-icon" aria-hidden="true"></span>
-      </button>
-    </form>
+    <SyncControls provider="Map Making App" {status} account={status?.user?.username ? `Connected as ${status.user.username}` : ''}
+      {actions} refresh={refreshStatus}
+      saveKey={(key) => saveKey(key).then(accept)}
+      forgetKey={() => forgetKey().then(accept)} sync={() => runSync().then(accept)}
+      keyProgress="Checking API key…" syncProgress="Starting sync…" />
   </div>
 </section>
 <div class="sync-footer">
   <div class="settings-note sync-status" class:error={statusMessage.error}
-       class:hidden={!enabled && available && !actionMessage}>{statusMessage.text}</div>
+       class:hidden={!enabled && available && !actions.message}>{statusMessage.text}</div>
   <a class="settings-info-link sync-info-link"
      href="https://github.com/0hneB/OhneGuessr#map-making-app-sync"
      target="_blank" rel="noopener noreferrer"
