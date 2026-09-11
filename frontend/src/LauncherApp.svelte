@@ -32,7 +32,6 @@
     GuessMapSize,
     LauncherTheme,
     MovementMode,
-    RoundResultsMode,
     ScoringMode
   } from './types.js';
 
@@ -49,7 +48,6 @@
   const timerPresets = ['unlimited', '120', 'countup'];
   const roundPreset = $derived(roundPresets.includes(settings.rounds) ? settings.rounds : 'custom');
   const timerPreset = $derived(timerPresets.includes(settings.timer) ? settings.timer : 'custom');
-  const roundResults = $derived(settings.rounds === 'unlimited' ? 'each' : settings.roundResults);
   let page = $state<Page>('maps');
   let gameWindow = $state<GameWindowState>({ open: false, fullscreen: false });
   let pluginMessage = $state('');
@@ -223,22 +221,6 @@
               {#each [['moving', 'Moving'], ['nm', 'NM'], ['nmpz', 'NMPZ']] as [value, label]}
                 <button type="button" class:active={settings.movement === value}
                         onclick={() => updateSettings({ movement: value as MovementMode })}>{label}</button>
-              {/each}
-            </div>
-          </div>
-
-          <div class="setting">
-            <span>Round results</span>
-            <div class="segmented">
-              {#each [['each', 'Each round'], ['final', 'Final only']] as [value, label]}
-                <button type="button" class:active={roundResults === value}
-                        disabled={value === 'final' && settings.rounds === 'unlimited'}
-                        title={value === 'final' && settings.rounds === 'unlimited'
-                          ? 'Unlimited games need a result screen to end the game'
-                          : undefined}
-                        onclick={() => updateSettings({ roundResults: value as RoundResultsMode })}>
-                  {label}
-                </button>
               {/each}
             </div>
           </div>

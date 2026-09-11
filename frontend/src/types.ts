@@ -1,7 +1,6 @@
 export type GamePhase = 'booting' | 'loading' | 'guessing' | 'result' | 'final' | 'empty' | 'error';
 export type MovementMode = 'moving' | 'nm' | 'nmpz';
 export type ScoringMode = 'world' | 'country';
-export type RoundResultsMode = 'each' | 'final';
 export type GuessMapSize = 'default' | 'large' | 'xl' | 'xxl';
 export type CompassStyle = 'bar' | 'classic' | 'both';
 export type LauncherTheme =
@@ -63,7 +62,6 @@ export interface Settings {
   hideCar: boolean;
   movement: MovementMode;
   scoring: ScoringMode;
-  roundResults: RoundResultsMode;
   keybindings?: Record<string, string[]>;
 }
 
