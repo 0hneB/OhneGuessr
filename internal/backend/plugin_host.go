@@ -37,14 +37,10 @@ func (l pluginLibrary) Manifest() (pluginhost.Manifest, error) {
 	if err != nil {
 		return pluginhost.Manifest{}, err
 	}
-	entries := make([]pluginhost.Entry, len(manifest.Maps))
-	for i, entry := range manifest.Maps {
-		entries[i] = pluginhost.Entry{
-			ID: entry.ID, Name: entry.Name, File: entry.File, Count: entry.Count,
-			Checksum: entry.Checksum, Source: maps.Clone(entry.Source),
-		}
-	}
-	return pluginhost.Manifest{Folders: append([]string(nil), manifest.Folders...), Maps: entries}, nil
+	return pluginhost.Manifest{
+		Folders: append([]string(nil), manifest.Folders...),
+		Maps:    cloneEntries(manifest.Maps),
+	}, nil
 }
 
 func (l pluginLibrary) Resolve(path string) (string, error) {
@@ -52,16 +48,18 @@ func (l pluginLibrary) Resolve(path string) (string, error) {
 }
 
 func (l pluginLibrary) Save(manifest pluginhost.Manifest) error {
-	entries := make([]mapEntry, len(manifest.Maps))
-	for i, entry := range manifest.Maps {
-		entries[i] = mapEntry{
-			ID: entry.ID, Name: entry.Name, File: entry.File, Count: entry.Count,
-			Checksum: entry.Checksum, Source: maps.Clone(entry.Source),
-		}
-	}
 	return l.store.saveManifestLocked(mapManifest{
 		Version: manifestVersion,
 		Folders: append([]string(nil), manifest.Folders...),
-		Maps:    entries,
+		Maps:    cloneEntries(manifest.Maps),
 	})
+}
+
+func cloneEntries(entries []pluginhost.Entry) []pluginhost.Entry {
+	cloned := make([]pluginhost.Entry, len(entries))
+	for i, entry := range entries {
+		cloned[i] = entry
+		cloned[i].Source = maps.Clone(entry.Source)
+	}
+	return cloned
 }

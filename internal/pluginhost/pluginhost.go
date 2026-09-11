@@ -6,12 +6,12 @@ import (
 )
 
 type Entry struct {
-	ID       string
-	Name     string
-	File     string
-	Count    int
-	Checksum string
-	Source   map[string]any
+	ID       string         `json:"id"`
+	Name     string         `json:"name"`
+	File     string         `json:"file"`
+	Count    int            `json:"count"`
+	Checksum string         `json:"checksum,omitempty"`
+	Source   map[string]any `json:"source,omitempty"`
 }
 
 type Manifest struct {

@@ -37,14 +37,7 @@ var (
 	errInvalidFolder  = errors.New("invalid folder")
 )
 
-type mapEntry struct {
-	ID       string         `json:"id"`
-	Name     string         `json:"name"`
-	File     string         `json:"file"`
-	Count    int            `json:"count"`
-	Checksum string         `json:"checksum,omitempty"`
-	Source   map[string]any `json:"source,omitempty"`
-}
+type mapEntry = pluginhost.Entry
 
 type mapManifest struct {
 	Version int        `json:"version"`
