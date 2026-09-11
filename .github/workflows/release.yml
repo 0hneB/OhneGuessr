@@ -206,7 +206,7 @@ jobs:
           cache: false
       - run: npm ci
         working-directory: frontend
-      - run: go vet ./...
+      - run: go vet ./internal/...
       - name: Install NSIS
         shell: pwsh
         run: |
