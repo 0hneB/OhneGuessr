@@ -430,7 +430,11 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   z-index: 700;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
+  padding: 2px;
+  background: var(--hud-bg);
+  border-radius: 18px;
+  box-shadow: var(--hud-shadow);
 }
 
 #settingsBtn,
@@ -442,16 +446,15 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   font-size: 16px;
   line-height: 1;
   color: #fbfbfd;
-  background: var(--hud-bg);
+  background: transparent;
   border: none;
   border-radius: 16px;
   cursor: pointer;
-  box-shadow: var(--hud-shadow);
+  transition: color 80ms ease-out, background 80ms ease-out;
 }
-/* Darken with an overlay so the gradient underneath is preserved. */
 #settingsBtn:hover,
 .plugin-hud-button:hover {
-  background: linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), var(--hud-bg);
+  background: rgba(255, 255, 255, 0.1);
 }
 #settingsBtn .settings-icon {
   width: 18px;
@@ -463,7 +466,14 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   fill: currentColor;
 }
 .plugin-hud-button[aria-pressed="false"] {
-  color: rgba(251, 251, 253, 0.5);
+  color: rgba(251, 251, 253, 0.55);
+}
+.plugin-hud-button[aria-pressed="true"] {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.16);
+}
+.plugin-hud-button[aria-pressed="true"]:hover {
+  background: rgba(var(--accent-rgb), 0.24);
 }
 
 .setting {
