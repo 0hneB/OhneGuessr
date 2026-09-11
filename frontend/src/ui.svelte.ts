@@ -16,3 +16,9 @@ export const ui = $state({
   timerLow: false,
   selectedFinalRound: null as number | null,
 });
+
+export function finalRoundFromWheel(current: number | null, count: number, deltaY: number) {
+  if (!count || !deltaY) return current;
+  if (current == null) return deltaY > 0 ? 0 : count - 1;
+  return Math.max(0, Math.min(count - 1, current + Math.sign(deltaY)));
+}

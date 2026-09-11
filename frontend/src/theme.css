@@ -54,7 +54,7 @@
   --hud-compass-south: var(--hud-text);
   --hud-secondary-hover: var(--hud-hover);
   --hud-secondary-hover-border: var(--launcher-border-focused);
-  --hud-round-bg: var(--hud-element);
+  --hud-round-bg: color-mix(in srgb, var(--launcher-element) 55%, transparent);
   --hud-round-border: var(--hud-border);
   --hud-round-hover: var(--hud-hover);
   --hud-round-active: var(--launcher-element-active);

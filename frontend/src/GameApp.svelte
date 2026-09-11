@@ -26,7 +26,7 @@
     runChallengeAction
   } from '../../internal/plugins/challenges/game.svelte.js';
   import { gameMode } from '../../internal/plugins/game-mode.svelte.js';
-  import { ui } from './ui.svelte.js';
+  import { finalRoundFromWheel, ui } from './ui.svelte.js';
   import { pluginHudButtons } from './plugins/host.svelte.js';
   import { onSettingsChanged } from './settings/store.svelte.js';
 
@@ -49,6 +49,19 @@
     if (event.key !== 'Escape' || event.repeat || event.defaultPrevented) return;
     event.preventDefault();
     focusLauncher();
+  }
+
+  function handleFinalRoundsWheel(event: WheelEvent) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const list = target.closest<HTMLElement>('.final-rounds');
+    if (!list) return;
+    const rounds = [...list.querySelectorAll<HTMLButtonElement>('.final-round')];
+    const next = finalRoundFromWheel(ui.selectedFinalRound, rounds.length, event.deltaY);
+    if (next == null || next === ui.selectedFinalRound) return;
+    event.preventDefault();
+    selectFinalRound(next);
+    rounds[next]?.scrollIntoView({ block: 'nearest' });
   }
 
   onMount(() => {
@@ -165,7 +178,7 @@
   </div>
 </div>
 
-<div id="final" class:hidden={!ui.finalVisible}>
+<div id="final" class:hidden={!ui.finalVisible} onwheel={handleFinalRoundsWheel}>
   <div id="finalMap"></div>
   <div class="final-card">
     {#if modeActive && modeComponents?.Final}
