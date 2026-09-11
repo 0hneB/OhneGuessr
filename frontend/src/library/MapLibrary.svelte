@@ -247,7 +247,6 @@
       <IconButton
         variant="toolbar"
         icon="folder-icon"
-        type="button"
         disabled={!folderCreationAllowed}
         title={!folderCreationAllowed
           ? 'Managed folder'
@@ -260,7 +259,6 @@
       <IconButton
         variant="toolbar"
         icon="plus-icon"
-        type="button"
         title={importAllowed
           ? 'Import or open a file'
           : 'Open a plugin file or select a local folder to import a map'}
@@ -278,7 +276,6 @@
       <IconButton
         variant="toolbar"
         icon="export-icon"
-        type="button"
         title={library.exporting ? 'Exporting maps…' : 'Export all maps'}
         aria-label="Export all maps"
         disabled={library.exporting || (!library.maps.length && !library.folders.length)}
@@ -380,7 +377,6 @@
                     <IconButton
                       variant="row"
                       icon="pencil-icon"
-                      type="button"
                       title="Rename folder"
                       aria-label={`Rename ${row.name}`}
                       onclick={() => beginFolderRename(row.path, row.name)}
@@ -391,7 +387,6 @@
                       variant="row"
                       icon="close-icon"
                       class="danger"
-                      type="button"
                       title="Delete folder"
                       aria-label={`Delete ${row.name} and its contents`}
                       onclick={() => requestFolderDelete(row.path)}
@@ -477,7 +472,6 @@
                     <IconButton
                       variant="row"
                       icon={action.icon}
-                      type="button"
                       title={action.title}
                       aria-label={action.label(row.map)}
                       aria-busy={library.runningMapAction === `${action.id}:${row.map.id}`}
@@ -490,7 +484,6 @@
                   <IconButton
                     variant="row"
                     icon="pencil-icon"
-                    type="button"
                     title="Rename map"
                     aria-label={`Rename ${row.map.name}`}
                     onclick={() => beginMapRename(row.map)}
@@ -501,7 +494,6 @@
                     variant="row"
                     icon="close-icon"
                     class="danger"
-                    type="button"
                     title="Delete map"
                     aria-label={`Delete ${row.map.name}`}
                     onclick={() => requestMapDelete(row.map)}

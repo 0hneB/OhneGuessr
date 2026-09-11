@@ -69,7 +69,6 @@
   <div class="sync-actions">
     <IconButton
       icon="sync-icon"
-      type="button"
       disabled={actions.busy || running}
       aria-label={syncLabel}
       title={syncLabel}
@@ -77,7 +76,6 @@
     />
     <IconButton
       icon="pencil-icon"
-      type="button"
       aria-label={replaceLabel}
       title={replaceLabel}
       aria-pressed={replacingKey}
@@ -86,7 +84,6 @@
     />
     <IconButton
       icon="close-icon"
-      type="button"
       aria-label="Forget key"
       title="Forget key"
       disabled={actions.busy}

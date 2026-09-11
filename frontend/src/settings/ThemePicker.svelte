@@ -31,7 +31,6 @@
     />
     <IconButton
       icon="reset-icon"
-      type="button"
       class="accent-reset"
       aria-label="Reset accent color"
       title="Reset accent color"

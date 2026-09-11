@@ -54,7 +54,4 @@
     -webkit-appearance: none;
     margin: 0;
   }
-  .seg-custom::placeholder {
-    color: var(--launcher-disabled);
-  }
 </style>

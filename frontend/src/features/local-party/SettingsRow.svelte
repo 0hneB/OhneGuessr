@@ -8,7 +8,6 @@
   {icon}
   name="Local Party"
   description="Host games for phones on your local network."
-  dimmed={false}
   checked={localPartySettings.enabled}
   onchange={(event) => setLocalPartyEnabled(event.currentTarget.checked)}
 />

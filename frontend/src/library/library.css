@@ -265,15 +265,13 @@
 }
 
 .row-actions {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: 3px;
-  }
-.row-actions {
-    opacity: 0;
-    transition: opacity 64ms ease-in-out;
-  }
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 64ms ease-in-out;
+}
 
 :where(.library-folder, .library-map):where(:hover, :focus-within) > .row-actions {
   opacity: 1;

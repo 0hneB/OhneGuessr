@@ -8,7 +8,6 @@
   {icon}
   name="Country Streak"
   description="Keep guessing the correct country."
-  dimmed={false}
   checked={countryStreakSettings.enabled}
   onchange={(event) => setCountryStreakEnabled(event.currentTarget.checked)}
 />

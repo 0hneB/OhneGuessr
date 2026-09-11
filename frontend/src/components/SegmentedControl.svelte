@@ -66,11 +66,4 @@
     background: var(--accent);
     color: var(--accent-ink);
   }
-  .segmented :global(button.active .svg-icon) {
-    background: var(--accent-ink);
-  }
-  .segmented :global(.unlimited-icon) {
-    width: 19px;
-    height: 19px;
-  }
 </style>

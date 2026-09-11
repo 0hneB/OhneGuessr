@@ -8,7 +8,6 @@
   {icon}
   name="Challenges"
   description="Create and play .ohne challenge files."
-  dimmed={false}
   checked={challengeSettings.enabled}
   onchange={(event) => setChallengesEnabled(event.currentTarget.checked)}
 />

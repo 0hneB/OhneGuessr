@@ -35,8 +35,6 @@
     flex: none;
     align-items: center;
     gap: 3px;
-  }
-  .delete-confirm {
     font-size: 13px;
   }
 

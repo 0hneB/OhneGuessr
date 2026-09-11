@@ -64,7 +64,6 @@
 
 <IconButton
   icon="reset-icon"
-  type="button"
   class="controls-reset"
   aria-label="Reset controls to defaults"
   title="Reset controls to defaults"
