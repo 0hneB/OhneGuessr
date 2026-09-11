@@ -166,13 +166,13 @@ button { font-family: inherit; }
   align-items: center;
   height: 32px;
   padding: 0 15px;
-  background: var(--hud-pill-bg);
+  background: var(--hud-bg);
   border-radius: 16px;
   box-shadow: var(--hud-shadow);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.2px;
-  color: var(--hud-pill-text);
+  color: var(--hud-foreground);
   z-index: 500;
   white-space: nowrap;
 }
@@ -433,7 +433,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   flex-direction: column;
   gap: 2px;
   padding: 2px;
-  background: var(--hud-actions-bg);
+  background: var(--hud-bg);
   border-radius: 18px;
   box-shadow: var(--hud-shadow);
 }
@@ -446,7 +446,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   height: 32px;
   font-size: 16px;
   line-height: 1;
-  color: var(--hud-control-text);
+  color: var(--hud-foreground);
   background: transparent;
   border: none;
   border-radius: 16px;
@@ -885,7 +885,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   gap: 8px;
   padding: 16px 30px;
   color: var(--hud-text);
-  background: var(--hud-result-bg);
+  background: var(--hud-bg);
   border-radius: 16px;
   text-align: center;
   box-shadow: var(--hud-shadow);
@@ -947,7 +947,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   text-align: center;
   padding: 24px 28px;
   color: var(--hud-text);
-  background: var(--hud-final-bg);
+  background: var(--hud-bg);
   border-radius: 16px;
   box-shadow: var(--hud-shadow);
 }

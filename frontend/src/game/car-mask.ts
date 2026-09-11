@@ -34,7 +34,6 @@ void main() {
 const SCENE_SHADER_MARKER = 'texture2DProj(g,a)';
 // OpenSV draws its road targets and floor arrows as light shapes in this program.
 const NAVIGATION_SHADER_MARKER = 'uniform vec4 color;attribute vec3 vert;';
-const DEFAULT_NAVIGATION_COLOR = [211 / 255, 243 / 255, 223 / 255];
 const UNIFORM_FUNCTIONS = [
   'uniform1f', 'uniform1fv', 'uniform1i', 'uniform1iv',
   'uniform2f', 'uniform2fv', 'uniform2i', 'uniform2iv',
@@ -188,11 +187,10 @@ function installShaderHooks(gl: WebGLRenderingContext) {
       if (name === 'uniform4fv' && info?.name === 'color' &&
           currentProgram && navigationPrograms.has(currentProgram) &&
           color[0] >= 0.85 && color[0] === color[1] && color[1] === color[2]) {
-        const channels = getComputedStyle(document.documentElement)
-          .getPropertyValue('--street-view-navigation-rgb').split(',').map(Number);
-        const themed = channels.length === 3 && channels.every(Number.isFinite)
-          ? channels.map((channel) => channel / 255)
-          : DEFAULT_NAVIGATION_COLOR;
+        const themed = getComputedStyle(document.documentElement)
+          .getPropertyValue('--street-view-navigation-rgb')
+          .split(',')
+          .map((channel) => Number(channel) / 255);
         args[1] = color.slice();
         [args[1][0], args[1][1], args[1][2]] = themed;
       }

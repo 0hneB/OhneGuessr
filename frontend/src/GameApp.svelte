@@ -3,7 +3,8 @@
   import { onMount } from 'svelte';
   import {
     focusLauncher,
-    gameReady
+    gameReady,
+    syncGameWindowTheme
   } from './desktop.js';
   import { formatDistance } from './game/scoring.js';
   import { settings, state as gameState } from './game/state.svelte.js';
@@ -27,6 +28,7 @@
   import { gameMode } from '../../internal/plugins/game-mode.svelte.js';
   import { ui } from './ui.svelte.js';
   import { pluginHudButtons } from './plugins/host.svelte.js';
+  import { onSettingsChanged } from './settings/store.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);
   const modeActive = $derived(Boolean(gameMode.current));
@@ -49,9 +51,14 @@
     focusLauncher();
   }
 
-  onMount(async () => {
-    gameReady(new URLSearchParams(location.search).get('map') || '');
-    await init();
+  onMount(() => {
+    const stopThemeSync = onSettingsChanged(() => { void syncGameWindowTheme(); });
+    void (async () => {
+      await syncGameWindowTheme();
+      gameReady(new URLSearchParams(location.search).get('map') || '');
+      await init();
+    })();
+    return stopThemeSync;
   });
 </script>
 

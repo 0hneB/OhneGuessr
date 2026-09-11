@@ -36,3 +36,7 @@ export function LaunchMap(mapID: string, mode: string): $CancellablePromise<void
 export function SetGameFullscreen(enabled: boolean): $CancellablePromise<$models.GameWindowState> {
     return $Call.ByID(2531214782, enabled);
 }
+
+export function SetGameWindowTheme(background: string, foreground: string): $CancellablePromise<void> {
+    return $Call.ByID(1142507928, background, foreground);
+}

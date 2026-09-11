@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -224,6 +225,18 @@ func (d *DesktopService) GameReady(mapID string) {
 	d.emitGameState()
 }
 
+func (d *DesktopService) SetGameWindowTheme(background, foreground string) {
+	backgroundColour, backgroundOK := parseColourRef(background)
+	foregroundColour, foregroundOK := parseColourRef(foreground)
+	if !backgroundOK || !foregroundOK {
+		return
+	}
+	d.mu.RLock()
+	game := d.game
+	d.mu.RUnlock()
+	applyWindowTheme(game, backgroundColour, foregroundColour)
+}
+
 func (d *DesktopService) emitGameState() {
 	d.mu.RLock()
 	wails := d.wails
@@ -239,4 +252,19 @@ func gameURL(mapID, mode string) string {
 		target += "&mode=" + url.QueryEscape(mode)
 	}
 	return target
+}
+
+func parseColourRef(value string) (uint32, bool) {
+	hex := strings.TrimPrefix(strings.TrimSpace(value), "#")
+	if len(hex) == 3 {
+		hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
+	}
+	if len(hex) != 6 {
+		return 0, false
+	}
+	rgb, err := strconv.ParseUint(hex, 16, 24)
+	if err != nil {
+		return 0, false
+	}
+	return uint32(rgb&0xff)<<16 | uint32(rgb&0xff00) | uint32(rgb>>16), true
 }

@@ -45,6 +45,15 @@ export function gameReady(mapID: string) {
   if (desktopRuntimeAvailable()) void DesktopService.GameReady(mapID);
 }
 
+export async function syncGameWindowTheme() {
+  if (!desktopRuntimeAvailable()) return;
+  const theme = getComputedStyle(document.documentElement);
+  await DesktopService.SetGameWindowTheme(
+    theme.getPropertyValue('--launcher-main').trim(),
+    theme.getPropertyValue('--launcher-text-soft').trim()
+  );
+}
+
 export async function setGameFullscreen(enabled: boolean) {
   return desktopRuntimeAvailable()
     ? DesktopService.SetGameFullscreen(enabled)

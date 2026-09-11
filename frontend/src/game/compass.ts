@@ -10,7 +10,6 @@ const CONFIG = {
     y1: 10,
     y2: 21,
     width: 1.25,
-    color: '202, 210, 221',
     alpha: 0.78,
     edgeAlpha: 0.38,
     edgeFade: 7,
@@ -18,7 +17,6 @@ const CONFIG = {
   },
   label: {
     font: '800 12px "Manrope", system-ui, sans-serif',
-    color: '#fbfbfd',
     shadow: 'rgba(15, 21, 32, .55)',
     shadowBlur: 1,
     shadowOffsetY: 1,
@@ -27,8 +25,7 @@ const CONFIG = {
   marker: {
     x: 120,
     width: 2
-  },
-  fill: 'rgba(0, 0, 0, .6)'
+  }
 } as const;
 
 const LABELS = [
@@ -100,13 +97,13 @@ export class CompassHUD {
     const { ctx } = this;
     const { w, h } = CONFIG.size;
     const theme = getComputedStyle(document.documentElement);
-    const surface = theme.getPropertyValue('--hud-compass-bg').trim();
-    const text = theme.getPropertyValue('--hud-compass-text').trim();
+    const surface = theme.getPropertyValue('--hud-bg').trim();
+    const text = theme.getPropertyValue('--hud-foreground').trim();
     const muted = theme.getPropertyValue('--hud-compass-muted').trim();
     ctx.clearRect(0, 0, w, h);
     ctx.save();
     this.pathBar();
-    ctx.fillStyle = surface || CONFIG.fill;
+    ctx.fillStyle = surface;
     ctx.fill();
     ctx.clip();
     ctx.font = CONFIG.label.font;
@@ -124,13 +121,13 @@ export class CompassHUD {
     const lastTick = this.heading + 70;
     ctx.lineCap = 'butt';
     ctx.lineWidth = tick.width;
+    ctx.strokeStyle = color;
     for (let angle = firstTick; angle <= lastTick; angle += tick.step) {
       const x = this.xForAngle(wrap(angle));
       if (x < bar.x - 2 || x > bar.x + bar.w + 2) continue;
       if (this.tickHitsLabel(x, labels)) continue;
       const nearEdge = x < bar.x + tick.edgeFade || x > bar.x + bar.w - tick.edgeFade;
       const alpha = nearEdge ? tick.edgeAlpha : tick.alpha;
-      ctx.strokeStyle = color || `rgb(${tick.color})`;
       ctx.globalAlpha = alpha;
       ctx.beginPath();
       ctx.moveTo(Math.round(x) + 0.5, tick.y1);
@@ -145,7 +142,7 @@ export class CompassHUD {
     const { bar, label } = CONFIG;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = color || label.color;
+    ctx.fillStyle = color;
     ctx.shadowColor = label.shadow;
     ctx.shadowBlur = label.shadowBlur;
     ctx.shadowOffsetY = label.shadowOffsetY;
