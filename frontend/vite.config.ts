@@ -5,7 +5,7 @@ export default defineConfig({
   base: './',
   plugins: [svelte()],
   server: { fs: { allow: ['..'] } },
-  test: { include: ['test/**/*.test.{ts,js}'] },
+  test: { include: ['src/**/*.test.ts', '../plugins/**/*.test.js'] },
   // MapLibre is intentionally lazy-loaded with the game; its minified bundle is
   // large but only ~287 kB compressed, so splitting it again adds no useful win.
   build: { chunkSizeWarningLimit: 1100 }
