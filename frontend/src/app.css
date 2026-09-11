@@ -238,6 +238,9 @@ body.ui-hidden #scoreBox,
 body.ui-hidden #guessPanel { display: none !important; }
 
 /* OpenSV renders each link as shadow, visible arrow, then transparent [pano] hit target. */
+#pano svg > path:not([pano]):has(+ path[pano]) {
+  fill: rgb(var(--street-view-navigation-rgb)) !important;
+}
 #pano svg > path:not([pano]):has(+ path[pano]:hover) {
   fill: var(--accent) !important;
 }
