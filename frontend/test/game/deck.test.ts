@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { sampleMap, type MapSample } from '../../src/maps/api.js';
+import { sampleMap, type MapSample } from '../../src/library/api.js';
 import type { MapItem } from '../../src/types.js';
 import {
   createSampledDeck, ensureDeckIndex, nextRoundFallback, replaceDeckLocation,
@@ -7,7 +7,7 @@ import {
 } from '../../src/game/deck.js';
 import { state } from '../../src/game/state.svelte.js';
 
-vi.mock('../../src/maps/api.js', () => ({ sampleMap: vi.fn() }));
+vi.mock('../../src/library/api.js', () => ({ sampleMap: vi.fn() }));
 vi.mock('../../src/game/state.svelte.js', () => ({ state: {} }));
 
 const map: MapItem = { id: 'map', name: 'Map', file: 'map.json', folder: '', count: 10, managed: false, source: null };

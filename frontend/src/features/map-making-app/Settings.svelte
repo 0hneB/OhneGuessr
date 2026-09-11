@@ -1,7 +1,7 @@
 <script lang="ts">
   import SyncControls from '../map-sync/SyncControls.svelte';
   import { type SyncActions } from '../map-sync/sync-actions.js';
-  import { reloadLibrary } from '../../maps/library.svelte.js';
+  import { reloadLibrary } from '../../library/library.svelte.js';
   import {
     forgetKey,
     getStatus,

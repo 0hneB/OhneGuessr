@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { gameMode, type GameMode } from '../../src/game/game-mode.svelte.js';
-import { sampleMap } from '../../src/maps/api.js';
+import { sampleMap } from '../../src/library/api.js';
 import type { MapItem } from '../../src/types.js';
 import { createSampledDeck, selectSampledMap, useFixedDeck } from '../../src/game/deck.js';
 import type { OpenSvViewer } from '../../src/game/panorama.js';
@@ -9,7 +9,7 @@ import {
 } from '../../src/game/round-preparation.js';
 import { state } from '../../src/game/state.svelte.js';
 
-vi.mock('../../src/maps/api.js', () => ({ sampleMap: vi.fn() }));
+vi.mock('../../src/library/api.js', () => ({ sampleMap: vi.fn() }));
 vi.mock('../../src/game/state.svelte.js', () => ({ state: {}, GAME_PHASE: { RESULT: 'result' } }));
 vi.mock('../../src/game/game-mode.svelte.js', () => ({ gameMode: { current: null } }));
 

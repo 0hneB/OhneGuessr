@@ -20,7 +20,7 @@ import {
   onSettingsChanged,
   updateSettings
 } from '../settings/store.svelte.js';
-import { loadLibrary, sampleMap } from '../maps/api.js';
+import { loadLibrary, sampleMap } from '../library/api.js';
 import {
   createSampledDeck, ensureDeckIndex, hasNextRound, hasSampledLocations,
   PANORAMA_RETRIES, resizeSampledDeck, selectSampledMap, UNLIMITED_BATCH_ROUNDS, useFixedDeck

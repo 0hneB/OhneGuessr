@@ -1,7 +1,7 @@
 // Folder-aware map storage. The versioned manifest remains plain JSON so the
 // cached library can still run from any static HTTP server.
 import { requestJSON as api } from '../api.js';
-import { isManagedSource } from '../library/map-sources.js';
+import { isManagedSource } from './map-sources.js';
 import type { Location, MapItem, MapSource } from '../types.js';
 
 const MANIFEST_URL = '/data/maps.json';

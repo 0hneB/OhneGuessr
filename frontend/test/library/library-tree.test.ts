@@ -5,7 +5,7 @@ import {
   buildLibraryRows,
   canMoveMap,
   mapMoveTargets
-} from '../../src/maps/library-tree.js';
+} from '../../src/library/library-tree.js';
 
 const EDITABLE_ROOT = 'editable-sync';
 const LOCKED_ROOT = 'Locked Sync';

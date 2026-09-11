@@ -7,12 +7,12 @@
     setGameFullscreen,
     type GameWindowState
   } from './desktop.js';
-  import MapLibrary from './maps/MapLibrary.svelte';
+  import MapLibrary from './library/MapLibrary.svelte';
   import {
     initLibrary,
     setActiveMap,
     showLibraryNotice
-  } from './maps/library.svelte.js';
+  } from './library/library.svelte.js';
   import { onLauncherPageRequested } from './launcher-events.js';
   import MapSyncLayout from './features/map-sync/MapSyncLayout.svelte';
   import PluginsPanel from './plugins/PluginsPanel.svelte';

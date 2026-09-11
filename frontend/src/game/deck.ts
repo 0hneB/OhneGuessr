@@ -1,5 +1,5 @@
 // Sampling, replacement locations, and the current deck's source indexes.
-import { sampleMap, type MapSample, type SampledLocation } from '../maps/api.js';
+import { sampleMap, type MapSample, type SampledLocation } from '../library/api.js';
 import { state } from './state.svelte.js';
 import type { Location, MapItem } from '../types.js';
 

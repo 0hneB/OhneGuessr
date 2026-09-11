@@ -3,8 +3,8 @@ import { closeGame, exportMaps as exportMapsToFile, launchMap } from '../desktop
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
 import { isChallengeFilename } from '../features/challenges/challenge.js';
 import { openChallengeFile } from '../features/challenges/open.js';
-import type { MapAction } from '../library/map-actions.js';
-import { mapSourceFor, refreshMapSourceRoot } from '../library/map-sources.js';
+import type { MapAction } from './map-actions.js';
+import { mapSourceFor, refreshMapSourceRoot } from './map-sources.js';
 import type { MapItem } from '../types.js';
 import {
   addUserMap,
