@@ -460,14 +460,13 @@ class RevealEngine {
     slotId: string,
     results: RevealResult[],
     trail: Trail | null,
-    { obstruction = null, singlePointZoom = null }: RevealOptions = {}
+    obstruction: Element | null
   ) {
     this.mount(slotId);
     this.layers.setResults(results, trail);
     this.fitRequest = {
       points: resultPoints(results),
-      obstruction,
-      singlePointZoom
+      obstruction
     };
     this.scheduleFit();
   }
@@ -484,7 +483,7 @@ class RevealEngine {
     });
   }
 
-  fit({ points, obstruction, singlePointZoom }: FitRequest) {
+  fit({ points, obstruction }: FitRequest) {
     if (!points.length) return;
     resizeMap(this.map);
     this.map.stop();
@@ -504,7 +503,7 @@ class RevealEngine {
       duration: 0
     };
     if (onePoint) {
-      options.maxZoom = Math.min(singlePointZoom ?? 4, this.map.getMaxZoom());
+      options.maxZoom = Math.min(4, this.map.getMaxZoom());
     }
     this.map.fitBounds(bounds, options);
   }
@@ -530,68 +529,9 @@ class RevealEngine {
   }
 }
 
-class ResultMap {
-  private readonly engine: RevealEngine;
-  private readonly slotId: string;
-  private readonly obstruction: Element | null;
-
-  constructor(engine: RevealEngine, slotId: string, obstruction: Element | null) {
-    this.engine = engine;
-    this.slotId = slotId;
-    this.obstruction = obstruction;
-  }
-
-  show(result: RevealResult, trail: Trail | null = null) {
-    this.engine.show(
-      this.slotId,
-      [result],
-      trail,
-      { obstruction: this.obstruction, singlePointZoom: 4 }
-    );
-  }
-
-  showMany(results: RevealResult[], trail: Trail | null = null) {
-    this.engine.show(
-      this.slotId,
-      results,
-      trail,
-      { obstruction: this.obstruction, singlePointZoom: 4 }
-    );
-  }
-
-  setStyle(key: string) { this.engine.setStyle(key); }
-  setAccent(accent: string) { this.engine.setAccent(accent); }
-  setZoomSpeed(value: unknown) { return this.engine.setZoomSpeed(value); }
-}
-
-class SummaryMap {
-  private readonly engine: RevealEngine;
-  private readonly slotId: string;
-  private readonly obstruction: Element | null;
-
-  constructor(engine: RevealEngine, slotId: string, obstruction: Element | null) {
-    this.engine = engine;
-    this.slotId = slotId;
-    this.obstruction = obstruction;
-  }
-
-  show(results: RevealResult[]) {
-    if (!results.length) return;
-    this.engine.show(this.slotId, results, null, {
-      obstruction: this.obstruction
-    });
-  }
-}
-
-interface RevealOptions {
-  obstruction?: Element | null;
-  singlePointZoom?: number | null;
-}
-
 interface FitRequest {
   points: Point[];
   obstruction: Element | null;
-  singlePointZoom: number | null;
 }
 
 export function createRevealMaps(
@@ -600,8 +540,22 @@ export function createRevealMaps(
   styleKey = DEFAULT_MAP_STYLE_KEY
 ) {
   const engine = new RevealEngine(styleKey);
+  const resultPanel = document.getElementById('resultPanel');
+  const finalCard = document.querySelector('#final .final-card');
+  const showMany = (results: RevealResult[], trail: Trail | null = null) =>
+    engine.show(resultElId, results, trail, resultPanel);
   return {
-    resultMap: new ResultMap(engine, resultElId, document.getElementById('resultPanel')),
-    summaryMap: new SummaryMap(engine, finalElId, document.querySelector('#final .final-card'))
+    resultMap: {
+      show: (result: RevealResult, trail: Trail | null = null) => showMany([result], trail),
+      showMany,
+      setStyle: engine.setStyle.bind(engine),
+      setAccent: engine.setAccent.bind(engine),
+      setZoomSpeed: engine.setZoomSpeed.bind(engine)
+    },
+    summaryMap: {
+      show(results: RevealResult[]) {
+        if (results.length) engine.show(finalElId, results, null, finalCard);
+      }
+    }
   };
 }
