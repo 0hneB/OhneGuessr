@@ -135,7 +135,7 @@
 .party-primary:hover { background: var(--accent-strong); }
 .party-start:disabled,
 .party-primary:disabled { opacity: 0.45; cursor: default; }
-.party-error { margin-top: 10px; color: #fb7185; font-size: 13px; }
+.party-error { margin-top: 10px; color: var(--launcher-error); font-size: 13px; }
 .party-lobby .party-error { color: var(--launcher-error); }
 
 .party-round-status { right: 14px; padding-right: 6px; }
@@ -185,13 +185,13 @@ body.game-mode-host .final-card { width: min(88vw, 370px); }
   align-items: center;
   padding: 8px 10px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--party-leaderboard-bg);
   text-align: left;
 }
 .party-leaderboard b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .party-leaderboard strong { color: var(--accent); font-variant-numeric: tabular-nums; }
-.party-round-leaderboard strong { color: #fff; }
-.party-place { color: #aab2bd; font-weight: 800; }
+.party-round-leaderboard strong { color: var(--party-round-text); }
+.party-place { color: var(--party-place-text); font-weight: 800; }
 .party-final-rounds { flex-flow: row wrap; justify-content: center; overflow-y: visible; }
 .party-final-rounds .final-round { display: grid; width: 38px; grid-template-columns: 1fr; padding: 8px; }
 .party-final-rounds .fr-no { text-align: center; }

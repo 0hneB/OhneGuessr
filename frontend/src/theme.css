@@ -6,6 +6,7 @@
   font-display: swap;
 }
 
+:root,
 .launcher-shell,
 .plugin-window {
   --launcher-color-scheme: dark;
@@ -39,9 +40,51 @@
   --launcher-switch: var(--launcher-element-active);
   --launcher-range-track: var(--launcher-border);
   --launcher-nav-icon-filter: invert(1);
+
+  --hud-bg: color-mix(in srgb, var(--launcher-surface) 88%, transparent);
+  --hud-element: color-mix(in srgb, var(--launcher-element) 92%, transparent);
+  --hud-hover: var(--launcher-element-hover);
+  --hud-active: var(--launcher-element-active);
+  --hud-border: var(--launcher-border);
+  --hud-text: var(--launcher-text);
+  --hud-muted: var(--launcher-text-muted);
+  --hud-pill-bg: var(--hud-bg);
+  --hud-pill-text: var(--hud-text);
+  --hud-actions-bg: var(--hud-bg);
+  --hud-control-text: var(--hud-text);
+  --hud-control-muted: var(--hud-muted);
+  --hud-compass-bg: var(--hud-bg);
+  --hud-compass-text: var(--hud-text);
+  --hud-compass-muted: var(--hud-muted);
+  --hud-compass-ring: color-mix(in srgb, var(--hud-text) 32%, transparent);
+  --hud-compass-ring-hover: color-mix(in srgb, var(--hud-text) 40%, transparent);
+  --hud-compass-south: var(--hud-text);
+  --hud-result-bg: var(--hud-bg);
+  --hud-secondary-hover: var(--hud-hover);
+  --hud-secondary-hover-border: var(--launcher-border-focused);
+  --hud-final-bg: var(--hud-bg);
+  --hud-round-bg: var(--hud-element);
+  --hud-round-border: var(--hud-border);
+  --hud-round-hover: var(--hud-hover);
+  --hud-round-active: var(--hud-active);
+  --hud-round-active-border: var(--launcher-border-focused);
+  --hud-round-distance: var(--hud-text);
+  --hud-loading-bg: color-mix(in srgb, var(--launcher-main) 86%, transparent);
+  --hud-error: var(--launcher-error);
+  --country-streak-label: var(--hud-muted);
+  --country-streak-text: var(--hud-text);
+  --country-streak-stat: var(--hud-text);
+  --country-streak-summary: var(--hud-muted);
+  --country-streak-round-text: var(--hud-text);
+  --party-leaderboard-bg: var(--hud-element);
+  --party-round-text: var(--hud-text);
+  --party-place-text: var(--hud-muted);
+  --plugin-window-border: var(--launcher-border);
+  --plugin-window-divider: var(--launcher-border);
 }
 
 .launcher-shell[data-theme="ohneguessr"],
+:root[data-theme="ohneguessr"],
 :root[data-theme="ohneguessr"] .plugin-window {
   --launcher-surface: #1e221f;
   --launcher-elevated: #343934;
@@ -63,6 +106,7 @@
 }
 
 .launcher-shell[data-theme="ohneb"],
+:root[data-theme="ohneb"],
 :root[data-theme="ohneb"] .plugin-window {
   --launcher-font-family: "Ubuntu Sans", "Segoe UI", Arial, sans-serif;
   --launcher-background: #2d2521;
@@ -81,6 +125,7 @@
 }
 
 .launcher-shell[data-theme="gruvbox-dark-soft"],
+:root[data-theme="gruvbox-dark-soft"],
 :root[data-theme="gruvbox-dark-soft"] .plugin-window {
   --launcher-background: #4c4642;
   --launcher-main: #32302f;
@@ -98,6 +143,7 @@
 }
 
 .launcher-shell[data-theme="gruvbox-light-soft"],
+:root[data-theme="gruvbox-light-soft"],
 :root[data-theme="gruvbox-light-soft"] .plugin-window {
   --launcher-color-scheme: light;
   --launcher-background: #d9c8a4;
@@ -117,6 +163,7 @@
 }
 
 .launcher-shell[data-theme="ayu-light"],
+:root[data-theme="ayu-light"],
 :root[data-theme="ayu-light"] .plugin-window {
   --launcher-color-scheme: light;
   --launcher-background: #dcddde;
@@ -136,6 +183,7 @@
 }
 
 .launcher-shell[data-theme="ayu-mirage"],
+:root[data-theme="ayu-mirage"],
 :root[data-theme="ayu-mirage"] .plugin-window {
   --launcher-background: #464a52;
   --launcher-main: #242835;

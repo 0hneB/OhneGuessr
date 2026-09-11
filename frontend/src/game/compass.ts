@@ -99,21 +99,25 @@ export class CompassHUD {
   draw() {
     const { ctx } = this;
     const { w, h } = CONFIG.size;
+    const theme = getComputedStyle(document.documentElement);
+    const surface = theme.getPropertyValue('--hud-compass-bg').trim();
+    const text = theme.getPropertyValue('--hud-compass-text').trim();
+    const muted = theme.getPropertyValue('--hud-compass-muted').trim();
     ctx.clearRect(0, 0, w, h);
     ctx.save();
     this.pathBar();
-    ctx.fillStyle = CONFIG.fill;
+    ctx.fillStyle = surface || CONFIG.fill;
     ctx.fill();
     ctx.clip();
     ctx.font = CONFIG.label.font;
     const labels = this.visibleLabels();
-    this.drawTicks(labels);
-    this.drawLabels(labels);
+    this.drawTicks(labels, muted);
+    this.drawLabels(labels, text);
     this.drawMarker();
     ctx.restore();
   }
 
-  drawTicks(labels: VisibleLabel[]) {
+  drawTicks(labels: VisibleLabel[], color: string) {
     const { ctx } = this;
     const { bar, tick } = CONFIG;
     const firstTick = Math.floor((this.heading - 70) / tick.step) * tick.step;
@@ -126,20 +130,22 @@ export class CompassHUD {
       if (this.tickHitsLabel(x, labels)) continue;
       const nearEdge = x < bar.x + tick.edgeFade || x > bar.x + bar.w - tick.edgeFade;
       const alpha = nearEdge ? tick.edgeAlpha : tick.alpha;
-      ctx.strokeStyle = `rgba(${tick.color}, ${alpha})`;
+      ctx.strokeStyle = color || `rgb(${tick.color})`;
+      ctx.globalAlpha = alpha;
       ctx.beginPath();
       ctx.moveTo(Math.round(x) + 0.5, tick.y1);
       ctx.lineTo(Math.round(x) + 0.5, tick.y2);
       ctx.stroke();
     }
+    ctx.globalAlpha = 1;
   }
 
-  drawLabels(labels: VisibleLabel[]) {
+  drawLabels(labels: VisibleLabel[], color: string) {
     const { ctx } = this;
     const { bar, label } = CONFIG;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = label.color;
+    ctx.fillStyle = color || label.color;
     ctx.shadowColor = label.shadow;
     ctx.shadowBlur = label.shadowBlur;
     ctx.shadowOffsetY = label.shadowOffsetY;

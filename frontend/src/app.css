@@ -21,8 +21,6 @@
     drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
     drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4));
 
-  /* Shared translucent HUD background, matched by compass.ts. */
-  --hud-bg: rgba(0, 0, 0, 0.6);
   --hud-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   --timer-top: 52px;
 }
@@ -64,9 +62,9 @@
 html, body {
   height: 100%;
   overflow: hidden;
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: var(--launcher-font-family);
   background: #111;
-  color: #fff;
+  color: var(--hud-text);
 }
 
 button { font-family: inherit; }
@@ -168,17 +166,17 @@ button { font-family: inherit; }
   align-items: center;
   height: 32px;
   padding: 0 15px;
-  background: var(--hud-bg);
+  background: var(--hud-pill-bg);
   border-radius: 16px;
   box-shadow: var(--hud-shadow);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.2px;
-  color: #fbfbfd;
+  color: var(--hud-pill-text);
   z-index: 500;
   white-space: nowrap;
 }
-.hud-pill b { color: #fff; font-weight: 800; }
+.hud-pill b { color: var(--hud-text); font-weight: 800; }
 #topLeft { left: 54px; }
 #scoreBox { right: 14px; }
 #rounds.rounds-unlimited {
@@ -215,7 +213,7 @@ button { font-family: inherit; }
   stroke-width: 3;
   vector-effect: non-scaling-stroke;
 }
-.timer-ring-track { stroke: rgba(255, 255, 255, 0.18); }
+.timer-ring-track { stroke: color-mix(in srgb, var(--hud-text) 18%, transparent); }
 .timer-ring-progress {
   stroke: var(--timer-ring);
   stroke-linecap: round;
@@ -277,7 +275,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   border-radius: 50%;
   background: transparent;
   box-shadow:
-    inset 0 0 0 12px rgba(246, 249, 251, 0.32),
+    inset 0 0 0 12px var(--hud-compass-ring),
     0 2px 5px rgba(0, 0, 0, 0.22);
   cursor: pointer;
   transition: box-shadow 80ms ease-out;
@@ -286,7 +284,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 
 .classic-compass:hover {
   box-shadow:
-    inset 0 0 0 12px rgba(246, 249, 251, 0.4),
+    inset 0 0 0 12px var(--hud-compass-ring-hover),
     0 2px 5px rgba(0, 0, 0, 0.22);
 }
 
@@ -303,7 +301,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 
 .classic-compass-north { fill: var(--accent); }
-.classic-compass-south { fill: #d8dee4; }
+.classic-compass-south { fill: var(--hud-compass-south); }
 
 :root[data-compass-style="bar"] #compass-hud,
 :root[data-compass-style="both"] #compass-hud {
@@ -432,7 +430,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   flex-direction: column;
   gap: 2px;
   padding: 2px;
-  background: var(--hud-bg);
+  background: var(--hud-actions-bg);
   border-radius: 18px;
   box-shadow: var(--hud-shadow);
 }
@@ -445,7 +443,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   height: 32px;
   font-size: 16px;
   line-height: 1;
-  color: #fbfbfd;
+  color: var(--hud-control-text);
   background: transparent;
   border: none;
   border-radius: 16px;
@@ -454,7 +452,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 #settingsBtn:hover,
 .plugin-hud-button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hud-hover);
 }
 #settingsBtn .settings-icon {
   width: 18px;
@@ -466,7 +464,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   fill: currentColor;
 }
 .plugin-hud-button[aria-pressed="false"] {
-  color: rgba(251, 251, 253, 0.55);
+  color: var(--hud-control-muted);
 }
 .plugin-hud-button[aria-pressed="true"] {
   color: var(--accent);
@@ -883,13 +881,14 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   align-items: center;
   gap: 8px;
   padding: 16px 30px;
-  background: var(--hud-bg);
+  color: var(--hud-text);
+  background: var(--hud-result-bg);
   border-radius: 16px;
   text-align: center;
   box-shadow: var(--hud-shadow);
 }
 .result-dist { font-size: 15px; opacity: 0.85; }
-.result-dist b { font-size: 22px; font-weight: 800; color: #fff; }
+.result-dist b { font-size: 22px; font-weight: 800; color: var(--hud-text); }
 .result-points { font-size: 14px; }
 .result-points b { font-size: 20px; font-weight: 800; color: var(--accent); }
 .result-actions {
@@ -913,13 +912,13 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 #nextBtn:hover { background: var(--accent-strong); }
 #endGameBtn {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--hud-text);
+  background: var(--hud-element);
+  border: 1px solid var(--hud-border);
 }
 #endGameBtn:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.34);
+  background: var(--hud-secondary-hover);
+  border-color: var(--hud-secondary-hover-border);
 }
 
 .reveal-map { position: absolute; inset: 0; }
@@ -944,7 +943,8 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   max-height: calc(100vh - 56px);
   text-align: center;
   padding: 24px 28px;
-  background: var(--hud-bg);
+  color: var(--hud-text);
+  background: var(--hud-final-bg);
   border-radius: 16px;
   box-shadow: var(--hud-shadow);
 }
@@ -966,23 +966,23 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   gap: 10px;
   padding: 7px 12px;
   font-family: inherit;
-  color: inherit;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--hud-text);
+  background: var(--hud-round-bg);
+  border: 1px solid var(--hud-round-border);
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
-.final-round:hover { background: rgba(255, 255, 255, 0.08); }
+.final-round:hover { background: var(--hud-round-hover); }
 .final-round.selected {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.28);
+  background: var(--hud-round-active);
+  border-color: var(--hud-round-active-border);
 }
 .final-round:focus-visible { outline: none; }
-.final-round.selected .fr-no { color: #fff; }
-.fr-no { color: #9aa3ad; font-weight: 700; text-align: left; }
-.fr-dist { color: #cbd2dd; text-align: left; }
+.final-round.selected .fr-no { color: var(--hud-text); }
+.fr-no { color: var(--hud-muted); font-weight: 700; text-align: left; }
+.fr-dist { color: var(--hud-round-distance); text-align: left; }
 .fr-pts { color: var(--accent); font-weight: 800; }
 .final-actions {
   display: flex;
@@ -998,15 +998,15 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   cursor: pointer;
 }
 .final-actions button:not(#playAgain) {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--hud-text);
+  background: var(--hud-element);
+  border: 1px solid var(--hud-border);
 }
 .final-actions #playAgain { padding-inline: 14px; }
 .final-actions button:disabled { opacity: 0.55; cursor: wait; }
 .final-action-error {
   margin-top: 8px;
-  color: #fb7185;
+  color: var(--hud-error);
   font-size: 12px;
 }
 #playAgain {
@@ -1047,7 +1047,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   place-content: center;
   justify-items: center;
   gap: 14px;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--hud-loading-bg);
   text-align: center;
 }
 #loading p { font-size: 14px; opacity: 0.85; max-width: 320px; }

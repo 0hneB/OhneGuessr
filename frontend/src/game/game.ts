@@ -798,6 +798,7 @@ function applyLiveSettings(next: Settings, previous: Settings) {
     gmap.setAccent(next.accentColor);
     resultMap.setAccent(next.accentColor);
   }
+  if (next.theme !== previous.theme) compass.render();
   if (!gameMode.current && next.movement !== previous.movement) viewer.setMode(next.movement);
   if (!gameMode.current && next.streetViewZoomedOut !== previous.streetViewZoomedOut) {
     viewer.setStartZoomedOut(next.streetViewZoomedOut);
