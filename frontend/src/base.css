@@ -1,0 +1,122 @@
+@font-face {
+  font-family: "Manrope";
+  src: url("/vendor/manrope/Manrope-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Default accent; the Display picker overrides these four at runtime. */
+  --accent: #22c55e;        /* base accent */
+  --accent-strong: #16a34a; /* hover / pressed */
+  --accent-ink: #06240f;    /* text/icon on top of the accent */
+  --accent-rgb: 34, 197, 94; /* for rgba() tints */
+  --result-marker-filter:
+    drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
+    drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff)
+    drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4));
+
+  --hud-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --timer-top: 52px;
+}
+
+:root[data-compass-style="classic"] {
+  --timer-top: 12px;
+}
+
+/* Keep every scroll area compact and visually consistent. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+@supports selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+  *::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+    background: transparent;
+  }
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner { background: transparent; }
+  *::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
+    -webkit-appearance: none;
+  }
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--launcher-font-family);
+  background: #111;
+  color: var(--hud-text);
+}
+
+button { font-family: inherit; }
+
+#pano {
+  position: fixed;
+  inset: 0;
+}
+
+/* Hide Street View's chrome: the Google logo (bottom-left) and the copyright /
+   Terms / Report / keyboard-shortcuts bar (bottom-right). */
+#pano img[alt="Google"],
+#pano .gm-style-cc,
+#pano button[aria-label="Keyboard shortcuts"] {
+  display: none !important;
+}
+
+/* opensv draws a blue focus ring when the pano is focused on each round load. */
+#pano .mapsImagerySceneScene__focusOutline {
+  display: none !important;
+}
+#pano *:focus {
+  outline: none !important;
+}
+
+.svg-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  flex: none;
+  background: currentColor;
+  vertical-align: -0.12em;
+  -webkit-mask-image: var(--icon-url);
+  mask-image: var(--icon-url);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.settings-icon { --icon-url: url("/icons/settings.svg"); }
+.unlimited-icon { --icon-url: url("/icons/unlimited.svg"); }
+.timer-icon { --icon-url: url("/icons/timer.svg"); }
+.search-icon { --icon-url: url("/icons/search.svg"); }
+.folder-icon { --icon-url: url("/icons/folder.svg"); }
+.export-icon { --icon-url: url("/icons/export.svg"); }
+.refresh-icon { --icon-url: url("/icons/refresh.svg"); }
+.plus-icon { --icon-url: url("/icons/plus.svg"); }
+.sync-icon { --icon-url: url("/icons/sync.svg"); }
+.pencil-icon { --icon-url: url("/icons/pencil.svg"); }
+.info-icon { --icon-url: url("/icons/info.svg"); }
+.link-icon { --icon-url: url("/icons/link.svg"); }
+.close-icon { --icon-url: url("/icons/close.svg"); }
+.save-icon { --icon-url: url("/icons/save.svg"); }
+.chevron-icon { --icon-url: url("/icons/chevron.svg"); }
+.reset-icon { --icon-url: url("/icons/reset.svg"); }

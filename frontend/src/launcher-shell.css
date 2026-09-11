@@ -1,0 +1,256 @@
+.launcher-body {
+  background: #232723;
+}
+
+.launcher-shell {
+  color-scheme: var(--launcher-color-scheme);
+  color: var(--launcher-text);
+  background: var(--launcher-background);
+  font-family: var(--launcher-font-family);
+  font-size: 16px;
+  font-synthesis: none;
+}
+
+.launcher-shell button {
+  border-radius: 4px;
+}
+
+.launcher-shell button:has(> .svg-icon) {
+  border-radius: 50%;
+}
+
+.launcher-shell :where(button, input, select, textarea) {
+  font-family: inherit;
+}
+
+#app,
+.launcher-shell {
+  width: 100%;
+  height: 100%;
+}
+
+.launcher-app {
+  --launcher-sidebar-width: 190px;
+  --launcher-content-top-inset: 6px;
+  display: grid;
+  grid-template-areas:
+    "sidebar titlebar"
+    "sidebar main";
+  grid-template-columns: var(--launcher-sidebar-width) minmax(0, 1fr);
+  grid-template-rows: 38px minmax(0, 1fr);
+}
+
+.launcher-titlebar {
+  --wails-draggable: drag;
+  --wails-non-client-region: caption;
+  grid-area: titlebar;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--launcher-text-soft);
+  background: var(--launcher-main);
+  user-select: none;
+}
+
+.launcher-brand {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 9px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.launcher-brand img {
+  width: 32px;
+  height: 32px;
+}
+
+.launcher-window-controls {
+  --wails-draggable: no-drag;
+  display: flex;
+  align-self: stretch;
+}
+
+.launcher-window-controls button {
+  display: grid;
+  width: 46px;
+  padding: 0;
+  place-items: center;
+  color: var(--launcher-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: default;
+}
+
+.launcher-window-controls button::before {
+  font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets", sans-serif;
+  font-size: 10px;
+}
+
+.launcher-window-controls .minimise {
+  --wails-non-client-region: minimize;
+}
+
+.launcher-window-controls .minimise::before {
+  content: "\e921";
+}
+
+.launcher-window-controls .maximise {
+  --wails-non-client-region: maximize;
+}
+
+.launcher-window-controls .maximise::before {
+  content: "\e922";
+}
+
+.launcher-window-controls .close {
+  --wails-non-client-region: close;
+}
+
+.launcher-window-controls .close::before {
+  content: "\e8bb";
+}
+
+.launcher-window-controls button:hover {
+  color: var(--launcher-text);
+  background: var(--launcher-element-hover);
+}
+
+.launcher-window-controls button.close:hover {
+  color: #fff;
+  background: #c42b1c;
+}
+
+.launcher-sidebar {
+  grid-area: sidebar;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 10px 12px 14px;
+  background: var(--launcher-surface);
+  border-right: 1px solid var(--launcher-border);
+}
+
+.launcher-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.launcher-sidebar nav button {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 11px;
+  color: var(--launcher-text-muted);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.launcher-sidebar nav button:hover {
+  color: var(--launcher-text);
+  background: var(--launcher-ghost-hover);
+}
+
+.launcher-sidebar nav button.active {
+  color: var(--launcher-text);
+  background: var(--launcher-ghost-hover);
+}
+
+.launcher-sidebar-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  margin-top: auto;
+}
+
+.launcher-repo-link {
+  display: flex;
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
+.launcher-repo-link:focus-visible {
+  outline: none;
+}
+
+.nav-icon {
+  display: block;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: var(--launcher-nav-icon-filter);
+  opacity: 0.58;
+}
+
+.launcher-sidebar nav button:hover .nav-icon,
+.launcher-sidebar nav button.active .nav-icon,
+.launcher-repo-link:is(:hover, :focus-visible) .nav-icon {
+  opacity: 1;
+}
+
+.app-update {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.update-action {
+  padding: 0;
+  color: color-mix(in srgb, var(--launcher-text) 58%, transparent);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.update-action:hover,
+.update-action:focus-visible { color: var(--launcher-text); }
+
+.update-action:disabled { cursor: wait; }
+
+.launcher-main {
+  grid-area: main;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--launcher-content-top-inset) clamp(18px, 2.3vw, 30px) clamp(18px, 2.3vw, 30px);
+  background: var(--launcher-main);
+}
+
+.maps-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: clamp(28px, 4vw, 56px);
+  height: 100%;
+  min-height: 0;
+}
+
+.maps-layout.maps-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.library-card,
+.sync-panel {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}

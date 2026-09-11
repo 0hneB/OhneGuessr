@@ -1,0 +1,327 @@
+/* Top HUD pills — same recipe as the compass HUD: 32px tall, the shared HUD
+   background and drop shadow, no blur. */
+.hud-pill {
+  position: fixed;
+  top: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 32px;
+  padding: 0 15px;
+  background: var(--hud-bg);
+  border-radius: 16px;
+  box-shadow: var(--hud-shadow);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--hud-foreground);
+  z-index: 500;
+  white-space: nowrap;
+}
+.hud-pill b { color: var(--hud-text); font-weight: 800; }
+#topLeft { left: 54px; }
+#scoreBox { right: 14px; }
+#rounds.rounds-unlimited {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: text-bottom;
+}
+
+#rounds .unlimited-icon {
+  width: 18px;
+  height: 18px;
+  transform: translateY(1px);
+}
+
+/* Round timer — centred just below the compass; turns red in the last seconds. */
+#timerBox {
+  --timer-ring: var(--accent);
+  left: 50%;
+  top: var(--timer-top);
+  transform: translateX(-50%);
+  gap: 6px;
+  padding-left: 12px; /* the icon glyph has transparent margin; trim to balance */
+}
+.timer-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.timer-ring path {
+  fill: none;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+.timer-ring-track { stroke: color-mix(in srgb, var(--hud-text) 18%, transparent); }
+.timer-ring-progress {
+  stroke: var(--timer-ring);
+  stroke-linecap: round;
+  transition: stroke-dasharray 1s linear;
+}
+#timerBox .timer-icon { width: 15px; height: 15px; } /* inherits currentColor (red when .low) */
+#timerBox.low { --timer-ring: #f87171; color: #f87171; }
+#timerBox.low b { color: inherit; }
+#timerVal { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  .timer-ring-progress { transition: none; }
+}
+
+/* 'H' on the guess page leaves only the panorama. */
+body.ui-hidden #hudActions,
+body.ui-hidden #topLeft,
+body.ui-hidden #compass-hud,
+body.ui-hidden #classicCompass,
+body.ui-hidden #timerBox,
+body.ui-hidden #scoreBox,
+body.ui-hidden #guessPanel { display: none !important; }
+
+/* OpenSV renders each link as shadow, visible arrow, then transparent [pano] hit target. */
+#pano svg > path:not([pano]):has(+ path[pano]) {
+  fill: rgb(var(--street-view-navigation-rgb)) !important;
+}
+#pano svg > path:not([pano]):has(+ path[pano]:hover) {
+  fill: var(--accent) !important;
+}
+#pano svg > path:not([pano]):has(+ path[pano]:focus-visible) {
+  fill: var(--accent-strong) !important;
+}
+body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* Compass HUD: the heading bar stays top-centre; the classic needle sits bottom-left. */
+#compass-hud {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  display: none;
+  transform: translateX(-50%);
+  cursor: pointer;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.35));
+  z-index: 500;
+}
+
+.classic-compass {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  display: none;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  place-items: center;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow:
+    inset 0 0 0 12px var(--hud-compass-ring),
+    0 2px 5px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  transition: box-shadow 80ms ease-out;
+  z-index: 500;
+}
+
+.classic-compass:hover {
+  box-shadow:
+    inset 0 0 0 12px var(--hud-compass-ring-hover),
+    0 2px 5px rgba(0, 0, 0, 0.22);
+}
+
+.classic-compass:focus-visible {
+  outline: none;
+}
+
+.classic-compass-needle {
+  width: 48px;
+  height: 48px;
+  transform-box: view-box;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.classic-compass-north { fill: var(--accent); }
+.classic-compass-south { fill: var(--hud-compass-south); }
+
+:root[data-compass-style="bar"] #compass-hud,
+:root[data-compass-style="both"] #compass-hud {
+  display: block;
+}
+
+:root[data-compass-style="classic"] .classic-compass,
+:root[data-compass-style="both"] .classic-compass {
+  display: grid;
+}
+
+/* Guess panel (bottom-right, expands on hover) */
+#guessPanel {
+  --guess-map-h: 190px;
+  --guess-button-h: 44px;
+  --guess-map-expanded-h: min(42vh, 420px);
+  --guess-map-expanded-w: min(46vw, 560px);
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  width: 300px;
+  height: calc(var(--guess-map-h) + 8px + var(--guess-button-h));
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0.62;
+  overflow: visible;
+  transform-origin: bottom right;
+  transition: opacity 0.08s ease;
+}
+#guessPanel[data-map-size="large"] {
+  --guess-map-expanded-h: min(56vh, 560px);
+  --guess-map-expanded-w: min(60vw, 760px);
+}
+#guessPanel[data-map-size="xl"] {
+  --guess-map-expanded-h: min(70vh, 700px);
+  --guess-map-expanded-w: min(74vw, 960px);
+}
+#guessPanel[data-map-size="xxl"] {
+  --guess-map-expanded-h: min(82vh, 820px);
+  --guess-map-expanded-w: min(86vw, 1120px);
+}
+#guessPanel[data-map-size="max"] {
+  --guess-map-expanded-h: min(84vh, 840px, calc(100vh - 120px));
+  --guess-map-expanded-w: min(calc(100vw - 28px), 1440px);
+}
+:root:is([data-compass-style="classic"], [data-compass-style="both"]) #guessPanel[data-map-size="max"] {
+  --guess-map-expanded-w: min(calc(100vw - 84px), 1440px);
+}
+#guessPanel:hover,
+#guessPanel.pinned { opacity: 1; }
+#guessPanel:hover,
+#guessPanel.pinned {
+  --guess-map-h: var(--guess-map-expanded-h);
+  width: var(--guess-map-expanded-w);
+}
+
+#map {
+  width: 100%;
+  height: var(--guess-map-h);
+  flex: none;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  transition:
+    border-radius 0.08s ease,
+    box-shadow 0.11s ease;
+}
+
+#guessBtn {
+  width: 100%;
+  height: var(--guess-button-h);
+  flex: none;
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+#guessBtn:hover:not(:disabled) { background: var(--accent-strong); }
+#guessBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* In-page fullscreen map mode (F): keep HUD/settings visible above it. */
+#guessPanel.map-fullscreen {
+  left: 0;
+  top: 0;
+  right: auto;
+  bottom: auto;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 450;
+  opacity: 1;
+  gap: 0;
+  overflow: hidden;
+  transition: opacity 0.08s ease;
+}
+#guessPanel.map-fullscreen:hover {
+  --guess-map-h: 190px;
+  width: 100vw;
+}
+#guessPanel.map-fullscreen #map,
+#guessPanel.map-fullscreen:hover #map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+#guessPanel.map-fullscreen #guessBtn {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  z-index: 2;
+  width: min(360px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* Settings */
+#hudActions {
+  position: fixed;
+  top: 12px;
+  left: 14px;
+  z-index: 700;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px;
+  background: var(--hud-bg);
+  border-radius: 18px;
+  box-shadow: var(--hud-shadow);
+}
+
+#settingsBtn,
+.plugin-hud-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--hud-foreground);
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: color 80ms ease-out, background 80ms ease-out;
+}
+#settingsBtn:hover,
+.plugin-hud-button:hover {
+  background: var(--hud-hover);
+}
+#settingsBtn .settings-icon {
+  width: 18px;
+  height: 18px;
+}
+.plugin-hud-button svg {
+  width: 19px;
+  height: 19px;
+  fill: currentColor;
+}
+.plugin-hud-button[aria-pressed="false"] {
+  color: var(--hud-control-muted);
+}
+.plugin-hud-button[aria-pressed="true"] {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.16);
+}
+.plugin-hud-button[aria-pressed="true"]:hover {
+  background: rgba(var(--accent-rgb), 0.24);
+}

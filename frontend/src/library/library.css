@@ -1,0 +1,441 @@
+.library-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.library-header {
+  display: flex;
+  align-items: center;
+  padding: 0 8px 12px;
+}
+
+.library-toolbar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 4px;
+}
+
+.library-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--launcher-text-soft);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.library-toolbar button:hover {
+  color: var(--launcher-text);
+  background: var(--launcher-element-hover);
+}
+
+.library-toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+  background: transparent;
+}
+
+.library-toolbar .icon-button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 18px;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 18px;
+  margin-inline: 4px;
+  background: var(--launcher-border-variant);
+}
+
+.library-search {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 120px;
+  margin-right: 4px;
+}
+
+.library-search .svg-icon {
+  position: absolute;
+  left: 9px;
+  color: var(--launcher-text-placeholder);
+  pointer-events: none;
+}
+
+.library-search input,
+.folder-select input,
+.map-name-edit {
+  height: 36px;
+  min-width: 0;
+  padding: 0 10px;
+  color: var(--launcher-text-soft);
+  background: var(--launcher-field);
+  border: 1px solid var(--launcher-field-border);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 15px;
+}
+
+.library-search input {
+  width: 100%;
+  padding-inline: 30px 36px;
+}
+
+.library-search input::-webkit-search-cancel-button,
+.library-search input::-webkit-search-decoration {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.library-toolbar .search-clear {
+  position: absolute;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  color: var(--launcher-text-placeholder);
+}
+
+.library-toolbar .search-clear:hover {
+  background: transparent;
+}
+
+.search-clear .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.library-search input:focus,
+.folder-select input:focus,
+.map-name-edit:focus {
+  outline: none;
+  border-color: var(--launcher-border-focused);
+}
+
+.launcher-settings-page input:focus,
+.launcher-settings-page select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.library-tree {
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  overflow: auto;
+  border-radius: 4px;
+}
+
+.library-tree.loading {
+  display: grid;
+  place-items: center;
+}
+
+.library-folder,
+.library-map {
+  --indent: calc(var(--tree-depth) * 18px);
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 36px;
+  padding-left: var(--indent);
+  padding-right: 3px;
+  border-radius: 4px;
+  transition: opacity 80ms ease-in-out;
+}
+
+.library-folder:hover,
+.library-map:hover {
+  background: var(--launcher-row-hover);
+}
+
+.library-folder.selected::before,
+.library-map.active::before {
+  position: absolute;
+  left: calc(var(--indent) + 2px);
+  width: 2px;
+  height: 18px;
+  background: color-mix(in srgb, var(--launcher-text) 80%, transparent);
+  border-radius: 2px;
+  content: "";
+}
+
+.library-folder.drop-target,
+.library-tree.drop-target,
+.library-tree.file-drop-target-active {
+  background: var(--launcher-drop-target);
+}
+
+.library-map.dragging {
+  opacity: 0.4;
+}
+
+.tree-toggle,
+.folder-select,
+.map-launch {
+  color: inherit;
+  background: transparent;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tree-toggle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 32px;
+  color: var(--launcher-text-placeholder);
+}
+
+.tree-toggle .svg-icon {
+  width: 16px;
+  height: 16px;
+  transform: rotate(-90deg);
+}
+
+.tree-toggle[aria-expanded="true"] .svg-icon {
+  transform: rotate(0);
+}
+
+.folder-select {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  height: 36px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.folder-edit {
+  cursor: default;
+}
+
+.folder-select strong {
+  overflow: hidden;
+  color: var(--launcher-text-soft);
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-select small {
+  flex: none;
+  color: color-mix(in srgb, var(--launcher-text-soft) 65%, transparent);
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.folder-select input {
+  flex: 1;
+  height: 30px;
+  margin-right: 8px;
+}
+
+.drag-handle,
+.drag-spacer {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 32px;
+}
+
+.drag-handle {
+  color: color-mix(in srgb, var(--launcher-text-soft) 65%, transparent);
+  background: transparent;
+  border: none;
+  font: inherit;
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+  user-select: none;
+  transition: opacity 64ms ease-in-out;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-handle > span {
+  width: 12px;
+  height: 18px;
+  background: radial-gradient(circle, currentColor 1.2px, transparent 1.4px) 0 0 / 6px 6px;
+}
+
+.library-map:where(:hover, :focus-within, .dragging) .drag-handle {
+  opacity: 1;
+}
+
+.map-launch {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 6px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.map-launch b {
+  overflow: hidden;
+  color: var(--launcher-text-soft);
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-launch small {
+  flex: none;
+  color: color-mix(in srgb, var(--launcher-text-soft) 50%, transparent);
+  font-size: 13px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.map-name-edit {
+  flex: 1;
+  height: 30px;
+  margin-inline: 6px 8px;
+}
+
+.row-actions,
+.delete-confirm {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+}
+
+.row-actions {
+  opacity: 0;
+  transition: opacity 64ms ease-in-out;
+}
+
+:where(.library-folder, .library-map):where(:hover, :focus-within) > .row-actions {
+  opacity: 1;
+}
+
+.row-action {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: color-mix(in srgb, var(--launcher-text-soft) 55%, transparent);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.row-action:hover {
+  color: var(--launcher-text);
+  background: var(--launcher-element-hover);
+}
+
+.row-action .svg-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.row-action.danger:hover {
+  color: var(--launcher-danger);
+}
+
+.delete-confirm {
+  font-size: 13px;
+}
+
+.delete-confirm > span {
+  color: var(--launcher-text-muted);
+  white-space: nowrap;
+}
+
+.delete-confirm button {
+  flex: none;
+  min-height: 28px;
+  padding: 3px 9px;
+  color: var(--launcher-control-text);
+  background: var(--launcher-field);
+  border: 1px solid var(--launcher-section-border);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.delete-confirm button:hover {
+  color: var(--launcher-text);
+  border-color: var(--launcher-border-focused);
+}
+
+.delete-confirm .danger {
+  color: var(--launcher-danger);
+}
+
+.map-drag-preview {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 6px 12px;
+  overflow: hidden;
+  color: var(--launcher-text-soft);
+  background: var(--launcher-elevated);
+  border: 1px solid var(--launcher-section-border);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 14px;
+  font-weight: 700;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.library-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  gap: 5px;
+  color: color-mix(in srgb, var(--launcher-text-soft) 50%, transparent);
+  font-size: 13px;
+  text-align: center;
+}
+
+.library-empty b {
+  color: color-mix(in srgb, var(--launcher-text-soft) 85%, transparent);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.library-notice {
+  padding: 8px;
+  font-size: 13px;
+}
+
+.library-notice.error {
+  color: var(--launcher-danger);
+}

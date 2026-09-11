@@ -1,0 +1,22 @@
+/* Loading overlay */
+#loading {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  background: var(--hud-loading-bg);
+  text-align: center;
+}
+#loading p { font-size: 14px; opacity: 0.85; max-width: 320px; }
+.spinner {
+  width: 42px;
+  height: 42px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

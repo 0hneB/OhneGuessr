@@ -1,0 +1,51 @@
+/* Optional map synchronization. Cached maps remain available while disabled. */
+.sync-section {
+  margin-top: 17px;
+  padding-top: 15px;
+  border-top: 1px solid var(--launcher-section-border);
+}
+.sync-toggle { margin: 0; font-size: 15px; font-weight: 700; }
+.sync-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.sync-account-row { display: flex; align-items: center; gap: 10px; }
+.sync-account {
+  flex: 1;
+  min-width: 0;
+  color: var(--launcher-control-text);
+  font-size: 12px;
+}
+.sync-account:empty { display: none; }
+.sync-key-form { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; }
+.sync-key-form input {
+  height: 36px;
+  min-width: 0;
+  padding: 0 10px;
+  color: var(--launcher-text-soft);
+  background: var(--launcher-field);
+  border: 1px solid var(--launcher-field-border);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 15px;
+}
+.sync-key-form input:focus {
+  outline: none;
+  border-color: var(--launcher-border-focused);
+}
+.sync-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.sync-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 20px;
+  margin-top: 10px;
+}
+.sync-status { flex: 1; min-width: 0; }
+.sync-status.error { color: var(--launcher-error); opacity: 0.9; }
+.sync-info-link {
+  flex: none;
+  margin-left: auto;
+}
