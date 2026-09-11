@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/0hneB/OhneGuessr/internal/httpjson"
 	"github.com/0hneB/OhneGuessr/internal/mapfile"
 )
 
@@ -374,14 +375,7 @@ func (s *PluginService) fetch(url string, maximum int64) ([]byte, error) {
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, fmt.Errorf("HTTP %d", response.StatusCode)
 	}
-	contents, err := io.ReadAll(io.LimitReader(response.Body, maximum+1))
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(contents)) > maximum {
-		return nil, errors.New("response is too large")
-	}
-	return contents, nil
+	return httpjson.ReadLimited(response.Body, maximum)
 }
 
 func (s *PluginService) installedLocked() ([]PluginInfo, error) {

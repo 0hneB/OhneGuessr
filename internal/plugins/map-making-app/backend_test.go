@@ -1,6 +1,7 @@
 package mapmakingapp
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,113 @@ import (
 
 	"github.com/0hneB/OhneGuessr/internal/plugintest"
 )
+
+func TestSyncAllowsLibraryEditsDuringNetworkRequests(t *testing.T) {
+	host := plugintest.NewHost(t)
+	paused, resume := make(chan string), make(chan struct{})
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case paused <- r.URL.Path:
+		case <-r.Context().Done():
+			return
+		}
+		select {
+		case <-resume:
+		case <-r.Context().Done():
+			return
+		}
+		if r.URL.Path == "/api/maps" {
+			plugintest.WriteJSON(t, w, []mmaRemoteMap{{ID: 1, Name: "Remote", Type: "locations", Storage: "active", LocationCount: 1}})
+		} else {
+			plugintest.WriteJSON(t, w, []map[string]any{{"lat": 1, "lng": 2}})
+		}
+	}))
+	defer upstream.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	service := New(host, filepath.Join(t.TempDir(), "mma.json"))
+	service.baseURL, service.client = upstream.URL, upstream.Client()
+	done := make(chan error, 1)
+	go func() {
+		defer close(done)
+		_, err := service.syncMaps(ctx, "key")
+		done <- err
+	}()
+	defer func() {
+		cancel()
+		<-done
+	}()
+	for _, endpoint := range []string{"/api/maps", "/api/maps/1/locations"} {
+		select {
+		case got := <-paused:
+			if got != endpoint {
+				t.Fatalf("request = %s, want %s", got, endpoint)
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatal("request did not start")
+		}
+		edited := make(chan error, 1)
+		go func() {
+			edited <- host.WithLibrary(func(library Library) error {
+				manifest, err := library.Manifest()
+				if err != nil {
+					return err
+				}
+				if endpoint == "/api/maps" {
+					manifest.Folders = append(manifest.Folders, "Local")
+					manifest.Maps = append(manifest.Maps, Entry{ID: "local", Name: "Local", File: "Local/local.json", Count: 1})
+				} else {
+					manifest.Maps = append(manifest.Maps, Entry{
+						ID: "mma:1", Name: "My name", File: "map-making-app/My folder/My name.json",
+						Source: map[string]any{"type": "map-making-app", "mapId": 1, "nameOverride": true, "folderOverride": true},
+					})
+				}
+				return library.Save(manifest)
+			})
+		}()
+		select {
+		case err := <-edited:
+			if err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("network request blocked library edits")
+		}
+		resume <- struct{}{}
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("sync did not finish")
+	}
+	manifest := host.Snapshot()
+	if len(manifest.Maps) != 2 || manifest.Maps[0].ID != "local" || len(manifest.Folders) != 1 || manifest.Folders[0] != "Local" {
+		t.Fatalf("local edits lost: %#v", manifest)
+	}
+	entry := manifest.Maps[1]
+	if entry.Name != "My name" || entry.File != "map-making-app/My folder/My name.json" {
+		t.Fatalf("map overrides lost: %#v", entry)
+	}
+	if _, err := os.Stat(filepath.Join(host.Directory(), filepath.FromSlash(entry.File))); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAPIRejectsTrailingJSON(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[] {}`))
+	}))
+	defer upstream.Close()
+	service := New(plugintest.NewHost(t), filepath.Join(t.TempDir(), "mma.json"))
+	service.baseURL, service.client = upstream.URL, upstream.Client()
+	var catalog []mmaRemoteMap
+	if err := service.apiGetJSON(context.Background(), "/api/maps", "key", &catalog); err == nil {
+		t.Fatal("accepted multiple JSON values")
+	}
+}
 
 func TestSyncPartialFailureAndRedaction(t *testing.T) {
 	host := plugintest.NewHost(t)

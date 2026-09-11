@@ -112,7 +112,7 @@ Enable **Challenges** under Plugins, finish a game, and select **Create challeng
 2. Enable **Map Making App Sync** under Plugins, then save the key beside Maps.
 3. The first sync starts immediately; use **Sync now** for later updates.
 
-Active, non-empty location maps are downloaded with up to ten concurrent requests. Archived maps are skipped. Failed downloads retain the last good local file. Renaming or moving a synchronized map in the launcher creates a local name or folder override.
+Active, non-empty location maps are downloaded with up to ten concurrent requests. Downloads leave the map library available for games and edits; publication uses the latest library state to preserve edits made during synchronization. Archived maps are skipped. Failed downloads retain the last good local file. Renaming or moving a synchronized map in the launcher creates a local name or folder override.
 
 ### Learnable Meta sync
 
@@ -187,6 +187,8 @@ npm --prefix frontend run build
 This creates the ignored `frontend/dist/` directory. The **Check** workflow runs source checks on pushes and pull requests; its temporary Windows package is manual. The **Release** workflow builds Windows, Linux, and macOS files and uploads them to a draft release.
 
 Run frontend logic tests with `npm --prefix frontend test`.
+
+Run backend checks with `go vet ./...` and `go test ./...`. CI also runs `go test -race ./...` (requires CGO and a C compiler). To measure map sampling time and allocations, run `go test ./internal/backend -run '^$' -bench BenchmarkSampleMapLocations -benchmem`.
 
 ### Repository structure
 

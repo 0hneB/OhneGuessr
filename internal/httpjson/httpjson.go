@@ -84,8 +84,12 @@ func DecodeLimit[T any](r *http.Request, maximum int64) (T, error) {
 		}
 		return result, Error(http.StatusBadRequest, "invalid JSON request")
 	}
-	var extra any
+	var extra json.RawMessage
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			return result, Error(http.StatusRequestEntityTooLarge, "request body is too large")
+		}
 		return result, Error(http.StatusBadRequest, "request body must contain one JSON value")
 	}
 	return result, nil

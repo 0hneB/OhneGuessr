@@ -1,10 +1,12 @@
 package mapmakingapp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"os"
@@ -378,27 +380,6 @@ func (r mmaSyncResult) asMap() map[string]any {
 }
 
 func (s *Backend) syncMaps(ctx context.Context, key string) (mmaSyncResult, error) {
-	// ponytail: one storage lock keeps publication atomic; split snapshots only if sync latency blocks real map edits.
-	var result mmaSyncResult
-	err := s.host.WithLibrary(func(library Library) error {
-		var err error
-		result, err = s.syncMapsLocked(ctx, key, library)
-		return err
-	})
-	return result, err
-}
-
-func (s *Backend) syncMapsLocked(ctx context.Context, key string, library Library) (mmaSyncResult, error) {
-	manifest, err := library.Manifest()
-	if err != nil {
-		return mmaSyncResult{}, err
-	}
-	staging, err := os.MkdirTemp(library.Directory(), ".mma-sync-")
-	if err != nil {
-		return mmaSyncResult{}, err
-	}
-	defer os.RemoveAll(staging)
-
 	s.progress("catalog", 0, 0)
 	var catalog []mmaRemoteMap
 	if err := s.apiGetJSON(ctx, "/api/maps", key, &catalog); err != nil {
@@ -418,6 +399,39 @@ func (s *Backend) syncMapsLocked(ctx context.Context, key string, library Librar
 		return leftFolder < rightFolder
 	})
 
+	var staging string
+	err := s.host.WithLibrary(func(library Library) error {
+		var err error
+		staging, err = os.MkdirTemp(library.Directory(), ".mma-sync-")
+		return err
+	})
+	if err != nil {
+		return mmaSyncResult{}, err
+	}
+	defer os.RemoveAll(staging)
+	s.progress("downloading", 0, len(remotes))
+	downloads := s.downloadMMA(ctx, key, staging, remotes)
+	if err := ctx.Err(); err != nil {
+		return mmaSyncResult{}, err
+	}
+	var result mmaSyncResult
+	err = s.host.WithLibrary(func(library Library) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		// Read current state after downloading so edits made during sync survive publication.
+		var err error
+		result, err = s.publishMMA(library, remotes, downloads)
+		return err
+	})
+	return result, err
+}
+
+func (s *Backend) publishMMA(library Library, remotes []mmaRemoteMap, downloads map[int64]mmaDownload) (mmaSyncResult, error) {
+	manifest, err := library.Manifest()
+	if err != nil {
+		return mmaSyncResult{}, err
+	}
 	local := make([]Entry, 0, len(manifest.Maps))
 	synced := map[int64]Entry{}
 	for _, entry := range manifest.Maps {
@@ -457,12 +471,6 @@ func (s *Backend) syncMapsLocked(ctx context.Context, key string, library Librar
 		source["nameOverride"] = boolValue(source["nameOverride"])
 		source["folderOverride"] = boolValue(source["folderOverride"])
 		plans = append(plans, mmaPlan{remote: remote, existing: existing, target: target, source: source})
-	}
-
-	s.progress("downloading", 0, len(plans))
-	downloads := s.downloadMMA(ctx, key, staging, plans)
-	if ctx.Err() != nil {
-		return mmaSyncResult{}, ctx.Err()
 	}
 
 	s.progress("publishing", len(plans), len(plans))
@@ -597,24 +605,24 @@ func canonicalMMATarget(remote mmaRemoteMap, existing *Entry, reserved map[strin
 	return rel
 }
 
-func (s *Backend) downloadMMA(ctx context.Context, key, staging string, plans []mmaPlan) map[int64]mmaDownload {
-	jobs := make(chan mmaPlan)
-	results := make(chan mmaDownload, len(plans))
-	workers := min(mmaMaxWorkers, len(plans))
+func (s *Backend) downloadMMA(ctx context.Context, key, staging string, remotes []mmaRemoteMap) map[int64]mmaDownload {
+	jobs := make(chan mmaRemoteMap)
+	results := make(chan mmaDownload, len(remotes))
+	workers := min(mmaMaxWorkers, len(remotes))
 	var group sync.WaitGroup
 	for range workers {
 		group.Add(1)
 		go func() {
 			defer group.Done()
-			for plan := range jobs {
-				results <- s.downloadOneMMA(ctx, key, staging, plan.remote.ID)
+			for remote := range jobs {
+				results <- s.downloadOneMMA(ctx, key, staging, remote.ID)
 			}
 		}()
 	}
 	go func() {
-		for _, plan := range plans {
+		for _, remote := range remotes {
 			select {
-			case jobs <- plan:
+			case jobs <- remote:
 			case <-ctx.Done():
 				close(jobs)
 				group.Wait()
@@ -626,12 +634,12 @@ func (s *Backend) downloadMMA(ctx context.Context, key, staging string, plans []
 		group.Wait()
 		close(results)
 	}()
-	downloads := make(map[int64]mmaDownload, len(plans))
+	downloads := make(map[int64]mmaDownload, len(remotes))
 	completed := 0
 	for result := range results {
 		downloads[result.mapID] = result
 		completed++
-		s.progress("downloading", completed, len(plans))
+		s.progress("downloading", completed, len(remotes))
 	}
 	return downloads
 }
@@ -680,9 +688,12 @@ func (s *Backend) apiGetJSON(ctx context.Context, endpoint, key string, target a
 				return fmt.Errorf("Map Making App response is too large")
 			}
 			if response.StatusCode >= 200 && response.StatusCode < 300 {
-				decoder := json.NewDecoder(strings.NewReader(string(body)))
+				decoder := json.NewDecoder(bytes.NewReader(body))
 				decoder.UseNumber()
 				if err := decoder.Decode(target); err != nil {
+					return fmt.Errorf("Map Making App returned invalid JSON")
+				}
+				if err := decoder.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
 					return fmt.Errorf("Map Making App returned invalid JSON")
 				}
 				return nil
