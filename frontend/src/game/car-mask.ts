@@ -32,6 +32,9 @@ void main() {
 }`;
 
 const SCENE_SHADER_MARKER = 'texture2DProj(g,a)';
+// OpenSV draws its road targets and floor arrows as light shapes in this program.
+const NAVIGATION_SHADER_MARKER = 'uniform vec4 color;attribute vec3 vert;';
+const DEFAULT_NAVIGATION_COLOR = [211 / 255, 243 / 255, 223 / 255];
 const UNIFORM_FUNCTIONS = [
   'uniform1f', 'uniform1fv', 'uniform1i', 'uniform1iv',
   'uniform2f', 'uniform2fv', 'uniform2i', 'uniform2iv',
@@ -106,6 +109,8 @@ function installShaderHooks(gl: WebGLRenderingContext) {
 
   const sceneShaders = new WeakSet<WebGLShader>();
   const scenePrograms = new WeakSet<WebGLProgram>();
+  const navigationShaders = new WeakSet<WebGLShader>();
+  const navigationPrograms = new WeakSet<WebGLProgram>();
   const locationInfo = new WeakMap<WebGLUniformLocation, { program: WebGLProgram; name: string }>();
   const locations = new WeakMap<WebGLProgram, Map<string, WebGLUniformLocation | null>>();
   const savedUniforms = new WeakMap<WebGLProgram, Map<string, UniformCall>>();
@@ -132,17 +137,19 @@ function installShaderHooks(gl: WebGLRenderingContext) {
 
   gl.shaderSource = ((shader: WebGLShader, source: string) => {
     if (source.includes(SCENE_SHADER_MARKER)) sceneShaders.add(shader);
+    if (source.includes(NAVIGATION_SHADER_MARKER)) navigationShaders.add(shader);
     originalShaderSource(shader, source);
   }) as typeof gl.shaderSource;
 
   gl.attachShader = ((program: WebGLProgram, shader: WebGLShader) => {
     if (sceneShaders.has(shader)) scenePrograms.add(program);
+    if (navigationShaders.has(shader)) navigationPrograms.add(program);
     originalAttachShader(program, shader);
   }) as typeof gl.attachShader;
 
   gl.getUniformLocation = ((program: WebGLProgram, name: string) => {
     const location = originalGetUniformLocation(program, name);
-    if (scenePrograms.has(program)) {
+    if (scenePrograms.has(program) || navigationPrograms.has(program)) {
       let cache = locations.get(program);
       if (!cache) {
         cache = new Map();
@@ -177,6 +184,18 @@ function installShaderHooks(gl: WebGLRenderingContext) {
     methods[name] = (...args: any[]) => {
       const location = args[0] as WebGLUniformLocation | null;
       const info = location ? locationInfo.get(location) : undefined;
+      const color = args[1];
+      if (name === 'uniform4fv' && info?.name === 'color' &&
+          currentProgram && navigationPrograms.has(currentProgram) &&
+          color[0] >= 0.85 && color[0] === color[1] && color[1] === color[2]) {
+        const channels = getComputedStyle(document.documentElement)
+          .getPropertyValue('--street-view-navigation-rgb').split(',').map(Number);
+        const themed = channels.length === 3 && channels.every(Number.isFinite)
+          ? channels.map((channel) => channel / 255)
+          : DEFAULT_NAVIGATION_COLOR;
+        args[1] = color.slice();
+        [args[1][0], args[1][1], args[1][2]] = themed;
+      }
       if (info && currentProgram === info.program) {
         let saved = savedUniforms.get(info.program);
         if (!saved) {

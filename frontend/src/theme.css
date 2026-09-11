@@ -71,6 +71,7 @@
   --hud-round-distance: var(--hud-text);
   --hud-loading-bg: color-mix(in srgb, var(--launcher-main) 86%, transparent);
   --hud-error: var(--launcher-error);
+  --street-view-navigation-rgb: 211, 243, 223;
   --country-streak-label: var(--hud-muted);
   --country-streak-text: var(--hud-text);
   --country-streak-stat: var(--hud-text);
@@ -105,6 +106,7 @@
   --launcher-range-track: rgba(255, 255, 255, 0.16);
   --hud-compass-ring: rgba(244, 243, 239, 0.34);
   --hud-compass-ring-hover: rgba(244, 243, 239, 0.44);
+  --street-view-navigation-rgb: 211, 243, 223;
 }
 
 /* The original neutral-dark launcher and HUD palette. */
@@ -163,6 +165,7 @@
   --hud-round-distance: #cbd2dd;
   --hud-loading-bg: rgba(0, 0, 0, 0.6);
   --hud-error: #fb7185;
+  --street-view-navigation-rgb: 112, 122, 116;
   --country-streak-label: #9fa8b5;
   --country-streak-text: #d6dbe2;
   --country-streak-stat: #fff;
@@ -217,6 +220,7 @@
   --launcher-danger: #ef7065;
   --hud-compass-ring: rgba(242, 235, 230, 0.34);
   --hud-compass-ring-hover: rgba(242, 235, 230, 0.44);
+  --street-view-navigation-rgb: 225, 211, 202;
 }
 
 .launcher-shell[data-theme="gruvbox-dark-soft"],
@@ -237,6 +241,7 @@
   --launcher-danger: #fb4a35;
   --hud-compass-ring: rgba(251, 241, 199, 0.34);
   --hud-compass-ring-hover: rgba(251, 241, 199, 0.44);
+  --street-view-navigation-rgb: 221, 222, 185;
 }
 
 .launcher-shell[data-theme="gruvbox-light-soft"],
@@ -259,6 +264,7 @@
   --launcher-nav-icon-filter: none;
   --hud-compass-ring: rgba(251, 241, 199, 0.58);
   --hud-compass-ring-hover: rgba(251, 241, 199, 0.72);
+  --street-view-navigation-rgb: 193, 212, 215;
 }
 
 .launcher-shell[data-theme="ayu-light"],
@@ -281,6 +287,7 @@
   --launcher-nav-icon-filter: none;
   --hud-compass-ring: rgba(252, 252, 252, 0.64);
   --hud-compass-ring-hover: rgba(252, 252, 252, 0.78);
+  --street-view-navigation-rgb: 215, 229, 242;
 }
 
 .launcher-shell[data-theme="ayu-mirage"],
@@ -301,4 +308,5 @@
   --launcher-danger: #f18779;
   --hud-compass-ring: rgba(204, 202, 194, 0.36);
   --hud-compass-ring-hover: rgba(204, 202, 194, 0.46);
+  --street-view-navigation-rgb: 214, 230, 239;
 }

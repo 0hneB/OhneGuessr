@@ -12,6 +12,7 @@ function fakeWebGl() {
   const programs: object[] = [];
   const useProgram = vi.fn();
   const uniform1f = vi.fn();
+  const uniform4fv = vi.fn();
   const gl: Record<string, unknown> = {
     VERTEX_SHADER: 0x8b31,
     FRAGMENT_SHADER: 0x8b30,
@@ -32,8 +33,10 @@ function fakeWebGl() {
     getUniformLocation: vi.fn((program: object, name: string) => ({ program, name })),
     useProgram
   };
-  for (const name of UNIFORM_FUNCTIONS) gl[name] = name === 'uniform1f' ? uniform1f : vi.fn();
-  return { gl, programs, useProgram, uniform1f };
+  for (const name of UNIFORM_FUNCTIONS) {
+    gl[name] = name === 'uniform1f' ? uniform1f : name === 'uniform4fv' ? uniform4fv : vi.fn();
+  }
+  return { gl, programs, useProgram, uniform1f, uniform4fv };
 }
 
 afterEach(() => {
@@ -41,7 +44,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('Street View car mask', () => {
+describe('Street View WebGL hooks', () => {
   it('switches programs live and keeps mid-frame uniforms on the bound program', async () => {
     const canvases: FakeCanvas[] = [];
     class FakeCanvas {
@@ -57,7 +60,10 @@ describe('Street View car mask', () => {
       callback(0);
       return 1;
     });
-    vi.stubGlobal('document', { querySelectorAll: () => canvases });
+    vi.stubGlobal('document', { documentElement: {}, querySelectorAll: () => canvases });
+    vi.stubGlobal('getComputedStyle', () => ({
+      getPropertyValue: () => '225, 211, 202'
+    }));
 
     const { installCarMask, setCarHidden } = await import('./car-mask.js');
     const first = fakeWebGl();
@@ -81,6 +87,22 @@ describe('Street View car mask', () => {
     gl.useProgram(sceneProgram);
     gl.uniform1f(alpha, 1);
     expect(first.useProgram).toHaveBeenLastCalledWith(sceneProgram);
+
+    const navigationProgram = { id: 'navigation' };
+    const navigationShader = { id: 'navigation-vertex' };
+    gl.shaderSource(navigationShader, 'uniform vec4 color;attribute vec3 vert;');
+    gl.attachShader(navigationProgram, navigationShader);
+    const color = gl.getUniformLocation(navigationProgram, 'color');
+    gl.useProgram(navigationProgram);
+    const vectorColor = new Float32Array([0.9, 0.9, 0.9, 0.4]);
+    gl.uniform4fv(color, vectorColor);
+    expect(first.uniform4fv).toHaveBeenLastCalledWith(
+      color, new Float32Array([225 / 255, 211 / 255, 202 / 255, 0.4])
+    );
+    expect(vectorColor).toEqual(new Float32Array([0.9, 0.9, 0.9, 0.4]));
+    const darkColor = new Float32Array([0, 0, 0, 0.6]);
+    gl.uniform4fv(color, darkColor);
+    expect(first.uniform4fv).toHaveBeenLastCalledWith(color, darkColor);
 
     setCarHidden(true);
     gl.useProgram(sceneProgram);
