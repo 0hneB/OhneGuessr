@@ -20,12 +20,15 @@ import {
   onSettingsChanged,
   updateSettings
 } from '../settings/store.svelte.js';
+import { loadLibrary, sampleMap } from '../maps/api.js';
 import {
-  loadLibrary,
-  sampleMap,
-  type MapSample,
-  type SampledLocation
-} from '../maps/api.js';
+  createSampledDeck, ensureDeckIndex, hasNextRound, hasSampledLocations,
+  PANORAMA_RETRIES, resizeSampledDeck, selectSampledMap, UNLIMITED_BATCH_ROUNDS, useFixedDeck
+} from './deck.js';
+import {
+  cancelRoundPreload, preparationMatches, prepareRound, scheduleNextRoundPreload,
+  takeRoundPreload, type RoundPreparation
+} from './round-preparation.js';
 import { challengeAction } from '../../../internal/plugins/challenges/game.svelte.js';
 import { gameMode } from '../../../internal/plugins/game-mode.svelte.js';
 import {
@@ -68,8 +71,6 @@ const ACTIVE_GAME_PHASES = new Set<GamePhase>([
   GAME_PHASE.GUESSING,
   GAME_PHASE.RESULT
 ]);
-const PANORAMA_RETRIES = 8;
-const UNLIMITED_BATCH_ROUNDS = 100;
 
 let modeRoundPending = false;
 
@@ -79,29 +80,6 @@ let resultMap: ReturnType<typeof createRevealMaps>['resultMap'];
 let summaryMap: ReturnType<typeof createRevealMaps>['summaryMap'];
 let compass: CompassHUD;
 let guessPanel: ReturnType<typeof createGuessPanel>;
-const panoLoad: { controller: AbortController | null } = { controller: null };
-
-interface RoundPreparation {
-  index: number;
-  mapID: string | null;
-  deck: Location[];
-  load: { controller: AbortController; signal: AbortSignal };
-  location: Location | null;
-  status: 'loading' | 'ready' | 'failed' | 'aborted';
-  promise: Promise<RoundPreparation> | null;
-}
-
-let roundPreload: RoundPreparation | null = null;
-let preloadFrame = 0;
-let sampledMap: MapItem | null = null;
-let pendingSample: MapSample | null = null;
-let mapLocationCount = 0;
-let deckIndexes: number[] = [];
-let deckCycleStart = 0;
-let sampledIndexes = new Set<number>();
-let fallbackLocations: SampledLocation[] = [];
-let sampleGeneration = 0;
-let deckGrowth: Promise<void> | null = null;
 
 const currentMapItem = (): MapItem | null => {
   const map = state.map;
@@ -121,229 +99,9 @@ const roundTimer = new RoundTimer({
   }
 });
 
-// Begin a fresh pano load, cancelling any in-flight one. The returned signal
-// goes stale (aborted) the moment the next load starts.
-function beginPanoLoad() {
-  panoLoad.controller?.abort();
-  panoLoad.controller = new AbortController();
-  return { controller: panoLoad.controller, signal: panoLoad.controller.signal };
-}
-
-function isPanoLoadActive(load: RoundPreparation['load']) {
-  return !load.signal.aborted;
-}
-
-function cancelRoundPreload() {
-  if (preloadFrame) cancelAnimationFrame(preloadFrame);
-  preloadFrame = 0;
-  const preload = roundPreload;
-  roundPreload = null;
-  if (preload && preload.status === 'loading') preload.load.controller.abort();
-}
-
-function hasNextRound() {
-  return state.unlimited || state.round + 1 < state.rounds;
-}
-
 function updateResultActions() {
   ui.nextLabel = hasNextRound() ? 'Next' : 'See results';
   ui.endGameVisible = state.unlimited;
-}
-
-const locationFromSample = ({ sourceIndex: _sourceIndex, ...location }: SampledLocation) => location;
-
-function acceptSample(sample: MapSample) {
-  mapLocationCount = sample.locationCount;
-  state.mapDiagonalKm = sample.mapDiagonalKm;
-  for (const location of sample.locations) sampledIndexes.add(location.sourceIndex);
-}
-
-function appendRound(location: SampledLocation) {
-  state.deck.push(locationFromSample(location));
-  deckIndexes.push(location.sourceIndex);
-}
-
-function resetSampleTracking() {
-  sampleGeneration++;
-  deckIndexes = [];
-  deckCycleStart = 0;
-  sampledIndexes = new Set();
-  fallbackLocations = [];
-  deckGrowth = null;
-}
-
-async function growSampledDeck(count: number, allowRepeat: boolean) {
-  if (!sampledMap || count <= 0) return;
-  const generation = sampleGeneration;
-
-  while (count > 0 && fallbackLocations.length) {
-    appendRound(fallbackLocations.shift()!);
-    count--;
-  }
-  if (!count) return;
-
-  let sample = await sampleMap(
-    sampledMap,
-    count + PANORAMA_RETRIES,
-    [...sampledIndexes]
-  );
-  if (generation !== sampleGeneration) return;
-  acceptSample(sample);
-
-  if (!sample.locations.length && allowRepeat && mapLocationCount) {
-    sampledIndexes = new Set();
-    fallbackLocations = [];
-    deckCycleStart = state.deck.length;
-    sample = await sampleMap(sampledMap, count + PANORAMA_RETRIES);
-    if (generation !== sampleGeneration) return;
-    acceptSample(sample);
-  }
-
-  const roundCount = Math.min(count, sample.locations.length);
-  for (const location of sample.locations.slice(0, roundCount)) appendRound(location);
-  fallbackLocations.push(...sample.locations.slice(roundCount));
-}
-
-async function ensureDeckIndex(index: number) {
-  while (state.unlimited && sampledMap && index >= state.deck.length) {
-    const before = state.deck.length;
-    if (!deckGrowth) {
-      deckGrowth = growSampledDeck(
-        Math.max(UNLIMITED_BATCH_ROUNDS, index - before + 1),
-        true
-      );
-    }
-    const growth = deckGrowth;
-    try {
-      await growth;
-    } finally {
-      if (deckGrowth === growth) deckGrowth = null;
-    }
-    if (state.deck.length === before) break;
-  }
-  return state.deck[index] || null;
-}
-
-async function nextFallback(currentSourceIndex: number) {
-  if (fallbackLocations.length) return fallbackLocations.shift()!;
-  if (!sampledMap) return null;
-  const generation = sampleGeneration;
-  let sample = await sampleMap(sampledMap, PANORAMA_RETRIES, [...sampledIndexes]);
-  if (generation !== sampleGeneration) return null;
-  acceptSample(sample);
-  if (!sample.locations.length && mapLocationCount > 1) {
-    sample = await sampleMap(
-      sampledMap,
-      1,
-      currentSourceIndex >= 0 ? [currentSourceIndex] : []
-    );
-    if (generation !== sampleGeneration) return null;
-    acceptSample(sample);
-    return sample.locations[0] || null;
-  }
-  fallbackLocations.push(...sample.locations);
-  return fallbackLocations.shift() || null;
-}
-
-// Load and resolve a round without activating its UI, timer, state.current, or
-// walking trail. The same operation serves foreground loads and result preloads.
-function prepareRound(index: number): RoundPreparation {
-  const load = beginPanoLoad();
-  const preparation: RoundPreparation = {
-    index,
-    mapID: state.map?.id || null,
-    deck: state.deck,
-    load,
-    location: null,
-    status: 'loading',
-    promise: null
-  };
-
-  preparation.promise = (async () => {
-    let loc = await ensureDeckIndex(index);
-    if (!loc || !isPanoLoadActive(load)) {
-      preparation.status = load.signal.aborted ? 'aborted' : 'failed';
-      return preparation;
-    }
-    let tries = 0;
-    let ok = await viewer.showLocation(loc, load.signal);
-    if (gameMode.current?.fixedDeck && isPanoLoadActive(load) && !ok && loc.panoid) {
-      loc = { ...loc, panoid: null };
-      preparation.deck[index] = loc;
-      ok = await viewer.showLocation(loc, load.signal);
-    }
-    while (!gameMode.current?.fixedDeck && isPanoLoadActive(load) && !ok && tries < PANORAMA_RETRIES) {
-      tries++;
-      const fallback = await nextFallback(deckIndexes[index] ?? -1);
-      if (!fallback) break;
-      loc = locationFromSample(fallback);
-      preparation.deck[index] = loc;
-      deckIndexes[index] = fallback.sourceIndex;
-      ok = await viewer.showLocation(loc, load.signal);
-    }
-
-    preparation.location = loc;
-    preparation.status = load.signal.aborted ? 'aborted' : (ok ? 'ready' : 'failed');
-    return preparation;
-  })();
-  return preparation;
-}
-
-function preparationMatches(
-  preparation: RoundPreparation | null,
-  index: number
-): boolean {
-  return Boolean(preparation &&
-    preparation.status !== 'aborted' &&
-    !preparation.load.signal.aborted &&
-    preparation.index === index &&
-    preparation.mapID === state.map?.id &&
-    preparation.deck === state.deck);
-}
-
-function scheduleNextRoundPreload() {
-  cancelRoundPreload();
-  if (state.phase !== GAME_PHASE.RESULT || !hasNextRound()) return;
-
-  const index = state.round + 1;
-  const mapID = state.map?.id;
-  preloadFrame = requestAnimationFrame(() => {
-    preloadFrame = 0;
-    if (state.phase !== GAME_PHASE.RESULT ||
-        state.round + 1 !== index ||
-        state.map?.id !== mapID ||
-        !hasNextRound()) return;
-    roundPreload = prepareRound(index);
-  });
-}
-
-function takeRoundPreload(index: number) {
-  if (preloadFrame) cancelAnimationFrame(preloadFrame);
-  preloadFrame = 0;
-  const preload = roundPreload;
-  roundPreload = null;
-  if (preparationMatches(preload, index)) return preload;
-  if (preload && preload.status === 'loading') preload.load.controller.abort();
-  return null;
-}
-
-async function createSampledDeck(wanted: number) {
-  if (!sampledMap) throw new Error('The selected map is unavailable.');
-  state.deck = [];
-  resetSampleTracking();
-  const generation = sampleGeneration;
-  const sample = pendingSample || await sampleMap(
-    sampledMap,
-    wanted + PANORAMA_RETRIES
-  );
-  pendingSample = null;
-  if (generation !== sampleGeneration) return;
-  acceptSample(sample);
-  const target = Math.min(wanted, mapLocationCount);
-  const roundCount = Math.min(target, sample.locations.length);
-  for (const location of sample.locations.slice(0, roundCount)) appendRound(location);
-  fallbackLocations.push(...sample.locations.slice(roundCount));
-  await growSampledDeck(target - state.deck.length, false);
 }
 
 export async function startGame() {
@@ -357,12 +115,7 @@ export async function startGame() {
   ui.finalVisible = false;
   const modeDeck = gameMode.current?.deck?.();
   if (modeDeck) {
-    pendingSample = null;
-    resetSampleTracking();
-    state.unlimited = false;
-    state.deck = modeDeck;
-    deckIndexes = modeDeck.map(() => -1);
-    state.rounds = state.deck.length;
+    useFixedDeck(modeDeck);
   } else {
     const n = roundsPerGame();
     state.unlimited = !Number.isFinite(n);
@@ -419,38 +172,18 @@ export function endModeGame() {
 // Apply a rounds-per-game change. Outside a game it restarts; mid-game it grows or
 // trims the upcoming deck in place, keeping the played and current rounds.
 async function applyRoundLimitChange() {
-  if (!sampledMap || !mapLocationCount) return;
+  if (!hasSampledLocations()) return;
   const inGame = ACTIVE_GAME_PHASES.has(state.phase);
   if (!inGame) { await startGame(); return; }
 
   cancelRoundPreload();
-  const generation = ++sampleGeneration;
-  deckGrowth = null;
-  const nRaw = roundsPerGame();
-  state.unlimited = !Number.isFinite(nRaw);
-
-  if (state.unlimited) {
-    state.rounds = Infinity; // loadRound grows the deck on demand
-  } else {
-    const requested = Math.min(nRaw, mapLocationCount);
-    const keep = Math.min(state.deck.length, state.round + 1); // played + current
-    state.deck.length = keep;
-    deckIndexes.length = keep;
-    deckCycleStart = Math.min(deckCycleStart, keep);
-    sampledIndexes = new Set(
-      deckIndexes.slice(deckCycleStart).filter((index) => index >= 0)
-    );
-    fallbackLocations = [];
-    await growSampledDeck(Math.max(0, requested - keep), false);
-    if (generation !== sampleGeneration) return;
-    state.rounds = state.deck.length;
-  }
-
-  // Result screen open: its available actions may have changed.
-  if (state.phase === GAME_PHASE.RESULT) {
-    updateResultActions();
-    scheduleNextRoundPreload();
-  }
+  await resizeSampledDeck(roundsPerGame(), () => {
+    // Result screen open: its available actions may have changed.
+    if (state.phase === GAME_PHASE.RESULT) {
+      updateResultActions();
+      scheduleNextRoundPreload(viewer);
+    }
+  });
 }
 
 async function loadRound(preparation: RoundPreparation | null = null) {
@@ -464,7 +197,7 @@ async function loadRound(preparation: RoundPreparation | null = null) {
   gmap.resize();
 
   let prepared = preparation;
-  if (!prepared || !preparationMatches(prepared, state.round)) prepared = prepareRound(state.round);
+  if (!prepared || !preparationMatches(prepared, state.round)) prepared = prepareRound(state.round, viewer);
   if (prepared.status === 'loading') setLoading(true, 'Loading panorama…');
   prepared = await prepared.promise!;
   if (!preparationMatches(prepared, state.round)) return;
@@ -680,7 +413,7 @@ export async function completeModeRound() {
     setLoading(false);
     ui.resultVisible = true;
     resultMap.showMany(reveals);
-    scheduleNextRoundPreload();
+    scheduleNextRoundPreload(viewer);
   } catch (error) {
     state.phase = GAME_PHASE.ERROR;
     gameMode.error = modeError(error, 'Could not complete the hosted round.');
@@ -701,7 +434,7 @@ function showRoundResult(result: RoundResult, trail: Trail | null = null) {
   if (modeResults?.length) resultMap.showMany(modeResults, trail);
   else resultMap.show(result, trail);
   showLearnableMetaResult(currentMapItem(), { ...actual }, state.round);
-  scheduleNextRoundPreload();
+  scheduleNextRoundPreload(viewer);
 }
 
 export async function nextRound() {
@@ -844,10 +577,7 @@ async function activateRequestedGame({
   state.map = map;
   selectLearnableMetaMap(currentMapItem());
   setLoading(true, `Loading ${map.name}…`);
-  sampledMap = sample ? map : null;
-  pendingSample = sample;
-  mapLocationCount = sample?.locationCount || 0;
-  state.mapDiagonalKm = sample?.mapDiagonalKm || 0;
+  selectSampledMap(map, sample);
   if (sample && !sample.locationCount) throw new Error(`"${map.name}" has no playable locations`);
   if (mode) {
     await mode.initialize(map);
