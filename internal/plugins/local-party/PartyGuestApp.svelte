@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import { requestJSON as request } from '../../../frontend/src/api.js';
   import { formatDistance } from '../../../frontend/src/game/scoring.js';
   import { GuessMap, createRevealMaps } from '../../../frontend/src/maps/map.js';
   import { applyAccentColor, normalizeLauncherTheme } from '../../../frontend/src/settings/settings.js';
@@ -28,13 +29,6 @@
     ? Math.max(0, Math.ceil((party.deadline - now) / 1000))
     : 0);
   const timerText = $derived(`${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`);
-
-  async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(path, init);
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || 'The party request failed.');
-    return body as T;
-  }
 
   function openEvents() {
     if (events || !party?.joined) return;
@@ -102,7 +96,6 @@
     try {
       await applyState(await request<PartyGuestState>('/api/join', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ join, name: username, color })
       }));
     } catch (reason) {
@@ -129,7 +122,6 @@
     try {
       const next = await request<PartyGuestState>('/api/guess', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ round, lat: guess.lat, lng: guess.lng })
       });
       if (party?.phase === 'guessing' && party.round === round) await applyState(next);
