@@ -583,6 +583,7 @@ const KEY_ACTIONS: Record<string, (event: KeyboardEvent) => void> = {
   mapSizeLarge: (event) => setGuessMapSizeFromShortcut('large', event),
   mapSizeXl: (event) => setGuessMapSizeFromShortcut('xl', event),
   mapSizeXxl: (event) => setGuessMapSizeFromShortcut('xxl', event),
+  mapSizeMax: (event) => setGuessMapSizeFromShortcut('max', event),
   hideHud: () => {
     if (state.phase === GAME_PHASE.GUESSING) document.body.classList.toggle('ui-hidden');
   }

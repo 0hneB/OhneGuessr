@@ -246,7 +246,7 @@
           <div class="setting">
             <span>Expanded map size</span>
             <div class="segmented">
-              {#each [['default', 'Default'], ['large', 'Large'], ['xl', 'XL'], ['xxl', 'XXL']] as [value, label]}
+              {#each [['default', 'Default'], ['large', 'Large'], ['xl', 'XL'], ['xxl', 'XXL'], ['max', 'Max']] as [value, label]}
                 <button type="button" class:active={settings.guessMapSize === value}
                         onclick={() => updateSettings({ guessMapSize: value as GuessMapSize })}>{label}</button>
               {/each}

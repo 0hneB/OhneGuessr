@@ -109,7 +109,7 @@ export const LAUNCHER_THEMES = {
   'ayu-light': { label: 'Cool Light', accent: '#3b9ee5' },
   'ayu-mirage': { label: 'Cool Dark', accent: '#72cffe' }
 } satisfies Record<LauncherTheme, { label: string; accent: string }>;
-export const GUESS_MAP_SIZES = Object.freeze(['default', 'large', 'xl', 'xxl']);
+export const GUESS_MAP_SIZES = Object.freeze(['default', 'large', 'xl', 'xxl', 'max']);
 export const COMPASS_STYLES = Object.freeze(['bar', 'classic', 'both']);
 export const DEFAULT_MAP_ZOOM_SPEED = 1;
 const MAP_ZOOM_SPEED_MIN = 0.5;

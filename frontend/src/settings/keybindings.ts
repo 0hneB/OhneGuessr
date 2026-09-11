@@ -33,7 +33,8 @@ export const CONTROL_ROWS: ControlRow[] = [
       { action: 'mapSizeDefault', label: 'Default map size' },
       { action: 'mapSizeLarge', label: 'Large map size' },
       { action: 'mapSizeXl', label: 'XL map size' },
-      { action: 'mapSizeXxl', label: 'XXL map size' }
+      { action: 'mapSizeXxl', label: 'XXL map size' },
+      { action: 'mapSizeMax', label: 'Max map size' }
     ]
   },
   { action: 'hideHud', label: 'Hide HUD' }

@@ -1,7 +1,7 @@
 export type GamePhase = 'booting' | 'loading' | 'guessing' | 'result' | 'final' | 'empty' | 'error';
 export type MovementMode = 'moving' | 'nm' | 'nmpz';
 export type ScoringMode = 'world' | 'country';
-export type GuessMapSize = 'default' | 'large' | 'xl' | 'xxl';
+export type GuessMapSize = 'default' | 'large' | 'xl' | 'xxl' | 'max';
 export type CompassStyle = 'bar' | 'classic' | 'both';
 export type LauncherTheme =
   | 'ohneguessr'

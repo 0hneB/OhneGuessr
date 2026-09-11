@@ -348,6 +348,13 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   --guess-map-expanded-h: min(82vh, 820px);
   --guess-map-expanded-w: min(86vw, 1120px);
 }
+#guessPanel[data-map-size="max"] {
+  --guess-map-expanded-h: min(84vh, 840px, calc(100vh - 120px));
+  --guess-map-expanded-w: min(calc(100vw - 28px), 1440px);
+}
+:root:is([data-compass-style="classic"], [data-compass-style="both"]) #guessPanel[data-map-size="max"] {
+  --guess-map-expanded-w: min(calc(100vw - 84px), 1440px);
+}
 #guessPanel:hover,
 #guessPanel.pinned { opacity: 1; }
 #guessPanel:hover,

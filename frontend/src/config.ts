@@ -24,6 +24,7 @@ export const KEYBINDINGS: Record<string, string[]> = {
   mapSizeLarge: ['Digit2'],
   mapSizeXl: ['Digit3'],
   mapSizeXxl: ['Digit4'],
+  mapSizeMax: ['Digit5'],
   hideHud: ['KeyH']
 };
 

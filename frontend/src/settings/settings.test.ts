@@ -14,6 +14,7 @@ describe('normalizeSettings', () => {
       rounds: '12',
       timer: '-5',
       accentColor: '#ABCDEF',
+      guessMapSize: 'max',
       mapZoomSpeed: 99,
       hideCar: true,
       movement: 'broken',
@@ -22,6 +23,7 @@ describe('normalizeSettings', () => {
       rounds: '12',
       timer: DEFAULT_SETTINGS.timer,
       accentColor: '#abcdef',
+      guessMapSize: 'max',
       mapZoomSpeed: 3,
       hideCar: true,
       movement: 'moving'
