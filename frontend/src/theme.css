@@ -105,6 +105,97 @@
   --launcher-range-track: rgba(255, 255, 255, 0.16);
 }
 
+/* The original neutral-dark launcher and HUD palette. */
+.launcher-shell[data-theme="dark-mode"],
+:root[data-theme="dark-mode"] {
+  --launcher-background: #181818;
+  --launcher-main: #181818;
+  --launcher-surface: #202020;
+  --launcher-elevated: #292929;
+  --launcher-element: #292929;
+  --launcher-field: #242424;
+  --launcher-element-hover: #333;
+  --launcher-ghost-hover: rgba(255, 255, 255, 0.055);
+  --launcher-row-hover: rgba(255, 255, 255, 0.045);
+  --launcher-segment-hover: rgba(255, 255, 255, 0.07);
+  --launcher-element-active: #3a3a3a;
+  --launcher-drop-target: rgba(255, 255, 255, 0.1);
+  --launcher-border: rgba(255, 255, 255, 0.09);
+  --launcher-border-variant: rgba(255, 255, 255, 0.12);
+  --launcher-border-focused: rgba(255, 255, 255, 0.22);
+  --launcher-control-border: rgba(255, 255, 255, 0.14);
+  --launcher-field-border: rgba(255, 255, 255, 0.09);
+  --launcher-section-border: rgba(255, 255, 255, 0.1);
+  --launcher-text: #f4f4f5;
+  --launcher-text-soft: #e4e4e7;
+  --launcher-text-muted: #a1a1aa;
+  --launcher-control-text: #cbd2dd;
+  --launcher-text-placeholder: #71717a;
+  --launcher-disabled: #66666d;
+  --launcher-danger: #fb7185;
+  --launcher-error: #f87171;
+  --launcher-switch: #343434;
+  --launcher-range-track: rgba(255, 255, 255, 0.16);
+  --hud-bg: rgba(0, 0, 0, 0.6);
+  --hud-element: rgba(255, 255, 255, 0.08);
+  --hud-hover: rgba(255, 255, 255, 0.1);
+  --hud-active: rgba(255, 255, 255, 0.09);
+  --hud-border: rgba(255, 255, 255, 0.22);
+  --hud-text: #fff;
+  --hud-muted: #9aa3ad;
+  --hud-pill-text: #fbfbfd;
+  --hud-control-text: #fbfbfd;
+  --hud-control-muted: rgba(251, 251, 253, 0.55);
+  --hud-compass-text: #fbfbfd;
+  --hud-compass-muted: rgb(202, 210, 221);
+  --hud-compass-ring: rgba(246, 249, 251, 0.32);
+  --hud-compass-ring-hover: rgba(246, 249, 251, 0.4);
+  --hud-compass-south: #d8dee4;
+  --hud-secondary-hover: rgba(255, 255, 255, 0.14);
+  --hud-secondary-hover-border: rgba(255, 255, 255, 0.34);
+  --hud-round-bg: rgba(255, 255, 255, 0.04);
+  --hud-round-border: rgba(255, 255, 255, 0.08);
+  --hud-round-hover: rgba(255, 255, 255, 0.08);
+  --hud-round-active: rgba(255, 255, 255, 0.09);
+  --hud-round-active-border: rgba(255, 255, 255, 0.28);
+  --hud-round-distance: #cbd2dd;
+  --hud-loading-bg: rgba(0, 0, 0, 0.6);
+  --hud-error: #fb7185;
+  --country-streak-label: #9fa8b5;
+  --country-streak-text: #d6dbe2;
+  --country-streak-stat: #fff;
+  --country-streak-summary: #b8c0cc;
+  --country-streak-round-text: #cbd2dd;
+  --party-leaderboard-bg: rgba(255, 255, 255, 0.06);
+  --party-round-text: #fff;
+  --party-place-text: #aab2bd;
+}
+
+:root[data-theme="dark-mode"] .plugin-window {
+  --settings-bg: #181818;
+  --launcher-background: #15171a;
+  --launcher-main: #202020;
+  --launcher-surface: #181818;
+  --launcher-elevated: #202020;
+  --launcher-element: #292929;
+  --launcher-field: #222;
+  --launcher-element-hover: #333;
+  --launcher-border: rgba(255, 255, 255, 0.09);
+  --launcher-border-variant: rgba(255, 255, 255, 0.065);
+  --launcher-control-border: rgba(255, 255, 255, 0.14);
+  --launcher-field-border: rgba(255, 255, 255, 0.09);
+  --launcher-text: #eef1f6;
+  --launcher-text-soft: #edf0f5;
+  --launcher-text-muted: #aeb6c2;
+  --launcher-control-text: #cbd2dd;
+  --launcher-error: #fca5a5;
+  --launcher-range-track: rgba(255, 255, 255, 0.16);
+  --hud-text: #fff;
+  --hud-muted: #9fa8b5;
+  --plugin-window-border: rgba(255, 255, 255, 0.12);
+  --plugin-window-divider: rgba(255, 255, 255, 0.1);
+}
+
 .launcher-shell[data-theme="ohneb"],
 :root[data-theme="ohneb"],
 :root[data-theme="ohneb"] .plugin-window {

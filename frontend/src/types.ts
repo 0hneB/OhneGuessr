@@ -5,6 +5,7 @@ export type GuessMapSize = 'default' | 'large' | 'xl' | 'xxl';
 export type CompassStyle = 'bar' | 'classic' | 'both';
 export type LauncherTheme =
   | 'ohneguessr'
+  | 'dark-mode'
   | 'ohneb'
   | 'gruvbox-dark-soft'
   | 'gruvbox-light-soft'
