@@ -65,7 +65,7 @@ describe('Street View WebGL hooks', () => {
       getPropertyValue: () => '225, 211, 202'
     }));
 
-    const { installCarMask, setCarHidden } = await import('./car-mask.js');
+    const { installCarMask, setCarHidden } = await import('@/game/car-mask.js');
     const first = fakeWebGl();
     const canvas = new FakeCanvas(first.gl);
     installCarMask();

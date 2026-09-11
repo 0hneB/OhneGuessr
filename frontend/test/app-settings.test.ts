@@ -4,7 +4,7 @@ import {
   DEFAULT_SETTINGS,
   LAUNCHER_THEMES,
   normalizeSettings
-} from './settings.js';
+} from '@/settings/settings.js';
 
 describe('normalizeSettings', () => {
   it('keeps valid values and replaces invalid persisted data', () => {

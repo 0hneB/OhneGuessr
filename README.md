@@ -186,7 +186,7 @@ npm --prefix frontend run build
 
 This creates the ignored `frontend/dist/` directory. The **Check** workflow runs source checks on pushes and pull requests; its temporary Windows package is manual. The **Release** workflow builds Windows, Linux, and macOS files and uploads them to a draft release.
 
-Frontend and plugin tests live beside their source files. Run them with `npm --prefix frontend test`.
+Frontend tests live directly in `frontend/test/`, grouped by filename prefixes: `app-`, `game-`, `maps-`, `feature-`, and `plugin-`. Import frontend source with `@/` (for example, `@/game/deck.js`). Downloadable plugins keep their tests in `plugins/<plugin>/`. Run both with `npm --prefix frontend test`.
 
 Run backend checks with `go vet ./...` and `go test ./...`. CI also runs `go test -race ./...` (requires CGO and a C compiler). To measure map sampling time and allocations, run `go test ./internal/backend -run '^$' -bench BenchmarkSampleMapLocations -benchmem`.
 
@@ -198,6 +198,7 @@ OhneGuessr/
 |-- build/                 Wails build and packaging files
 |-- frontend/
 |   |-- src/               Svelte and TypeScript source
+|   |-- test/              frontend tests, grouped by filename prefix
 |   |-- public/            static assets, country flags, and vendored OpenSV
 |   |-- dist/              generated frontend (ignored)
 |   `-- package.json       frontend dependencies and scripts

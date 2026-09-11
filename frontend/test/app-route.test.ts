@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseRoute } from './route.js';
+import { parseRoute } from '@/route.js';
 
 describe('parseRoute', () => {
   it('only opens the game view with a map id', () => {

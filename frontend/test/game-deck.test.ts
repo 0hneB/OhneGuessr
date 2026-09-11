@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { sampleMap, type MapSample } from '../library/api.js';
-import type { MapItem } from '../types.js';
+import { sampleMap, type MapSample } from '@/library/api.js';
+import type { MapItem } from '@/types.js';
 import {
   createSampledDeck, ensureDeckIndex, nextRoundFallback, replaceDeckLocation,
   resizeSampledDeck, selectSampledMap, useFixedDeck
-} from './deck.js';
-import { state } from './state.svelte.js';
+} from '@/game/deck.js';
+import { state } from '@/game/state.svelte.js';
 
-vi.mock('../library/api.js', () => ({ sampleMap: vi.fn() }));
-vi.mock('./state.svelte.js', () => ({ state: {} }));
+vi.mock('@/library/api.js', () => ({ sampleMap: vi.fn() }));
+vi.mock('@/game/state.svelte.js', () => ({ state: {} }));
 
 const map: MapItem = { id: 'map', name: 'Map', file: 'map.json', folder: '', count: 10, managed: false, source: null };
 const location = (index: number) => ({ lat: index, lng: index, panoid: `pano-${index}` });

@@ -4,12 +4,12 @@ import {
   isChallengeFilename,
   parseChallenge,
   serializeChallenge
-} from './challenge.js';
+} from '@/features/challenges/challenge.js';
 import {
   challengeGame,
   challengeRevealResults,
   recordChallengeResult
-} from './state.svelte.js';
+} from '@/features/challenges/state.svelte.js';
 
 const valid = {
   format: 'ohneguessr.challenge',

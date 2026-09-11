@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, requestJSON } from './api.js';
+import { ApiError, requestJSON } from '@/api.js';
 
 afterEach(() => vi.unstubAllGlobals());
 

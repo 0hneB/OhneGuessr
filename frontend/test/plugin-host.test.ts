@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { PluginManifest } from '../../bindings/github.com/0hneB/OhneGuessr/internal/pluginmanager/index.js';
+import type { PluginManifest } from '../bindings/github.com/0hneB/OhneGuessr/internal/pluginmanager/index.js';
 import {
   createPluginHost,
   pluginHudButtons,
   type PanoramaPluginHost
-} from './host.svelte.js';
-import { createPluginWindow, type PluginWindowHandle } from './window.js';
+} from '@/plugins/host.svelte.js';
+import { createPluginWindow, type PluginWindowHandle } from '@/plugins/window.js';
 
-vi.mock('./window.js', () => ({ createPluginWindow: vi.fn() }));
+vi.mock('@/plugins/window.js', () => ({ createPluginWindow: vi.fn() }));
 
 const hosts: ReturnType<typeof createPluginHost>[] = [];
 

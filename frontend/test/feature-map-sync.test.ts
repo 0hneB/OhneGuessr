@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { runSyncAction, type SyncActions } from './sync-actions.js';
+import { runSyncAction, type SyncActions } from '@/features/map-sync/sync-actions.js';
 
 it('reports pending actions, clears successful messages, and retains failures without staying busy', async () => {
   const state: SyncActions = { busy: false, message: null };

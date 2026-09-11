@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { gameMode, type GameMode } from './game-mode.svelte.js';
-import { sampleMap } from '../library/api.js';
-import type { MapItem } from '../types.js';
-import { createSampledDeck, selectSampledMap, useFixedDeck } from './deck.js';
-import type { OpenSvViewer } from './panorama.js';
+import { gameMode, type GameMode } from '@/game/game-mode.svelte.js';
+import { sampleMap } from '@/library/api.js';
+import type { MapItem } from '@/types.js';
+import { createSampledDeck, selectSampledMap, useFixedDeck } from '@/game/deck.js';
+import type { OpenSvViewer } from '@/game/panorama.js';
 import {
   cancelRoundPreload, preparationMatches, prepareRound, scheduleNextRoundPreload, takeRoundPreload
-} from './round-preparation.js';
-import { state } from './state.svelte.js';
+} from '@/game/round-preparation.js';
+import { state } from '@/game/state.svelte.js';
 
-vi.mock('../library/api.js', () => ({ sampleMap: vi.fn() }));
-vi.mock('./state.svelte.js', () => ({ state: {}, GAME_PHASE: { RESULT: 'result' } }));
-vi.mock('./game-mode.svelte.js', () => ({ gameMode: { current: null } }));
+vi.mock('@/library/api.js', () => ({ sampleMap: vi.fn() }));
+vi.mock('@/game/state.svelte.js', () => ({ state: {}, GAME_PHASE: { RESULT: 'result' } }));
+vi.mock('@/game/game-mode.svelte.js', () => ({ gameMode: { current: null } }));
 
 const map: MapItem = { id: 'map', name: 'Map', file: 'map.json', folder: '', count: 10, managed: false, source: null };
 const location = (index: number) => ({ lat: index, lng: index, panoid: `pano-${index}` });
