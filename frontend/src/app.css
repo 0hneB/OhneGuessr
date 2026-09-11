@@ -427,7 +427,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 #hudActions {
   position: fixed;
   top: 12px;
-  left: 12px;
+  left: 14px;
   z-index: 700;
   display: flex;
   flex-direction: column;
@@ -942,7 +942,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   z-index: 810;
   display: flex;
   flex-direction: column;
-  width: min(86vw, 320px);
+  width: min(86vw, 330px);
   max-height: calc(100vh - 56px);
   text-align: center;
   padding: 24px 28px;
@@ -958,7 +958,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 .final-rounds {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   min-height: 0;
   margin-bottom: 20px;
   overflow-y: auto;
@@ -974,7 +974,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   color: var(--hud-text);
   background: var(--hud-round-bg);
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 13px;
   cursor: pointer;
   transition: background 0.15s ease;
@@ -984,7 +984,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   background: var(--hud-round-active);
 }
 .final-round:focus-visible { outline: none; }
-.final-round.selected .fr-no { color: var(--hud-text); }
+.final-round.selected .fr-no { color: var(--accent); }
 .fr-no { color: var(--hud-muted); font-weight: 700; text-align: left; }
 .fr-dist { color: var(--hud-round-distance); text-align: left; }
 .fr-pts { color: var(--accent); font-weight: 800; }
@@ -994,7 +994,10 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   gap: 8px;
 }
 .final-actions button {
-  padding: 12px 14px;
+  display: grid;
+  height: 44px;
+  padding: 0 14px;
+  place-items: center;
   font: inherit;
   font-size: 14px;
   font-weight: 700;
@@ -1015,7 +1018,7 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
 }
 #playAgain {
   align-self: center;
-  padding: 12px 28px;
+  padding: 0 28px;
   font-size: 15px;
   font-weight: 700;
   color: var(--accent-ink);

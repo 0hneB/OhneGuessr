@@ -56,7 +56,7 @@
   --hud-secondary-hover-border: var(--launcher-border-focused);
   --hud-round-bg: color-mix(in srgb, var(--launcher-element) 55%, transparent);
   --hud-round-hover: var(--hud-hover);
-  --hud-round-active: color-mix(in srgb, var(--launcher-element-active) 55%, transparent);
+  --hud-round-active: color-mix(in srgb, var(--launcher-element-active) 35%, transparent);
   --hud-round-distance: var(--hud-text);
   --hud-loading-bg: color-mix(in srgb, var(--launcher-main) 86%, transparent);
   --hud-error: var(--launcher-error);
