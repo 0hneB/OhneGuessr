@@ -55,10 +55,8 @@
   --hud-secondary-hover: var(--hud-hover);
   --hud-secondary-hover-border: var(--launcher-border-focused);
   --hud-round-bg: color-mix(in srgb, var(--launcher-element) 55%, transparent);
-  --hud-round-border: var(--hud-border);
   --hud-round-hover: var(--hud-hover);
-  --hud-round-active: var(--launcher-element-active);
-  --hud-round-active-border: var(--launcher-border-focused);
+  --hud-round-active: color-mix(in srgb, var(--launcher-element-active) 55%, transparent);
   --hud-round-distance: var(--hud-text);
   --hud-loading-bg: color-mix(in srgb, var(--launcher-main) 86%, transparent);
   --hud-error: var(--launcher-error);
@@ -139,10 +137,8 @@
   --hud-secondary-hover: rgba(255, 255, 255, 0.14);
   --hud-secondary-hover-border: rgba(255, 255, 255, 0.34);
   --hud-round-bg: rgba(255, 255, 255, 0.04);
-  --hud-round-border: rgba(255, 255, 255, 0.08);
   --hud-round-hover: rgba(255, 255, 255, 0.08);
   --hud-round-active: rgba(255, 255, 255, 0.09);
-  --hud-round-active-border: rgba(255, 255, 255, 0.28);
   --hud-round-distance: #cbd2dd;
   --hud-loading-bg: rgba(0, 0, 0, 0.6);
   --hud-error: #fb7185;

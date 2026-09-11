@@ -950,7 +950,9 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   background: var(--hud-bg);
   border-radius: 16px;
   box-shadow: var(--hud-shadow);
+  line-height: 1.375;
 }
+.final-card button { line-height: inherit; }
 .final-card h1 { font-size: 24px; margin-bottom: 8px; }
 .final-score { font-size: 30px; font-weight: 800; color: var(--accent); margin-bottom: 14px; }
 .final-rounds {
@@ -971,16 +973,15 @@ body.ui-hidden #pano path[d^="M 0 -100 L 40 -60"] {
   font-family: inherit;
   color: var(--hud-text);
   background: var(--hud-round-bg);
-  border: 1px solid var(--hud-round-border);
+  border: 0;
   border-radius: 8px;
   font-size: 13px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease;
 }
 .final-round:hover { background: var(--hud-round-hover); }
 .final-round.selected {
   background: var(--hud-round-active);
-  border-color: var(--hud-round-active-border);
 }
 .final-round:focus-visible { outline: none; }
 .final-round.selected .fr-no { color: var(--hud-text); }

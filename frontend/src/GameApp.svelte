@@ -54,7 +54,8 @@
   function handleFinalRoundsWheel(event: WheelEvent) {
     const target = event.target;
     if (!(target instanceof Element)) return;
-    const list = target.closest<HTMLElement>('.final-rounds');
+    const card = target.closest<HTMLElement>('.final-card');
+    const list = card?.querySelector<HTMLElement>('.final-rounds');
     if (!list) return;
     const rounds = [...list.querySelectorAll<HTMLButtonElement>('.final-round')];
     const next = finalRoundFromWheel(ui.selectedFinalRound, rounds.length, event.deltaY);
