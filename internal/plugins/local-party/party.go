@@ -151,7 +151,6 @@ type partyServer struct {
 	accentColor  string
 	players      []*partyPlayer
 	byToken      map[string]*partyPlayer
-	history      []PartyRoundReveal
 	subscribers  map[chan struct{}]struct{}
 	changed      func(string)
 	closed       bool
@@ -762,7 +761,6 @@ func (p *partyServer) publishReveal(reveal PartyRoundReveal) error {
 			Distance: result.Distance, Points: result.Points,
 		}
 	}
-	p.history = append(p.history, reveal)
 	p.phase = "result"
 	p.notifyLocked()
 	p.mu.Unlock()
@@ -772,7 +770,7 @@ func (p *partyServer) publishReveal(reveal PartyRoundReveal) error {
 
 func (p *partyServer) finish() (PartyHostState, error) {
 	p.mu.Lock()
-	if p.phase != "result" || len(p.history) == 0 || (p.rounds > 0 && p.round+1 != p.rounds) {
+	if p.phase != "result" || (p.rounds > 0 && p.round+1 != p.rounds) {
 		p.mu.Unlock()
 		return PartyHostState{}, errors.New("party is not ready to finish")
 	}
@@ -813,7 +811,6 @@ func (p *partyServer) reset() error {
 	p.rounds = 0
 	p.deadline = 0
 	p.mapStyle = ""
-	p.history = nil
 	for _, player := range p.players {
 		player.guess = nil
 		player.locked = false

@@ -75,7 +75,10 @@ func TestPartyLifecycle(t *testing.T) {
 	if status != http.StatusConflict {
 		t.Fatalf("late join status = %d", status)
 	}
-	if err := party.beginRound(0, 1, 1234, "roadmap"); err != nil {
+	if _, err := party.finish(); err == nil {
+		t.Fatal("finished before starting a round")
+	}
+	if err := party.beginRound(0, 2, 1234, "roadmap"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -101,6 +104,9 @@ func TestPartyLifecycle(t *testing.T) {
 	if err != nil || len(players) != 2 {
 		t.Fatalf("close round = %#v, %v", players, err)
 	}
+	if _, err := party.finish(); err == nil {
+		t.Fatal("finished before publishing a reveal")
+	}
 	distanceAda, distanceBob := 12.5, 45.0
 	if err := party.publishReveal(PartyRoundReveal{
 		Round:  0,
@@ -116,6 +122,21 @@ func TestPartyLifecycle(t *testing.T) {
 	adaState := partyState(t, party, ada)
 	if adaState.Result == nil || adaState.Result.Points != 4900 || adaState.Result.Actual.Lat != 48.2 {
 		t.Fatalf("reveal state = %#v", adaState)
+	}
+	if _, err := party.finish(); err == nil {
+		t.Fatal("finished before the last round")
+	}
+	if err := party.beginRound(1, 2, 0, "roadmap"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := party.closeRound(1); err != nil {
+		t.Fatal(err)
+	}
+	if err := party.publishReveal(PartyRoundReveal{
+		Round: 1, Actual: PartyPoint{Lat: 1, Lng: 2},
+		Results: []PartyPlayerRound{{PlayerID: players[0].ID}, {PlayerID: players[1].ID}},
+	}); err != nil {
+		t.Fatal(err)
 	}
 	final, err := party.finish()
 	if err != nil || final.Phase != "final" || final.Players[0].Place != 1 || final.Players[1].Place != 2 {

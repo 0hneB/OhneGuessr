@@ -133,7 +133,6 @@ type syncCoordinator struct {
 	mu      sync.Mutex
 	name    string
 	cancel  context.CancelFunc
-	jobID   uint64
 	closing bool
 	jobs    sync.WaitGroup
 }
@@ -148,8 +147,6 @@ func (c *syncCoordinator) acquire(name string) (context.Context, func(), error) 
 		return nil, nil, httpjson.Error(http.StatusConflict, c.name+" synchronization is running")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	c.jobID++
-	jobID := c.jobID
 	c.name = name
 	c.cancel = cancel
 	c.jobs.Add(1)
@@ -157,10 +154,8 @@ func (c *syncCoordinator) acquire(name string) (context.Context, func(), error) 
 	release := func() {
 		once.Do(func() {
 			c.mu.Lock()
-			if c.jobID == jobID {
-				c.name = ""
-				c.cancel = nil
-			}
+			c.name = ""
+			c.cancel = nil
 			c.mu.Unlock()
 			c.jobs.Done()
 		})
