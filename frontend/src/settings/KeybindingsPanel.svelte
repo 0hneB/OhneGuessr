@@ -1,13 +1,9 @@
 <script lang="ts">
+  import KeybindingButton from './KeybindingButton.svelte';
+  import InfoLink from '../components/InfoLink.svelte';
+  import IconButton from '../components/IconButton.svelte';
   import { onMount } from 'svelte';
-  import {
-    compactCodeLabel,
-    CONTROL_ROWS,
-    codeLabel,
-    currentBindings,
-    resetControls,
-    setBinding
-  } from './keybindings.js';
+  import { CONTROL_ROWS, currentBindings, resetControls, setBinding } from './keybindings.js';
 
   let capturing = $state<string | null>(null);
   const bindings = $derived.by(currentBindings);
@@ -39,51 +35,88 @@
           <div class="key-cap-group" role="group" aria-label={row.label}>
             {#each row.items as item}
               {@const code = codeFor(item.action)}
-              <button type="button" class="key-cap key-cap-compact"
-                      class:capturing={capturing === item.action}
-                      class:unbound={!code}
-                      aria-label={capturing === item.action
-                        ? `Press a key for ${item.label}`
-                        : `${item.label}: ${codeLabel(code)}`}
-                      title={`${item.label} · Click, then press a key (Esc cancels · Backspace clears)`}
-                      onclick={(event) => {
-                        event.stopPropagation();
-                        capturing = capturing ? null : item.action;
-                      }}>
-                {capturing === item.action ? '…' : compactCodeLabel(code)}
-              </button>
+              <KeybindingButton
+                compact
+                label={item.label}
+                {code}
+                capturing={capturing === item.action}
+                onactivate={() => {
+                  capturing = capturing ? null : item.action;
+                }}
+              />
             {/each}
           </div>
         {:else if row.action}
           {@const code = codeFor(row.action)}
-          <button type="button" class="key-cap"
-                  class:capturing={capturing === row.action}
-                  class:unbound={!code}
-                  aria-label={capturing === row.action
-                    ? `Press a key for ${row.label}`
-                    : `${row.label}: ${codeLabel(code)}`}
-                  title={`${row.label} · Click, then press a key (Esc cancels · Backspace clears)`}
-                  onclick={(event) => {
-                    event.stopPropagation();
-                    capturing = capturing ? null : row.action!;
-                  }}>
-            {capturing === row.action ? 'Press a key…' : codeLabel(code)}
-          </button>
+          <KeybindingButton
+            label={row.label}
+            {code}
+            capturing={capturing === row.action}
+            onactivate={() => {
+              capturing = capturing ? null : row.action!;
+            }}
+          />
         {/if}
       </div>
     {/each}
   </div>
 </div>
 
-<button type="button" class="icon-action controls-reset"
-        aria-label="Reset controls to defaults" title="Reset controls to defaults"
-        onclick={() => {
-          capturing = null;
-          resetControls();
-        }}>
-  <span class="svg-icon reset-icon" aria-hidden="true"></span>
-</button>
-<a class="settings-info-link controls-info-link" href="https://github.com/0hneB/OhneGuessr#controls"
-   target="_blank" rel="noopener noreferrer" aria-label="Open the usage guide on GitHub">
-  <span class="svg-icon info-icon" aria-hidden="true"></span>
-</a>
+<IconButton
+  icon="reset-icon"
+  type="button"
+  class="controls-reset"
+  aria-label="Reset controls to defaults"
+  title="Reset controls to defaults"
+  onclick={() => {
+    capturing = null;
+    resetControls();
+  }}
+/>
+<InfoLink
+  class="controls-info-link"
+  href="https://github.com/0hneB/OhneGuessr#controls"
+  label="Open the usage guide on GitHub"
+/>
+
+<style>
+  .key-cap-group {
+    display: flex;
+    gap: 4px;
+  }
+  .key-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .key-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    margin-inline: -8px;
+  }
+  .key-row:nth-child(odd) {
+    background: var(--launcher-surface);
+    border-radius: 4px;
+  }
+  .key-row-name {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  :global {
+    .controls-info-link {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+    }
+    .controls-reset {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 30px;
+      height: 30px;
+    }
+  }
+</style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import IconButton from '../../components/IconButton.svelte';
   import { onMount, tick } from 'svelte';
   import { runSyncAction, type SyncActions } from './sync-actions.js';
 
@@ -66,27 +67,58 @@
 <div class="sync-account-row" class:hidden={!hasKey}>
   <div class="sync-account">{account}</div>
   <div class="sync-actions">
-    <button type="button" class="icon-action" disabled={actions.busy || running}
-            aria-label={syncLabel} title={syncLabel}
-            onclick={() => runSyncAction(actions, sync, syncProgress, 'Could not start synchronization.')}>
-      <span class="svg-icon sync-icon" aria-hidden="true"></span>
-    </button>
-    <button type="button" class="icon-action" aria-label={replaceLabel} title={replaceLabel}
-            aria-pressed={replacingKey} disabled={actions.busy} onclick={toggleReplacement}>
-      <span class="svg-icon pencil-icon" aria-hidden="true"></span>
-    </button>
-    <button type="button" class="icon-action" aria-label="Forget key" title="Forget key"
-            disabled={actions.busy} onclick={forgetApiKey}>
-      <span class="svg-icon close-icon" aria-hidden="true"></span>
-    </button>
+    <IconButton
+      icon="sync-icon"
+      type="button"
+      disabled={actions.busy || running}
+      aria-label={syncLabel}
+      title={syncLabel}
+      onclick={() => runSyncAction(actions, sync, syncProgress, 'Could not start synchronization.')}
+    />
+    <IconButton
+      icon="pencil-icon"
+      type="button"
+      aria-label={replaceLabel}
+      title={replaceLabel}
+      aria-pressed={replacingKey}
+      disabled={actions.busy}
+      onclick={toggleReplacement}
+    />
+    <IconButton
+      icon="close-icon"
+      type="button"
+      aria-label="Forget key"
+      title="Forget key"
+      disabled={actions.busy}
+      onclick={forgetApiKey}
+    />
   </div>
 </div>
-<form class="sync-key-form" class:hidden={hasKey && !replacingKey}
-      onsubmit={(event) => { event.preventDefault(); void submitKey(); }}>
-  <input bind:this={keyInput} bind:value={apiKey} type="password" autocomplete="off"
-         placeholder="API key" aria-label={`${provider} API key`} />
-  <button type="submit" class="icon-action" disabled={actions.busy || running}
-          aria-label="Save key" title="Save key">
-    <span class="svg-icon save-icon" aria-hidden="true"></span>
-  </button>
+<form
+  class="sync-key-form"
+  class:hidden={hasKey && !replacingKey}
+  onsubmit={(event) => {
+    event.preventDefault();
+    void submitKey();
+  }}
+>
+  <input
+    bind:this={keyInput}
+    bind:value={apiKey}
+    type="password"
+    autocomplete="off"
+    placeholder="API key"
+    aria-label={`${provider} API key`}
+  />
+  <IconButton
+    icon="save-icon"
+    type="submit"
+    disabled={actions.busy || running}
+    aria-label="Save key"
+    title="Save key"
+  />
 </form>
+
+<style>
+  .sync-actions :global(.icon-action) { flex: none; }
+</style>

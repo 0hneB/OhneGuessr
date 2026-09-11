@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Spinner from '../../components/Spinner.svelte';
   import { onMount, tick } from 'svelte';
   import { requestJSON as request } from '../../api.js';
   import { formatDistance } from '../../game/scoring.js';
@@ -147,7 +148,7 @@
 <main class="party-guest launcher-shell" data-theme={theme}>
   {#if !party}
     <section class="party-guest-card party-guest-center">
-      <div class="spinner"></div>
+      <Spinner />
       <p>{error || 'Opening party…'}</p>
     </section>
   {:else if !party.joined}
@@ -181,7 +182,7 @@
     </form>
   {:else if party.phase === 'lobby'}
     <section class="party-guest-card party-guest-center">
-      <div class="spinner" aria-hidden="true"></div>
+      <Spinner aria-hidden="true" />
       <h1>You're in</h1>
       <p>Waiting for the host to start.</p>
       <small>{party.playerCount} / {party.capacity} joined</small>
@@ -202,7 +203,7 @@
     </section>
   {:else if party.phase === 'scoring'}
     <section class="party-guest-card party-guest-center">
-      <div class="spinner"></div>
+      <Spinner />
       <h1>Revealing…</h1>
     </section>
   {:else if party.phase === 'result' && party.result}

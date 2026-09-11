@@ -1,4 +1,6 @@
 <script lang="ts">
+  import InfoLink from '../../components/InfoLink.svelte';
+  import IconButton from '../../components/IconButton.svelte';
   import SyncControls from '../map-sync/SyncControls.svelte';
   import { runSyncAction, type SyncActions } from '../map-sync/sync-actions.js';
   import { reloadLibrary } from '../../library/library.svelte.js';
@@ -118,30 +120,65 @@
 <section class="sync-section">
   <h2>Learnable Meta</h2>
   <div class="sync-details" class:hidden={!enabled || !available}>
-    <SyncControls provider="Learnable Meta" {status} account={hasKey ? 'API key saved locally' : ''}
-      {actions} refresh={refreshStatus}
+    <SyncControls
+      provider="Learnable Meta"
+      {status}
+      account={hasKey ? 'API key saved locally' : ''}
+      {actions}
+      refresh={refreshStatus}
       saveKey={(key) => saveKey(key).then(accept)}
-      forgetKey={() => forgetKey().then(accept)} sync={() => runSync().then(accept)} />
-    <form class="sync-key-form lm-map-form" class:hidden={!hasKey}
-          onsubmit={(event) => { event.preventDefault(); void addLearnableMap(); }}>
-      <input bind:value={mapName} type="text" maxlength="120" autocomplete="off"
-             placeholder="Local map name" aria-label="Local map name" disabled={actions.busy || running} />
-      <input bind:value={mapId} type="text" maxlength="200" autocomplete="off" spellcheck="false"
-             placeholder="GeoGuessr ID" aria-label="Learnable Meta GeoGuessr ID" disabled={actions.busy || running} />
-      <button type="submit" class="icon-action lm-map-add" disabled={actions.busy || running}
-              aria-label="Add map" title="Add map">
-        <span class="svg-icon plus-icon" aria-hidden="true"></span>
-      </button>
+      forgetKey={() => forgetKey().then(accept)}
+      sync={() => runSync().then(accept)}
+    />
+    <form
+      class="sync-key-form lm-map-form"
+      class:hidden={!hasKey}
+      onsubmit={(event) => {
+        event.preventDefault();
+        void addLearnableMap();
+      }}
+    >
+      <input
+        bind:value={mapName}
+        type="text"
+        maxlength="120"
+        autocomplete="off"
+        placeholder="Local map name"
+        aria-label="Local map name"
+        disabled={actions.busy || running}
+      />
+      <input
+        bind:value={mapId}
+        type="text"
+        maxlength="200"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="GeoGuessr ID"
+        aria-label="Learnable Meta GeoGuessr ID"
+        disabled={actions.busy || running}
+      />
+      <IconButton
+        icon="plus-icon"
+        type="submit"
+        class="lm-map-add"
+        disabled={actions.busy || running}
+        aria-label="Add map"
+        title="Add map"
+      />
     </form>
   </div>
 </section>
 <div class="sync-footer">
-  <div class="settings-note sync-status" class:error={statusMessage.error}
-       class:hidden={!enabled && available && !actions.message}>{statusMessage.text}</div>
-  <a class="settings-info-link sync-info-link"
-     href="https://github.com/0hneB/OhneGuessr#learnable-meta-sync"
-     target="_blank" rel="noopener noreferrer"
-     aria-label="Open the Learnable Meta sync guide on GitHub">
-    <span class="svg-icon info-icon" aria-hidden="true"></span>
-  </a>
+  <div
+    class="settings-note sync-status"
+    class:error={statusMessage.error}
+    class:hidden={!enabled && available && !actions.message}
+  >
+    {statusMessage.text}
+  </div>
+  <InfoLink
+    class="sync-info-link"
+    href="https://github.com/0hneB/OhneGuessr#learnable-meta-sync"
+    label="Open the Learnable Meta sync guide on GitHub"
+  />
 </div>

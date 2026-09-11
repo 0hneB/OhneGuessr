@@ -1,4 +1,6 @@
 <script lang="ts">
+  import PluginSummary from './PluginSummary.svelte';
+  import ToggleSwitch from '../components/ToggleSwitch.svelte';
   import { onMount } from 'svelte';
   import {
     PluginService,
@@ -77,10 +79,24 @@
 
 <section class="launcher-settings-page plugins-page" aria-label="Plugins">
   <div class="plugin-tabs" role="tablist" aria-label="Plugin categories">
-    <button type="button" role="tab" aria-selected={tab === 'core'} class:active={tab === 'core'}
-            onclick={() => { tab = 'core'; }}>Core</button>
-    <button type="button" role="tab" aria-selected={tab === 'additional'} class:active={tab === 'additional'}
-            onclick={() => { tab = 'additional'; }}>Additional</button>
+    <button
+      type="button"
+      role="tab"
+      aria-selected={tab === 'core'}
+      class:active={tab === 'core'}
+      onclick={() => {
+        tab = 'core';
+      }}>Core</button
+    >
+    <button
+      type="button"
+      role="tab"
+      aria-selected={tab === 'additional'}
+      class:active={tab === 'additional'}
+      onclick={() => {
+        tab = 'additional';
+      }}>Additional</button
+    >
   </div>
 
   {#if tab === 'core'}
@@ -88,8 +104,16 @@
       <ChallengeSettings />
       <CountryStreakSettings />
       <LocalPartySettings />
-      <MapMakingAppSettings reportError={(next) => { error = next; }} />
-      <LearnableMetaSettings reportError={(next) => { error = next; }} />
+      <MapMakingAppSettings
+        reportError={(next) => {
+          error = next;
+        }}
+      />
+      <LearnableMetaSettings
+        reportError={(next) => {
+          error = next;
+        }}
+      />
     </div>
   {:else if !desktopRuntimeAvailable()}
     <div role="tabpanel"><p class="plugin-empty">Additional plugins require the desktop app.</p></div>
@@ -102,40 +126,59 @@
       {:else}
         {#each additional as plugin (plugin.id)}
           <article class="plugin-row external-plugin" class:enabled={plugin.enabled}>
-            <svg class="plugin-icon plugin-path-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d={plugin.icon}></path>
-            </svg>
-            <span class="plugin-copy">
-              <span class="plugin-title"><b>{plugin.name}</b>
+            <PluginSummary icon={plugin.icon} name={plugin.name} description={plugin.description} svg>
+              <span class="plugin-title"
+                ><b>{plugin.name}</b>
                 {#if plugin.experimental}<span class="plugin-badge">Experimental</span>{/if}
               </span>
-              <small>{plugin.description}</small>
-            </span>
+            </PluginSummary>
             {#if plugin.installed}
-              <label class="plugin-switch setting-toggle" aria-label={`${plugin.enabled ? 'Disable' : 'Enable'} ${plugin.name}`}>
-                <input type="checkbox" checked={plugin.enabled} disabled={Boolean(busy)}
-                       onchange={(event) => run(`${plugin.id}:toggle`, () =>
-                         PluginService.SetEnabled(plugin.id, event.currentTarget.checked))} />
-                <span class="switch" aria-hidden="true"></span>
-                {#if busy === `${plugin.id}:toggle`}<small>{plugin.enabled ? 'Disabling…' : 'Enabling…'}</small>{/if}
-              </label>
+              <ToggleSwitch
+                class="plugin-switch"
+                dimmed={false}
+                label={`${plugin.enabled ? 'Disable' : 'Enable'} ${plugin.name}`}
+                checked={plugin.enabled}
+                disabled={Boolean(busy)}
+                onchange={(event) =>
+                  run(`${plugin.id}:toggle`, () =>
+                    PluginService.SetEnabled(plugin.id, event.currentTarget.checked)
+                  )}
+              >
+                {#snippet after()}{#if busy === `${plugin.id}:toggle`}<small
+                      >{plugin.enabled ? 'Disabling…' : 'Enabling…'}</small
+                    >{/if}{/snippet}
+              </ToggleSwitch>
             {/if}
             <span class="plugin-actions">
-              <small class="plugin-version">v{plugin.version}{plugin.updatable ? ` → v${plugin.latestVersion}` : ''}</small>
+              <small class="plugin-version"
+                >v{plugin.version}{plugin.updatable ? ` → v${plugin.latestVersion}` : ''}</small
+              >
               {#if plugin.installed}
                 {#if plugin.updatable}
-                  <button type="button" class="plugin-primary" disabled={Boolean(busy)}
-                          onclick={() => run(`${plugin.id}:update`, () => PluginService.Install(plugin.id))}>
+                  <button
+                    type="button"
+                    class="plugin-primary"
+                    disabled={Boolean(busy)}
+                    onclick={() => run(`${plugin.id}:update`, () => PluginService.Install(plugin.id))}
+                  >
                     {busy === `${plugin.id}:update` ? 'Updating…' : 'Update'}
                   </button>
                 {/if}
-                <button type="button" class="plugin-remove" disabled={Boolean(busy)}
-                        onclick={() => run(`${plugin.id}:remove`, () => PluginService.Uninstall(plugin.id))}>
+                <button
+                  type="button"
+                  class="plugin-remove"
+                  disabled={Boolean(busy)}
+                  onclick={() => run(`${plugin.id}:remove`, () => PluginService.Uninstall(plugin.id))}
+                >
                   {busy === `${plugin.id}:remove` ? 'Removing…' : 'Remove'}
                 </button>
               {:else}
-                <button type="button" class="plugin-primary" disabled={Boolean(busy) || !plugin.available}
-                        onclick={() => run(`${plugin.id}:install`, () => PluginService.Install(plugin.id))}>
+                <button
+                  type="button"
+                  class="plugin-primary"
+                  disabled={Boolean(busy) || !plugin.available}
+                  onclick={() => run(`${plugin.id}:install`, () => PluginService.Install(plugin.id))}
+                >
                   {busy === `${plugin.id}:install` ? 'Installing…' : 'Install'}
                 </button>
               {/if}
@@ -148,18 +191,34 @@
                   <div class="plugin-setting">
                     <label for={field}>{setting.label}</label>
                     <div class="plugin-setting-controls">
-                      <input id={field} type="password" autocomplete="off" spellcheck="false"
-                             placeholder={configured ? 'API key saved' : 'Enter API key'}
-                             value={settingValues[field] || ''}
-                             oninput={(event) => { settingValues[field] = event.currentTarget.value; }} />
-                      <button type="button" disabled={Boolean(busy) || !settingValues[field]?.trim()}
-                              onclick={() => saveSetting(plugin.id, setting.key)}>
+                      <input
+                        id={field}
+                        type="password"
+                        autocomplete="off"
+                        spellcheck="false"
+                        placeholder={configured ? 'API key saved' : 'Enter API key'}
+                        value={settingValues[field] || ''}
+                        oninput={(event) => {
+                          settingValues[field] = event.currentTarget.value;
+                        }}
+                      />
+                      <button
+                        type="button"
+                        disabled={Boolean(busy) || !settingValues[field]?.trim()}
+                        onclick={() => saveSetting(plugin.id, setting.key)}
+                      >
                         {busy === `${field}:save` ? 'Saving…' : 'Save'}
                       </button>
                       {#if configured}
-                        <button type="button" class="plugin-remove" disabled={Boolean(busy)}
-                                onclick={() => run(`${field}:forget`, () =>
-                                  PluginService.SetSetting(plugin.id, setting.key, ''))}>
+                        <button
+                          type="button"
+                          class="plugin-remove"
+                          disabled={Boolean(busy)}
+                          onclick={() =>
+                            run(`${field}:forget`, () =>
+                              PluginService.SetSetting(plugin.id, setting.key, '')
+                            )}
+                        >
                           {busy === `${field}:forget` ? 'Forgetting…' : 'Forget'}
                         </button>
                       {/if}

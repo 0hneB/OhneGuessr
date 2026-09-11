@@ -72,42 +72,16 @@
   background: color-mix(in srgb, var(--launcher-text) 3%, transparent);
 }
 
-.plugin-icon {
-  width: 40px;
-  height: 40px;
-  filter: var(--launcher-nav-icon-filter);
-  opacity: 0.72;
-}
-
-.plugin-path-icon {
-  fill: currentColor;
-  color: var(--launcher-text-muted);
-  filter: none;
-}
-
-.plugin-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.plugin-row b {
-  color: var(--launcher-text-soft);
-  font-size: 15px;
-}
-
-.plugin-row small {
-  color: var(--launcher-text-muted);
-  font-size: 13px;
-}
-
 .plugin-title {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.plugin-row small {
+  color: var(--launcher-text-muted);
+  font-size: 13px;
 }
 
 .plugin-badge {

@@ -2,7 +2,6 @@
 @import "./launcher-shell.css";
 @import "./library/library.css";
 @import "./features/map-sync/panel.css";
-@import "./settings/page.css";
 
 button:focus-visible,
 summary:focus-visible,
@@ -84,13 +83,6 @@ a:focus-visible {
     width: 100%;
   }
 
-  .library-search {
-    flex: 1 1 150px;
-  }
-
-  .library-search input {
-    width: 100%;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

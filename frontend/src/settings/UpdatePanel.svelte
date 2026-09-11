@@ -42,3 +42,31 @@
     </button>
   </div>
 {/if}
+
+<style>
+  :where(.app-update) {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .update-action {
+    padding: 0;
+    color: color-mix(in srgb, var(--launcher-text) 58%, transparent);
+    background: none;
+    border: 0;
+    font: inherit;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .update-action:hover,
+  .update-action:focus-visible {
+    color: var(--launcher-text);
+  }
+
+  .update-action:disabled {
+    cursor: wait;
+  }
+</style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BuiltinPluginToggle from '../../plugins/BuiltinPluginToggle.svelte';
   import icon from './icon/mma.svg';
   import { mapMakingAppPlugin, setMapMakingAppEnabled } from './status.svelte.js';
 
@@ -22,11 +23,12 @@
   }
 </script>
 
-<label class="plugin-row setting-toggle" class:disabled={mapMakingAppPlugin.status?.available === false}>
-  <img class="plugin-icon" src={icon} alt="" />
-  <span class="plugin-copy"><b>Map Making App Sync</b><small>Sync maps from Map Making App.</small></span>
-  <input type="checkbox" checked={Boolean(mapMakingAppPlugin.status?.enabled)}
-         disabled={!mapMakingAppPlugin.status || mapMakingAppPlugin.status.available === false || busy}
-         onchange={(event) => toggle(event.currentTarget.checked)} />
-  <span class="switch" aria-hidden="true"></span>
-</label>
+<BuiltinPluginToggle
+  {icon}
+  name="Map Making App Sync"
+  description="Sync maps from Map Making App."
+  dimmed={mapMakingAppPlugin.status?.available === false}
+  checked={Boolean(mapMakingAppPlugin.status?.enabled)}
+  disabled={!mapMakingAppPlugin.status || mapMakingAppPlugin.status.available === false || busy}
+  onchange={(event) => toggle(event.currentTarget.checked)}
+/>

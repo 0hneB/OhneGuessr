@@ -188,6 +188,8 @@ This creates the ignored `frontend/dist/` directory. The **Check** workflow runs
 
 Frontend tests live directly in `frontend/test/`, grouped by filename prefixes: `app-`, `game-`, `maps-`, `feature-`, and `plugin-`. Import frontend source with `@/` (for example, `@/game/deck.js`). Downloadable plugins keep their tests in `plugins/<plugin>/`. Run both with `npm --prefix frontend test`.
 
+Reusable UI controls live in `frontend/src/components/`; settings, library, and plugin components stay with their features. Keep a component's styles in its `.svelte` file, with theme variables and shared layout defaults in CSS. Select, range, icon-button, and spinner styles also support DOM-based plugins, so their existing global class names and eager style imports in `main.ts` must remain available in every app window.
+
 Run backend checks with `go vet ./...` and `go test ./...`. CI also runs `go test -race ./...` (requires CGO and a C compiler). To measure map sampling time and allocations, run `go test ./internal/backend -run '^$' -bench BenchmarkSampleMapLocations -benchmem`.
 
 ### Repository structure

@@ -1,4 +1,7 @@
 <script lang="ts">
+  import MapSearch from './MapSearch.svelte';
+  import DeleteConfirmation from './DeleteConfirmation.svelte';
+  import IconButton from '../components/IconButton.svelte';
   import { onDestroy, tick } from 'svelte';
   import { isChallengeFilename } from '../features/challenges/challenge.js';
   import { mapActions } from './map-actions.js';
@@ -36,7 +39,7 @@
   const fileTypes = '.json,application/json,.ohne';
 
   let fileInput: HTMLInputElement;
-  let searchInput: HTMLInputElement;
+  let searchInput = $state<HTMLInputElement>();
   let editInput = $state<HTMLInputElement>();
   let deleteCancel = $state<HTMLButtonElement>();
   let libraryTree: HTMLDivElement;
@@ -90,13 +93,13 @@
   async function createNamedFolder() {
     if (!folderCreationAllowed) return;
     if (!folderName) {
-      searchInput.focus();
+      searchInput?.focus();
       return;
     }
     if (await createFolder(folderName)) {
       library.search = '';
       await tick();
-      searchInput.focus();
+      searchInput?.focus();
     }
   }
 
@@ -137,10 +140,6 @@
     return folder.managedRoot
       ? `Disable sync and delete ${maps}?`
       : `Delete folder and ${maps}?`;
-  }
-
-  function cancelDeleteOnEscape(event: KeyboardEvent) {
-    if (event.key === 'Escape') pendingDelete = null;
   }
 
   function positionPreview(x: number, y: number) {
@@ -244,61 +243,60 @@
 <section class="library-card" aria-label="Maps">
   <header class="library-header">
     <div class="library-toolbar">
-      <div class="library-search">
-        <span class="svg-icon search-icon" aria-hidden="true"></span>
-        <input bind:this={searchInput} type="search" placeholder="Search maps" aria-label="Search maps"
-               bind:value={library.search}
-               onkeydown={(event) => {
-                 if (event.key === 'Escape' && library.search) {
-                   event.preventDefault();
-                   library.search = '';
-                 }
-               }} />
-        {#if library.search}
-          <button class="search-clear" type="button" title="Clear search"
-                  aria-label="Clear search"
-                  onclick={() => {
-                    library.search = '';
-                    searchInput.focus();
-                  }}>
-            <span class="svg-icon close-icon" aria-hidden="true"></span>
-          </button>
-        {/if}
-      </div>
-      <button class="icon-button" type="button"
-              disabled={!folderCreationAllowed}
-              title={!folderCreationAllowed
-                ? 'Managed folder'
-                : folderName
-                  ? `Create “${folderName}” in ${library.selectedFolder || 'Maps'}`
-                  : 'Type a folder name in search'}
-              aria-label={folderName ? `Create folder ${folderName}` : 'Create folder from search'}
-              onclick={createNamedFolder}>
-        <span class="svg-icon folder-icon" aria-hidden="true"></span>
-      </button>
-      <button class="icon-button" type="button"
-              title={importAllowed ? 'Import or open a file' : 'Open a plugin file or select a local folder to import a map'}
-              aria-label="Import or open file" onclick={() => fileInput.click()}>
-        <span class="svg-icon plus-icon" aria-hidden="true"></span>
-      </button>
-      <input bind:this={fileInput} type="file" accept={fileTypes} hidden
-             onchange={(event) => acceptFiles(event.currentTarget.files)} />
+      <MapSearch bind:input={searchInput} />
+      <IconButton
+        variant="toolbar"
+        icon="folder-icon"
+        type="button"
+        disabled={!folderCreationAllowed}
+        title={!folderCreationAllowed
+          ? 'Managed folder'
+          : folderName
+            ? `Create “${folderName}” in ${library.selectedFolder || 'Maps'}`
+            : 'Type a folder name in search'}
+        aria-label={folderName ? `Create folder ${folderName}` : 'Create folder from search'}
+        onclick={createNamedFolder}
+      />
+      <IconButton
+        variant="toolbar"
+        icon="plus-icon"
+        type="button"
+        title={importAllowed
+          ? 'Import or open a file'
+          : 'Open a plugin file or select a local folder to import a map'}
+        aria-label="Import or open file"
+        onclick={() => fileInput.click()}
+      />
+      <input
+        bind:this={fileInput}
+        type="file"
+        accept={fileTypes}
+        hidden
+        onchange={(event) => acceptFiles(event.currentTarget.files)}
+      />
       <span class="toolbar-separator" aria-hidden="true"></span>
-      <button class="icon-button" type="button"
-              title={library.exporting ? 'Exporting maps…' : 'Export all maps'}
-              aria-label="Export all maps"
-              disabled={library.exporting || (!library.maps.length && !library.folders.length)}
-              onclick={exportMaps}>
-        <span class="svg-icon export-icon" aria-hidden="true"></span>
-      </button>
+      <IconButton
+        variant="toolbar"
+        icon="export-icon"
+        type="button"
+        title={library.exporting ? 'Exporting maps…' : 'Export all maps'}
+        aria-label="Export all maps"
+        disabled={library.exporting || (!library.maps.length && !library.folders.length)}
+        onclick={exportMaps}
+      />
     </div>
   </header>
 
-  <div class="library-tree" class:loading={library.loading}
-       bind:this={libraryTree} data-drop-folder=""
-       data-file-drop-target=""
-       role="region" aria-label="Map library"
-       ondrop={handleFileDrop}>
+  <div
+    class="library-tree"
+    class:loading={library.loading}
+    bind:this={libraryTree}
+    data-drop-folder=""
+    data-file-drop-target=""
+    role="region"
+    aria-label="Map library"
+    ondrop={handleFileDrop}
+  >
     {#if library.loading}
       <p class="library-empty">Loading maps…</p>
     {:else if !rows.length}
@@ -309,95 +307,149 @@
     {:else}
       {#each rows as row (row.kind === 'folder' ? `folder:${row.path}` : `map:${row.map.id}`)}
         {#if row.kind === 'folder'}
-          <div class="library-folder" class:selected={row.selected} role="group"
-               aria-label={`${row.name} folder`}
-               data-folder-row={row.path} data-drop-folder={row.path}
-               style={`--tree-depth:${row.depth}`}>
-            <button class="tree-toggle" type="button" aria-label={row.open ? 'Collapse folder' : 'Expand folder'}
-                    aria-expanded={row.open} onclick={() => toggleFolder(row.path)}>
+          <div
+            class="library-folder"
+            class:selected={row.selected}
+            role="group"
+            aria-label={`${row.name} folder`}
+            data-folder-row={row.path}
+            data-drop-folder={row.path}
+            style={`--tree-depth:${row.depth}`}
+          >
+            <button
+              class="tree-toggle"
+              type="button"
+              aria-label={row.open ? 'Collapse folder' : 'Expand folder'}
+              aria-expanded={row.open}
+              onclick={() => toggleFolder(row.path)}
+            >
               <span class="svg-icon chevron-icon" aria-hidden="true"></span>
             </button>
             {#if editing?.kind === 'folder' && editing.id === row.path}
               <div class="folder-select folder-edit">
-                <input bind:this={editInput} value={editing.value}
-                       oninput={(event) => { if (editing) editing.value = event.currentTarget.value; }}
-                       onblur={commitEdit}
-                       onkeydown={(event) => {
-                         if (event.key === 'Enter') { event.preventDefault(); void commitEdit(); }
-                         if (event.key === 'Escape') { event.preventDefault(); editing = null; }
-                       }} />
+                <input
+                  bind:this={editInput}
+                  value={editing.value}
+                  oninput={(event) => {
+                    if (editing) editing.value = event.currentTarget.value;
+                  }}
+                  onblur={commitEdit}
+                  onkeydown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      void commitEdit();
+                    }
+                    if (event.key === 'Escape') {
+                      event.preventDefault();
+                      editing = null;
+                    }
+                  }}
+                />
               </div>
             {:else}
-              <button class="folder-select" type="button" aria-pressed={row.selected}
-                      title={row.selected ? 'Current folder for new maps and folders' : undefined}
-                      onclick={() => selectFolder(row.selected ? '' : row.path)}>
+              <button
+                class="folder-select"
+                type="button"
+                aria-pressed={row.selected}
+                title={row.selected ? 'Current folder for new maps and folders' : undefined}
+                onclick={() => selectFolder(row.selected ? '' : row.path)}
+              >
                 <strong>{row.name}</strong>
                 <small>
-                  · {row.count.toLocaleString()} {row.count === 1 ? 'map' : 'maps'}
+                  · {row.count.toLocaleString()}
+                  {row.count === 1 ? 'map' : 'maps'}
                   · {row.locations.toLocaleString()} locations
                 </small>
               </button>
             {/if}
             {#if row.canRename || row.canDelete}
               {#if pendingDelete?.kind === 'folder' && pendingDelete.path === row.path}
-                <div class="delete-confirm">
-                  <span>{folderDeletePrompt(pendingDelete)}</span>
-                  <button bind:this={deleteCancel} type="button"
-                          aria-label={`Cancel deleting ${row.name}`}
-                          onkeydown={cancelDeleteOnEscape}
-                          onclick={() => { pendingDelete = null; }}>Cancel</button>
-                  <button class="danger" type="button"
-                          aria-label={`Delete ${row.name} and its contents`}
-                          onkeydown={cancelDeleteOnEscape}
-                          onclick={confirmDelete}>Delete</button>
-                </div>
+                <DeleteConfirmation
+                  prompt={folderDeletePrompt(pendingDelete)}
+                  cancelLabel={`Cancel deleting ${row.name}`}
+                  deleteLabel={`Delete ${row.name} and its contents`}
+                  bind:cancelButton={deleteCancel}
+                  oncancel={() => {
+                    pendingDelete = null;
+                  }}
+                  onconfirm={confirmDelete}
+                />
               {:else}
                 <div class="row-actions">
                   {#if row.canRename}
-                    <button class="row-action" type="button" title="Rename folder"
-                            aria-label={`Rename ${row.name}`}
-                            onclick={() => beginFolderRename(row.path, row.name)}>
-                      <span class="svg-icon pencil-icon" aria-hidden="true"></span>
-                    </button>
+                    <IconButton
+                      variant="row"
+                      icon="pencil-icon"
+                      type="button"
+                      title="Rename folder"
+                      aria-label={`Rename ${row.name}`}
+                      onclick={() => beginFolderRename(row.path, row.name)}
+                    />
                   {/if}
                   {#if row.canDelete}
-                    <button class="row-action danger" type="button" title="Delete folder"
-                            aria-label={`Delete ${row.name} and its contents`}
-                            onclick={() => requestFolderDelete(row.path)}>
-                      <span class="svg-icon close-icon" aria-hidden="true"></span>
-                    </button>
+                    <IconButton
+                      variant="row"
+                      icon="close-icon"
+                      class="danger"
+                      type="button"
+                      title="Delete folder"
+                      aria-label={`Delete ${row.name} and its contents`}
+                      onclick={() => requestFolderDelete(row.path)}
+                    />
                   {/if}
                 </div>
               {/if}
             {/if}
           </div>
         {:else}
-          <div class="library-map" class:active={row.map.id === library.activeMapID}
-               class:dragging={row.map.id === draggedMapID}
-               data-drop-folder={row.map.folder}
-               style={`--tree-depth:${row.depth}`}>
+          <div
+            class="library-map"
+            class:active={row.map.id === library.activeMapID}
+            class:dragging={row.map.id === draggedMapID}
+            data-drop-folder={row.map.folder}
+            style={`--tree-depth:${row.depth}`}
+          >
             {#if row.canMove}
-              <button type="button" class="drag-handle" title="Drag to a folder"
-                      aria-label={`Drag ${row.map.name} to a folder`}
-                      onpointerdown={(event) => startDrag(row.map, event)}>
+              <button
+                type="button"
+                class="drag-handle"
+                title="Drag to a folder"
+                aria-label={`Drag ${row.map.name} to a folder`}
+                onpointerdown={(event) => startDrag(row.map, event)}
+              >
                 <span aria-hidden="true"></span>
               </button>
             {:else}
               <span class="drag-spacer"></span>
             {/if}
             {#if editing?.kind === 'map' && editing.id === row.map.id}
-              <input class="map-name-edit" bind:this={editInput} value={editing.value}
-                     oninput={(event) => { if (editing) editing.value = event.currentTarget.value; }}
-                     onblur={commitEdit}
-                     onkeydown={(event) => {
-                       if (event.key === 'Enter') { event.preventDefault(); void commitEdit(); }
-                       if (event.key === 'Escape') { event.preventDefault(); editing = null; }
-                     }} />
+              <input
+                class="map-name-edit"
+                bind:this={editInput}
+                value={editing.value}
+                oninput={(event) => {
+                  if (editing) editing.value = event.currentTarget.value;
+                }}
+                onblur={commitEdit}
+                onkeydown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    void commitEdit();
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    editing = null;
+                  }
+                }}
+              />
             {:else}
-              <button class="map-launch" type="button"
-                      disabled={library.launchingMapID === row.map.id}
-                      aria-busy={library.launchingMapID === row.map.id}
-                      onclick={() => playMap(row.map)}>
+              <button
+                class="map-launch"
+                type="button"
+                disabled={library.launchingMapID === row.map.id}
+                aria-busy={library.launchingMapID === row.map.id}
+                onclick={() => playMap(row.map)}
+              >
                 <b>{row.map.name}</b>
                 <small>
                   · {(row.map.count || 0).toLocaleString()} locations
@@ -408,43 +460,52 @@
               </button>
             {/if}
             {#if pendingDelete?.kind === 'map' && pendingDelete.map.id === row.map.id}
-              <div class="delete-confirm">
-                <span>{managedMapRemovePrompt(row.map)}</span>
-                <button bind:this={deleteCancel} type="button"
-                        aria-label={`Cancel deleting ${row.map.name}`}
-                        onkeydown={cancelDeleteOnEscape}
-                        onclick={() => { pendingDelete = null; }}>Cancel</button>
-                <button class="danger" type="button"
-                        aria-label={managedMapRemoveLabel(row.map)}
-                        onkeydown={cancelDeleteOnEscape}
-                        onclick={confirmDelete}>Delete</button>
-              </div>
+              <DeleteConfirmation
+                prompt={managedMapRemovePrompt(row.map)}
+                cancelLabel={`Cancel deleting ${row.map.name}`}
+                deleteLabel={managedMapRemoveLabel(row.map)}
+                bind:cancelButton={deleteCancel}
+                oncancel={() => {
+                  pendingDelete = null;
+                }}
+                onconfirm={confirmDelete}
+              />
             {:else}
               <div class="row-actions">
                 {#each mapActions as action (action.id)}
                   {#if action.visible(row.map)}
-                    <button class="row-action" type="button" title={action.title}
-                            aria-label={action.label(row.map)}
-                            aria-busy={library.runningMapAction === `${action.id}:${row.map.id}`}
-                            disabled={Boolean(library.runningMapAction)}
-                            onclick={() => runMapAction(action, row.map)}>
-                      <span class={`svg-icon ${action.icon}`} aria-hidden="true"></span>
-                    </button>
+                    <IconButton
+                      variant="row"
+                      icon={action.icon}
+                      type="button"
+                      title={action.title}
+                      aria-label={action.label(row.map)}
+                      aria-busy={library.runningMapAction === `${action.id}:${row.map.id}`}
+                      disabled={Boolean(library.runningMapAction)}
+                      onclick={() => runMapAction(action, row.map)}
+                    />
                   {/if}
                 {/each}
                 {#if row.canRename}
-                  <button class="row-action" type="button" title="Rename map"
-                          aria-label={`Rename ${row.map.name}`}
-                          onclick={() => beginMapRename(row.map)}>
-                    <span class="svg-icon pencil-icon" aria-hidden="true"></span>
-                  </button>
+                  <IconButton
+                    variant="row"
+                    icon="pencil-icon"
+                    type="button"
+                    title="Rename map"
+                    aria-label={`Rename ${row.map.name}`}
+                    onclick={() => beginMapRename(row.map)}
+                  />
                 {/if}
                 {#if row.canRemove}
-                  <button class="row-action danger" type="button" title="Delete map"
-                          aria-label={`Delete ${row.map.name}`}
-                          onclick={() => requestMapDelete(row.map)}>
-                    <span class="svg-icon close-icon" aria-hidden="true"></span>
-                  </button>
+                  <IconButton
+                    variant="row"
+                    icon="close-icon"
+                    class="danger"
+                    type="button"
+                    title="Delete map"
+                    aria-label={`Delete ${row.map.name}`}
+                    onclick={() => requestMapDelete(row.map)}
+                  />
                 {/if}
               </div>
             {/if}

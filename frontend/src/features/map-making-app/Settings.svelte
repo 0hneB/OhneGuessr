@@ -1,4 +1,5 @@
 <script lang="ts">
+  import InfoLink from '../../components/InfoLink.svelte';
   import SyncControls from '../map-sync/SyncControls.svelte';
   import { type SyncActions } from '../map-sync/sync-actions.js';
   import { reloadLibrary } from '../../library/library.svelte.js';
@@ -74,20 +75,31 @@
 <section class="sync-section">
   <h2>Map Making App Sync</h2>
   <div class="sync-details" class:hidden={!enabled || !available}>
-    <SyncControls provider="Map Making App" {status} account={status?.user?.username ? `Connected as ${status.user.username}` : ''}
-      {actions} refresh={refreshStatus}
+    <SyncControls
+      provider="Map Making App"
+      {status}
+      account={status?.user?.username ? `Connected as ${status.user.username}` : ''}
+      {actions}
+      refresh={refreshStatus}
       saveKey={(key) => saveKey(key).then(accept)}
-      forgetKey={() => forgetKey().then(accept)} sync={() => runSync().then(accept)}
-      keyProgress="Checking API key…" syncProgress="Starting sync…" />
+      forgetKey={() => forgetKey().then(accept)}
+      sync={() => runSync().then(accept)}
+      keyProgress="Checking API key…"
+      syncProgress="Starting sync…"
+    />
   </div>
 </section>
 <div class="sync-footer">
-  <div class="settings-note sync-status" class:error={statusMessage.error}
-       class:hidden={!enabled && available && !actions.message}>{statusMessage.text}</div>
-  <a class="settings-info-link sync-info-link"
-     href="https://github.com/0hneB/OhneGuessr#map-making-app-sync"
-     target="_blank" rel="noopener noreferrer"
-     aria-label="Open the Map Making App sync guide on GitHub">
-    <span class="svg-icon info-icon" aria-hidden="true"></span>
-  </a>
+  <div
+    class="settings-note sync-status"
+    class:error={statusMessage.error}
+    class:hidden={!enabled && available && !actions.message}
+  >
+    {statusMessage.text}
+  </div>
+  <InfoLink
+    class="sync-info-link"
+    href="https://github.com/0hneB/OhneGuessr#map-making-app-sync"
+    label="Open the Map Making App sync guide on GitHub"
+  />
 </div>

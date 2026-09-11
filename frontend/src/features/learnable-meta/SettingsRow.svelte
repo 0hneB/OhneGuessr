@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BuiltinPluginToggle from '../../plugins/BuiltinPluginToggle.svelte';
   import icon from './icon/alm.svg';
   import { learnableMetaPlugin, setLearnableMetaEnabled } from './status.svelte.js';
 
@@ -22,11 +23,12 @@
   }
 </script>
 
-<label class="plugin-row setting-toggle" class:disabled={learnableMetaPlugin.status?.available === false}>
-  <img class="plugin-icon" src={icon} alt="" />
-  <span class="plugin-copy"><b>Learnable Meta</b><small>Show Learnable Meta clues on synced maps.</small></span>
-  <input type="checkbox" checked={Boolean(learnableMetaPlugin.status?.enabled)}
-         disabled={!learnableMetaPlugin.status || learnableMetaPlugin.status.available === false || busy}
-         onchange={(event) => toggle(event.currentTarget.checked)} />
-  <span class="switch" aria-hidden="true"></span>
-</label>
+<BuiltinPluginToggle
+  {icon}
+  name="Learnable Meta"
+  description="Show Learnable Meta clues on synced maps."
+  dimmed={learnableMetaPlugin.status?.available === false}
+  checked={Boolean(learnableMetaPlugin.status?.enabled)}
+  disabled={!learnableMetaPlugin.status || learnableMetaPlugin.status.available === false || busy}
+  onchange={(event) => toggle(event.currentTarget.checked)}
+/>

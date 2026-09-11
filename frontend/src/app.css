@@ -6,6 +6,5 @@
 @import "./settings/controls.css";
 @import "./features/map-sync/sync.css";
 @import "./game/results.css";
-@import "./components/loading.css";
 
 .hidden { display: none !important; }

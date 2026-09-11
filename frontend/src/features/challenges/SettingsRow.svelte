@@ -1,12 +1,14 @@
 <script lang="ts">
+  import BuiltinPluginToggle from '../../plugins/BuiltinPluginToggle.svelte';
   import icon from './icon/challenge.svg';
   import { challengeSettings, setChallengesEnabled } from './settings.svelte.js';
 </script>
 
-<label class="plugin-row setting-toggle">
-  <img class="plugin-icon" src={icon} alt="" />
-  <span class="plugin-copy"><b>Challenges</b><small>Create and play .ohne challenge files.</small></span>
-  <input type="checkbox" checked={challengeSettings.enabled}
-         onchange={(event) => setChallengesEnabled(event.currentTarget.checked)} />
-  <span class="switch" aria-hidden="true"></span>
-</label>
+<BuiltinPluginToggle
+  {icon}
+  name="Challenges"
+  description="Create and play .ohne challenge files."
+  dimmed={false}
+  checked={challengeSettings.enabled}
+  onchange={(event) => setChallengesEnabled(event.currentTarget.checked)}
+/>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LoadingOverlay from './game/LoadingOverlay.svelte';
   import { CONFIG } from './config.js';
   import { onMount } from 'svelte';
   import {
@@ -234,7 +235,4 @@
   </div>
 </div>
 
-<div id="loading" class:hidden={!ui.loading}>
-  <div class="spinner"></div>
-  <p id="loadingText">{ui.loadingText}</p>
-</div>
+<LoadingOverlay visible={ui.loading} text={ui.loadingText} />

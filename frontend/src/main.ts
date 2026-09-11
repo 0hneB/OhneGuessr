@@ -1,4 +1,9 @@
 import { mount } from 'svelte';
+// DOM-based plugins share these control styles without mounting Svelte components.
+import './components/SelectControl.svelte';
+import './components/RangeControl.svelte';
+import './components/IconButton.svelte';
+import './components/Spinner.svelte';
 import { parseRoute } from './route.js';
 
 try { localStorage.removeItem('ohneguessr.game'); } catch { /* storage unavailable */ }
