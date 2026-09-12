@@ -28,7 +28,7 @@
   } from '../../features/challenges/game.svelte.js';
   import { gameMode } from '../../game/game-mode.svelte.js';
   import { finalRoundFromWheel, ui } from '../../ui.svelte.js';
-  import { pluginHudButtons } from '../../plugins/host.svelte.js';
+  import { pluginHudButtons } from '../../extensions/host.svelte.js';
   import { onSettingsChanged } from '../../settings/store.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);

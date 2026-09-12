@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergePluginEntries } from '@/plugins/marketplace.js';
+import { mergePluginEntries } from '@/extensions/marketplace.js';
 
 const manifest = (id: string, version: string) => ({
   id,

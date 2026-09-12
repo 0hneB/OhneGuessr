@@ -9,7 +9,7 @@ import {
   loadRequestedGameData, activateRequestedGame, onPlaceGuess, applySessionSettings, refreshGameMode
 } from '../../game/session.js';
 import { initSettingsSync, onSettingsChanged } from '../../settings/store.svelte.js';
-import { activateExternalPlugins, loadExternalPlugins } from '../../plugins/runtime.js';
+import { activateExternalPlugins, loadExternalPlugins } from '../../extensions/runtime.js';
 import { challengeAction } from '../../features/challenges/game.svelte.js';
 import {
   resetLearnableMetaClues, selectLearnableMetaFinalRound, selectLearnableMetaMap,

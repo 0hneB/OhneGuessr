@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { init } from '@/app/game/setup.js';
 import { activateRequestedGame, loadRequestedGameData } from '@/game/session.js';
 import { initMaps, viewer } from '@/game/runtime.js';
-import { activateExternalPlugins } from '@/plugins/runtime.js';
+import { activateExternalPlugins } from '@/extensions/runtime.js';
 import { setupLearnableMeta } from '@/features/learnable-meta/index.js';
 import { setLoading } from '@/dom.js';
 import { state } from '@/game/state.svelte.js';
@@ -32,7 +32,7 @@ vi.mock('@/settings/store.svelte.js', () => ({
   onSettingsChanged: vi.fn(() => { trace.push('settings listener'); }),
   initSettingsSync: vi.fn(() => { trace.push('settings sync'); })
 }));
-vi.mock('@/plugins/runtime.js', () => ({
+vi.mock('@/extensions/runtime.js', () => ({
   loadExternalPlugins: vi.fn(async () => { trace.push('load plugins'); }),
   activateExternalPlugins: vi.fn(async () => { trace.push('activate plugins'); })
 }));

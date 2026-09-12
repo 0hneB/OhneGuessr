@@ -1,5 +1,5 @@
 <script lang="ts">
-  import AdditionalPlugins from '../../plugins/AdditionalPlugins.svelte';
+  import AdditionalPlugins from '../../extensions/AdditionalPlugins.svelte';
   import ChallengeSettings from '../../features/challenges/SettingsRow.svelte';
   import CountryStreakSettings from '../../features/country-streak/SettingsRow.svelte';
   import LearnableMetaSettings from '../../features/learnable-meta/SettingsRow.svelte';

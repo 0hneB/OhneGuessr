@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BuiltinPluginToggle from '../../plugins/BuiltinPluginToggle.svelte';
+  import BuiltinPluginToggle from '../../components/BuiltinPluginToggle.svelte';
   import icon from './icon/local-party.svg';
   import { localPartySettings, setLocalPartyEnabled } from './settings.svelte.js';
 </script>

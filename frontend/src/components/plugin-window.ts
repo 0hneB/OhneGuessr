@@ -1,4 +1,4 @@
-import './window.css';
+import './plugin-window.css';
 
 const DEFAULT_WIDTH = 450;
 const DEFAULT_HEIGHT = 550;

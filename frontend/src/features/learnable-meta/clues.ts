@@ -3,7 +3,7 @@ import { safeImageUrls, sanitizeHtml } from './sanitizer.js';
 import {
   createPluginWindow,
   type PluginWindowHandle
-} from '../../plugins/window.js';
+} from '../../components/plugin-window.js';
 import type { Location, MapItem } from '../../types.js';
 
 const LAYOUT_KEY = 'ohneguessr.learnableMeta.clue.layout';

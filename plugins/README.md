@@ -14,3 +14,6 @@ npm --prefix plugins run build
 The build updates the committed `index.js` files and checksum-bearing
 `registry.json`. Built-in game modes and map integrations have their frontend
 code in `frontend/src/features/` and their Go services in `internal/plugins/`.
+The app's downloadable-plugin catalog UI and renderer host live in
+`frontend/src/extensions/`; UI shared with built-in features lives in
+`frontend/src/components/`.

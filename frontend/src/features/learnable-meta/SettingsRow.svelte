@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BuiltinPluginToggle from '../../plugins/BuiltinPluginToggle.svelte';
+  import BuiltinPluginToggle from '../../components/BuiltinPluginToggle.svelte';
   import icon from './icon/alm.svg';
   import { learnableMetaPlugin, setLearnableMetaEnabled } from './status.svelte.js';
 

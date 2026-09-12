@@ -192,6 +192,8 @@ Reusable UI controls live in `frontend/src/components/`; settings, library, and 
 
 `frontend/src/app/` owns routes, window shells, and the code that connects features. The launcher supplies map actions and file dispatch to the map library and composes the built-in plugin settings and sync panels. Its `events.ts` is the small navigation-request contract used by features. Keep page drafts and catalog state alive across their existing navigation boundaries.
 
+Built-in functionality lives in `frontend/src/features/`, with its Go services in `internal/plugins/`. `frontend/src/extensions/` owns the catalog UI and runtime for downloadable plugins. Controls and window UI used by both live in `frontend/src/components/`. The root `plugins/` directory remains the published catalog: its registry, manifests, compiled entry points, and per-plugin tests keep their existing paths.
+
 Game progression lives in `frontend/src/game/session.ts`, renderer setup and live display settings in `game/runtime.ts`, and keyboard/compass actions in `game/input.ts`. `app/game/setup.ts` connects them to Challenges, Learnable Meta, and additional plugins. Keep named integration imports in the application setup and preserve startup order when changing that wiring.
 
 Run backend checks with `go vet ./...` and `go test ./...`. CI also runs `go test -race ./...` (requires CGO and a C compiler). To measure map sampling time and allocations, run `go test ./internal/backend -run '^$' -bench BenchmarkSampleMapLocations -benchmem`.

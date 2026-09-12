@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { ComponentProps } from 'svelte';
   import PluginSummary from './PluginSummary.svelte';
-  import ToggleSwitch from '../components/ToggleSwitch.svelte';
+  import ToggleSwitch from './ToggleSwitch.svelte';
 
   let {
     icon,

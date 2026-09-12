@@ -1,5 +1,5 @@
 <script lang="ts">
-  import PluginSummary from './PluginSummary.svelte';
+  import PluginSummary from '../components/PluginSummary.svelte';
   import ToggleSwitch from '../components/ToggleSwitch.svelte';
   import { onMount, type Snippet } from 'svelte';
   import {

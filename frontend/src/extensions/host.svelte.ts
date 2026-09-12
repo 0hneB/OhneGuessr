@@ -7,7 +7,7 @@ import type { PanoramaCapture, PanoramaCaptureOptions } from '../game/panorama-c
 import type { PanoramaMetadata } from '../game/panorama.js';
 import type { PanoramaDetails } from '../game/panorama-details.js';
 import { reverseLocation } from './location.js';
-import { createPluginWindow, type PluginWindowHandle } from './window.js';
+import { createPluginWindow, type PluginWindowHandle } from '../components/plugin-window.js';
 
 export interface PanoramaPluginHost {
   getMetadata(): PanoramaMetadata | null;

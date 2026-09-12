@@ -4,10 +4,10 @@ import {
   createPluginHost,
   pluginHudButtons,
   type PanoramaPluginHost
-} from '@/plugins/host.svelte.js';
-import { createPluginWindow, type PluginWindowHandle } from '@/plugins/window.js';
+} from '@/extensions/host.svelte.js';
+import { createPluginWindow, type PluginWindowHandle } from '@/components/plugin-window.js';
 
-vi.mock('@/plugins/window.js', () => ({ createPluginWindow: vi.fn() }));
+vi.mock('@/components/plugin-window.js', () => ({ createPluginWindow: vi.fn() }));
 
 const hosts: ReturnType<typeof createPluginHost>[] = [];
 

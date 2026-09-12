@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { parseLocation, reverseLocation } from '@/plugins/location.js';
+import { parseLocation, reverseLocation } from '@/extensions/location.js';
 
 afterEach(() => vi.unstubAllGlobals());
 
