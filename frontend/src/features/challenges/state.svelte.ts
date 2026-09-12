@@ -1,7 +1,7 @@
 import type { Point } from '../../shared/geo.js';
-import type { RevealResult } from '../../maps/types.js';
-import type { RoundResult } from '../../game/types.js';
-import type { GameModeResult } from '../../game/game-mode.svelte.js';
+import type { RevealResult } from '../../rendering/map/types.js';
+import type { RoundResult } from '../game/types.js';
+import type { GameModeResult } from '../game/game-mode.svelte.js';
 import type { Challenge } from './types.js';
 
 export interface ChallengeResult {

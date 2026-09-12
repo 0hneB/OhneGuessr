@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cameraType, parsePanoramaDetails } from '@/game/panorama-details.js';
+import { cameraType, parsePanoramaDetails } from '@/rendering/panorama/panorama-details.js';
 
 describe('panorama details', () => {
   it('normalizes the extended metadata used by plugins', () => {

@@ -1,5 +1,5 @@
-import { settings } from '../../game/state.svelte.js';
-import { installGameMode, type GameMode } from '../../game/game-mode.svelte.js';
+import { settings } from '../game/state.svelte.js';
+import { installGameMode, type GameMode } from '../game/game-mode.svelte.js';
 import { countriesAt, loadCountryIndex, type CountryIndex } from './classifier.js';
 import Final from './Final.svelte';
 import ResultStatus from './ResultStatus.svelte';

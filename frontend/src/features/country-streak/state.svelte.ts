@@ -1,4 +1,4 @@
-import type { RoundResult } from '../../game/types.js';
+import type { RoundResult } from '../game/types.js';
 import type { Country } from './classifier.js';
 
 const STATS_KEY = 'ohneguessr.plugin.country-streak.stats';

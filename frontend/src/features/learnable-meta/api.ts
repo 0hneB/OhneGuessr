@@ -1,4 +1,4 @@
-import { ApiError, requestJSON } from '../../api.js';
+import { ApiError, requestJSON } from '../../platform/http.js';
 
 export { ApiError };
 

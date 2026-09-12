@@ -1,19 +1,19 @@
 <script lang="ts">
   import LauncherTitlebar from './LauncherTitlebar.svelte';
   import { onMount } from 'svelte';
-  import { getGameWindowState, onGameWindowState, type GameWindowState } from '../../desktop.js';
+  import { getGameWindowState, onGameWindowState, type GameWindowState } from '../../platform/desktop.js';
   import { fileTypes, openFiles } from './file-open.js';
   import { mapActions } from './map-actions.js';
-  import MapLibrary from '../../library/MapLibrary.svelte';
-  import { initLibrary, setActiveMap, showLibraryNotice } from '../../library/library.svelte.js';
+  import MapLibrary from '../../features/map-library/MapLibrary.svelte';
+  import { initLibrary, setActiveMap, showLibraryNotice } from '../../features/map-library/library.svelte.js';
   import { onLauncherPageRequested } from './events.js';
   import MapSyncLayout from './MapSyncLayout.svelte';
   import PluginsPage from './PluginsPage.svelte';
-  import GameSettings from '../../settings/GameSettings.svelte';
-  import DisplaySettings from '../../settings/DisplaySettings.svelte';
-  import ControlsSettings from '../../settings/ControlsSettings.svelte';
-  import { initSettingsSync, settings } from '../../settings/store.svelte.js';
-  import UpdatePanel from '../../settings/UpdatePanel.svelte';
+  import GameSettings from '../../features/settings/GameSettings.svelte';
+  import DisplaySettings from '../../features/settings/DisplaySettings.svelte';
+  import ControlsSettings from '../../features/settings/ControlsSettings.svelte';
+  import { initSettingsSync, settings } from '../../features/settings/store.svelte.js';
+  import UpdatePanel from '../../features/updates/UpdatePanel.svelte';
 
   type Page = 'maps' | 'plugins' | 'game' | 'display' | 'controls';
 

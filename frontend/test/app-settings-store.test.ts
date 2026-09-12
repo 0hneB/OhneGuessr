@@ -26,7 +26,7 @@ beforeAll(() => {
 describe('settings store', () => {
   it('normalizes, persists and notifies a patch', async () => {
     const { onSettingsChanged, settings, updateSettings } =
-      await import('@/settings/store.svelte.js');
+      await import('@/features/settings/store.svelte.js');
     let observed = '';
     const stop = onSettingsChanged((next) => { observed = next.theme; });
     updateSettings({

@@ -1,4 +1,4 @@
-import { registerMapSource } from '../../library/map-sources.js';
+import { registerMapSource } from '../map-library/map-sources.js';
 import { refreshMapMakingAppStatus } from './status.svelte.js';
 
 export function setupMapMakingApp() {

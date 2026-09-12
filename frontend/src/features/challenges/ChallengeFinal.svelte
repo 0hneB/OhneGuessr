@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { CONFIG } from '../../game/config.js';
-  import { formatDistance } from '../../game/scoring.js';
+  import { CONFIG } from '../game/config.js';
+  import { formatDistance } from '../game/scoring.js';
   import { challengeGame } from './state.svelte.js';
 
   let {

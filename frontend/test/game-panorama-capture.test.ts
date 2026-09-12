@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   capturePanoViewport, fitCaptureSize, frameFingerprint, requestedCaptureSize
-} from '@/game/panorama-capture.js';
+} from '@/rendering/panorama/panorama-capture.js';
 
 afterEach(() => {
   vi.restoreAllMocks();

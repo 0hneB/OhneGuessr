@@ -1,19 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { settings, state } from '@/game/state.svelte.js';
-import { gameMode, type GameMode } from '@/game/game-mode.svelte.js';
-import { gmap, viewer, resultMap, summaryMap } from '@/game/runtime.js';
-import { ui } from '@/game/ui.svelte.js';
+import { settings, state } from '@/features/game/state.svelte.js';
+import { gameMode, type GameMode } from '@/features/game/game-mode.svelte.js';
+import { gmap, viewer, resultMap, summaryMap } from '@/features/game/runtime.js';
+import { ui } from '@/features/game/ui.svelte.js';
 import {
   activateRequestedGame, completeModeRound, finishRound, nextRound,
   selectFinalRound, startModeGame, type SessionEffects
-} from '@/game/session.js';
-import { cancelRoundPreload } from '@/game/round-preparation.js';
-import type { MapItem } from '@/library/types.js';
-import type { RevealResult } from '@/maps/types.js';
+} from '@/features/game/session.js';
+import { cancelRoundPreload } from '@/features/game/round-preparation.js';
+import type { MapItem } from '@/features/map-library/types.js';
+import type { RevealResult } from '@/rendering/map/types.js';
 
-vi.mock('@/settings/store.svelte.js', () => ({ settings: {} }));
-vi.mock('@/library/api.js', () => ({ loadLibrary: vi.fn(), sampleMap: vi.fn() }));
-vi.mock('@/game/runtime.js', () => ({
+vi.mock('@/features/settings/store.svelte.js', () => ({ settings: {} }));
+vi.mock('@/features/map-library/api.js', () => ({ loadLibrary: vi.fn(), sampleMap: vi.fn() }));
+vi.mock('@/features/game/runtime.js', () => ({
   viewer: {
     setMode: vi.fn(), setStartZoomedOut: vi.fn(), showLocation: vi.fn(),
     beginRound: vi.fn(), getTrail: vi.fn(() => [])

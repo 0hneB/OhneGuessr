@@ -5,7 +5,7 @@ import {
   type PluginWindowHandle
 } from '../../components/plugin-window.js';
 import type { Location } from '../../shared/geo.js';
-import type { MapItem } from '../../library/types.js';
+import type { MapItem } from '../map-library/types.js';
 
 const LAYOUT_KEY = 'ohneguessr.learnableMeta.clue.layout';
 const IMAGE_LENS_SIZE = 150;

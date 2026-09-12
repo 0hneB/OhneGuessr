@@ -23,7 +23,7 @@ async function setupMapSources() {
 }
 
 if (route.view === 'game' || challengeID) {
-  await Promise.all([import('../app.css'), setupMapSources()]);
+  await Promise.all([import('./app.css'), setupMapSources()]);
   const { setupChallengeGame } = await import('../features/challenges/setup.js');
   const partyID = params.get('party')?.trim();
   setupChallengeGame(partyID ? '' : challengeID);
@@ -40,13 +40,13 @@ if (route.view === 'game' || challengeID) {
   const { default: GameApp } = await import('./game/GameApp.svelte');
   mount(GameApp, { target });
 } else if (route.view === 'party') {
-  await Promise.all([import('../app.css'), import('./launcher/launcher.css')]);
+  await Promise.all([import('./app.css'), import('./launcher/launcher.css')]);
   document.title = '';
   document.querySelector('link[rel~="icon"]')?.remove();
   const { default: PartyGuestApp } = await import('../features/local-party/PartyGuestApp.svelte');
   mount(PartyGuestApp, { target, props: { join: route.join } });
 } else {
-  await Promise.all([import('../app.css'), import('./launcher/launcher.css')]);
+  await Promise.all([import('./app.css'), import('./launcher/launcher.css')]);
   await setupMapSources();
   const { default: LauncherApp } = await import('./launcher/LauncherApp.svelte');
   mount(LauncherApp, { target });

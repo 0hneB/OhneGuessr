@@ -7,7 +7,7 @@
     type PluginInfo,
     type PluginManifest
   } from '../../bindings/github.com/0hneB/OhneGuessr/internal/pluginmanager/index.js';
-  import { desktopRuntimeAvailable } from '../desktop.js';
+  import { desktopRuntimeAvailable } from '../platform/desktop.js';
   import { mergePluginEntries } from './marketplace.js';
 
   let { error = $bindable(''), children }: {

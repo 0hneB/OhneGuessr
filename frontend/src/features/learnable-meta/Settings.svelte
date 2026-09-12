@@ -3,7 +3,7 @@
   import IconButton from '../../components/IconButton.svelte';
   import SyncControls from '../map-sync/SyncControls.svelte';
   import { runSyncAction, type SyncActions } from '../map-sync/sync-actions.js';
-  import { reloadLibrary } from '../../library/library.svelte.js';
+  import { reloadLibrary } from '../map-library/library.svelte.js';
   import {
     addMap,
     forgetKey,

@@ -1,34 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { init } from '@/app/game/setup.js';
-import { activateRequestedGame, loadRequestedGameData } from '@/game/session.js';
-import { initMaps, viewer } from '@/game/runtime.js';
+import { activateRequestedGame, loadRequestedGameData } from '@/features/game/session.js';
+import { initMaps, viewer } from '@/features/game/runtime.js';
 import { activateExternalPlugins } from '@/extensions/runtime.js';
 import { setupLearnableMeta } from '@/features/learnable-meta/index.js';
-import { setLoading } from '@/game/ui.svelte.js';
-import { state } from '@/game/state.svelte.js';
+import { setLoading } from '@/features/game/ui.svelte.js';
+import { state } from '@/features/game/state.svelte.js';
 
 const trace = vi.hoisted(() => [] as string[]);
-vi.mock('@/game/ui.svelte.js', () => ({ setLoading: vi.fn() }));
-vi.mock('@/game/state.svelte.js', () => ({ state: {}, GAME_PHASE: { ERROR: 'error' } }));
-vi.mock('@/game/game-mode.svelte.js', () => ({ gameMode: { current: null } }));
-vi.mock('@/game/panorama.js', () => ({ loadOpenSV: vi.fn(async () => { trace.push('load viewer'); }) }));
-vi.mock('@/game/runtime.js', () => ({
+vi.mock('@/features/game/ui.svelte.js', () => ({ setLoading: vi.fn() }));
+vi.mock('@/features/game/state.svelte.js', () => ({ state: {}, GAME_PHASE: { ERROR: 'error' } }));
+vi.mock('@/features/game/game-mode.svelte.js', () => ({ gameMode: { current: null } }));
+vi.mock('@/rendering/panorama/panorama.js', () => ({ loadOpenSV: vi.fn(async () => { trace.push('load viewer'); }) }));
+vi.mock('@/features/game/runtime.js', () => ({
   viewer: {}, applyViewSettings: vi.fn(),
   initCompass: vi.fn(() => { trace.push('compass'); }),
   initPanorama: vi.fn(() => { trace.push('viewer'); }),
   initMaps: vi.fn(() => { trace.push('maps'); })
 }));
-vi.mock('@/game/input.js', () => ({
+vi.mock('@/features/game/input.js', () => ({
   keybindings: { rebuild: vi.fn() },
   bindCompassInput: vi.fn(() => { trace.push('compass input'); }),
   bindKeyboardInput: vi.fn(() => { trace.push('keyboard'); })
 }));
-vi.mock('@/game/session.js', () => ({
+vi.mock('@/features/game/session.js', () => ({
   onPlaceGuess: vi.fn(), applySessionSettings: vi.fn(), refreshGameMode: vi.fn(),
   loadRequestedGameData: vi.fn(),
   activateRequestedGame: vi.fn(async () => { trace.push('start'); })
 }));
-vi.mock('@/settings/store.svelte.js', () => ({
+vi.mock('@/features/settings/store.svelte.js', () => ({
   onSettingsChanged: vi.fn(() => { trace.push('settings listener'); }),
   initSettingsSync: vi.fn(() => { trace.push('settings sync'); })
 }));

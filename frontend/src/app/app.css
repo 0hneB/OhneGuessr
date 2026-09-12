@@ -1,0 +1,10 @@
+/* Keep imports in this order to preserve the shared and game style cascade. */
+@import "../styles/theme.css";
+@import "../styles/base.css";
+@import "../rendering/map/map.css";
+@import "../features/game/game.css";
+@import "../features/settings/controls.css";
+@import "../features/map-sync/sync.css";
+@import "../features/game/results.css";
+
+.hidden { display: none !important; }

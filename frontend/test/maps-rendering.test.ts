@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createRevealMaps, GuessMap } from '@/maps/map.js';
+import { createRevealMaps, GuessMap } from '@/rendering/map/map.js';
 
 const { setResults, fitBounds, createMap } = vi.hoisted(() => ({
   setResults: vi.fn(), fitBounds: vi.fn(), createMap: vi.fn()
 }));
-vi.mock('@/maps/result-layers.js', () => ({ ResultLayers: class { setResults = setResults; } }));
+vi.mock('@/rendering/map/result-layers.js', () => ({ ResultLayers: class { setResults = setResults; } }));
 vi.mock('maplibre-gl', async (importOriginal) => ({
   ...await importOriginal<typeof import('maplibre-gl')>(),
   Map: class {

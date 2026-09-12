@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LAUNCHER_THEME, LAUNCHER_THEMES } from '@/styles/theme.js';
-import { DEFAULT_SETTINGS, normalizeSettings } from '@/settings/settings.js';
+import { DEFAULT_SETTINGS, normalizeSettings } from '@/features/settings/settings.js';
 
 describe('normalizeSettings', () => {
   it('keeps valid values and replaces invalid persisted data', () => {

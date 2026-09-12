@@ -2,7 +2,7 @@
   import InfoLink from '../../components/InfoLink.svelte';
   import SyncControls from '../map-sync/SyncControls.svelte';
   import { type SyncActions } from '../map-sync/sync-actions.js';
-  import { reloadLibrary } from '../../library/library.svelte.js';
+  import { reloadLibrary } from '../map-library/library.svelte.js';
   import {
     forgetKey,
     getStatus,

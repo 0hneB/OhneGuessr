@@ -1,4 +1,4 @@
-import { requestJSON } from '../../api.js';
+import { requestJSON } from '../../platform/http.js';
 
 const BASE = '/api/mma-sync';
 

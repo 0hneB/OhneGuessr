@@ -1,4 +1,4 @@
-import { importMap, showLibraryNotice } from '../../library/library.svelte.js';
+import { importMap, showLibraryNotice } from '../../features/map-library/library.svelte.js';
 import { isChallengeFilename } from '../../features/challenges/challenge.js';
 import { openChallengeFile } from '../../features/challenges/open.js';
 

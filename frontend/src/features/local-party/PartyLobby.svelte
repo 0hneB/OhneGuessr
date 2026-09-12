@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { settings } from '../../settings/store.svelte.js';
+  import { settings } from '../settings/store.svelte.js';
   import { partyHost } from './host.svelte.js';
 
   let {

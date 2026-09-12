@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { finalRoundFromWheel } from '@/game/ui.svelte.js';
+import { finalRoundFromWheel } from '@/features/game/ui.svelte.js';
 
 describe('finalRoundFromWheel', () => {
   it('moves through final rounds and stops at the ends', () => {

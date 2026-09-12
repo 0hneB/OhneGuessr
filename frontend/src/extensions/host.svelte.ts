@@ -3,9 +3,9 @@ import {
   type PluginManifest
 } from '../../bindings/github.com/0hneB/OhneGuessr/internal/pluginmanager/index.js';
 import { Browser } from '@wailsio/runtime';
-import type { PanoramaCapture, PanoramaCaptureOptions } from '../game/panorama-capture.js';
-import type { PanoramaMetadata } from '../game/panorama.js';
-import type { PanoramaDetails } from '../game/panorama-details.js';
+import type { PanoramaCapture, PanoramaCaptureOptions } from '../rendering/panorama/panorama-capture.js';
+import type { PanoramaMetadata } from '../rendering/panorama/panorama.js';
+import type { PanoramaDetails } from '../rendering/panorama/panorama-details.js';
 import { reverseLocation } from './location.js';
 import { createPluginWindow, type PluginWindowHandle } from '../components/plugin-window.js';
 

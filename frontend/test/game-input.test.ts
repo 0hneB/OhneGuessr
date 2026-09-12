@@ -1,21 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { keybindings, bindKeyboardInput } from '@/game/input.js';
-import { state } from '@/game/state.svelte.js';
-import { gameMode } from '@/game/game-mode.svelte.js';
-import { gmap, viewer, setGuessMapSize } from '@/game/runtime.js';
-import { finishRound, nextRound, rematchModeGame, startGame, submitGuess } from '@/game/session.js';
+import { keybindings, bindKeyboardInput } from '@/features/game/input.js';
+import { state } from '@/features/game/state.svelte.js';
+import { gameMode } from '@/features/game/game-mode.svelte.js';
+import { gmap, viewer, setGuessMapSize } from '@/features/game/runtime.js';
+import { finishRound, nextRound, rematchModeGame, startGame, submitGuess } from '@/features/game/session.js';
 
-vi.mock('@/settings/store.svelte.js', () => ({ settings: {}, updateSettings: vi.fn() }));
-vi.mock('@/maps/config.js', () => ({ DEFAULT_MAP_ZOOM_SPEED: 1 }));
-vi.mock('@/desktop.js', () => ({
+vi.mock('@/features/settings/store.svelte.js', () => ({ settings: {}, updateSettings: vi.fn() }));
+vi.mock('@/rendering/map/config.js', () => ({ DEFAULT_MAP_ZOOM_SPEED: 1 }));
+vi.mock('@/platform/desktop.js', () => ({
   desktopRuntimeAvailable: () => false, getGameWindowState: vi.fn(), setGameFullscreen: vi.fn()
 }));
-vi.mock('@/maps/map.js', () => ({ openStreetView: vi.fn() }));
-vi.mock('@/game/runtime.js', () => ({
+vi.mock('@/rendering/map/map.js', () => ({ openStreetView: vi.fn() }));
+vi.mock('@/features/game/runtime.js', () => ({
   gmap: { guess: null }, setGuessMapSize: vi.fn(),
   viewer: { endCheckpointPeek: vi.fn(), endLookBehind: vi.fn() }
 }));
-vi.mock('@/game/session.js', () => ({
+vi.mock('@/features/game/session.js', () => ({
   finishRound: vi.fn(), nextRound: vi.fn(), onPlaceGuess: vi.fn(),
   rematchModeGame: vi.fn(), startGame: vi.fn(), submitGuess: vi.fn()
 }));

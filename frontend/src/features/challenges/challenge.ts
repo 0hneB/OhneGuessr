@@ -1,5 +1,5 @@
 import type { Location, Point } from '../../shared/geo.js';
-import type { RoundResult } from '../../game/types.js';
+import type { RoundResult } from '../game/types.js';
 import type { Challenge, ChallengeRound, ChallengeRules } from './types.js';
 
 export const CHALLENGE_FORMAT = 'ohneguessr.challenge';

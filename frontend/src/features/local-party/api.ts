@@ -1,5 +1,5 @@
 import { LocalParty } from '../../../bindings/github.com/0hneB/OhneGuessr/internal/plugins/local-party/index.js';
-import { desktopRuntimeAvailable, onDesktopEvent } from '../../desktop.js';
+import { desktopRuntimeAvailable, onDesktopEvent } from '../../platform/desktop.js';
 import type { LauncherTheme } from '../../styles/theme.js';
 import type { PartyRoundReveal } from './types.js';
 

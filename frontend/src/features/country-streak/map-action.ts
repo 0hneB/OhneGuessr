@@ -1,5 +1,5 @@
-import { launchMap } from '../../desktop.js';
-import type { MapItem } from '../../library/types.js';
+import { launchMap } from '../../platform/desktop.js';
+import type { MapItem } from '../map-library/types.js';
 import { countryStreakSettings } from './settings.svelte.js';
 import './country-streak.css';
 

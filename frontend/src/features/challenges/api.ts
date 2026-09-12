@@ -1,5 +1,5 @@
 import { Service as ChallengeService } from '../../../bindings/github.com/0hneB/OhneGuessr/internal/plugins/challenges/index.js';
-import { desktopRuntimeAvailable, onDesktopEvent } from '../../desktop.js';
+import { desktopRuntimeAvailable, onDesktopEvent } from '../../platform/desktop.js';
 import type { Challenge } from './types.js';
 
 export async function launchChallenge(challenge: Challenge, contents: string) {

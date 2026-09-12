@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { RoundTimer, type TimerTick } from '@/game/timer.js';
+import { RoundTimer, type TimerTick } from '@/features/game/timer.js';
 
 afterEach(() => vi.useRealTimers());
 

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { openFiles } from '@/app/launcher/file-open.js';
-import { importMap, showLibraryNotice } from '@/library/library.svelte.js';
+import { importMap, showLibraryNotice } from '@/features/map-library/library.svelte.js';
 import { openChallengeFile } from '@/features/challenges/open.js';
 
-vi.mock('@/library/library.svelte.js', () => ({ importMap: vi.fn(), showLibraryNotice: vi.fn() }));
+vi.mock('@/features/map-library/library.svelte.js', () => ({ importMap: vi.fn(), showLibraryNotice: vi.fn() }));
 vi.mock('@/features/challenges/open.js', () => ({ openChallengeFile: vi.fn() }));
 
 beforeEach(() => {

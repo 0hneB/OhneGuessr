@@ -1,5 +1,5 @@
 import type { Location } from '../../shared/geo.js';
-import type { MapItem } from '../../library/types.js';
+import type { MapItem } from '../map-library/types.js';
 import { getStatus } from './api.js';
 import { LearnableMetaClues } from './clues.js';
 import './learnable-meta.css';

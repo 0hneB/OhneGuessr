@@ -1,10 +1,10 @@
-import { closeGame } from '../../desktop.js';
+import { closeGame } from '../../platform/desktop.js';
 import type { Point } from '../../shared/geo.js';
 import {
   installGameMode,
   type GameMode,
   type GameModeScoring
-} from '../../game/game-mode.svelte.js';
+} from '../game/game-mode.svelte.js';
 import {
   beginPartyRound,
   closePartyRound,

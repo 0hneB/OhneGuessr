@@ -1,14 +1,14 @@
 // Connect the game session, renderers, input, and installed integrations.
-import { setLoading } from '../../game/ui.svelte.js';
-import { GAME_PHASE, state } from '../../game/state.svelte.js';
-import { gameMode } from '../../game/game-mode.svelte.js';
-import { loadOpenSV } from '../../game/panorama.js';
-import { initCompass, initPanorama, initMaps, viewer, applyViewSettings } from '../../game/runtime.js';
-import { keybindings, bindCompassInput, bindKeyboardInput } from '../../game/input.js';
+import { setLoading } from '../../features/game/ui.svelte.js';
+import { GAME_PHASE, state } from '../../features/game/state.svelte.js';
+import { gameMode } from '../../features/game/game-mode.svelte.js';
+import { loadOpenSV } from '../../rendering/panorama/panorama.js';
+import { initCompass, initPanorama, initMaps, viewer, applyViewSettings } from '../../features/game/runtime.js';
+import { keybindings, bindCompassInput, bindKeyboardInput } from '../../features/game/input.js';
 import {
   loadRequestedGameData, activateRequestedGame, onPlaceGuess, applySessionSettings, refreshGameMode
-} from '../../game/session.js';
-import { initSettingsSync, onSettingsChanged } from '../../settings/store.svelte.js';
+} from '../../features/game/session.js';
+import { initSettingsSync, onSettingsChanged } from '../../features/settings/store.svelte.js';
 import { activateExternalPlugins, loadExternalPlugins } from '../../extensions/runtime.js';
 import { challengeAction } from '../../features/challenges/game.svelte.js';
 import {

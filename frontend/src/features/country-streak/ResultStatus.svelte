@@ -1,6 +1,6 @@
 <script lang="ts">
   import CountryFlag from '../../components/CountryFlag.svelte';
-  import { formatDistance } from '../../game/scoring.js';
+  import { formatDistance } from '../game/scoring.js';
   import { countryNames, countryStreakGame } from './state.svelte.js';
 
   let { error }: { error: string } = $props();

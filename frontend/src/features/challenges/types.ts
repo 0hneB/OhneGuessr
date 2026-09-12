@@ -1,5 +1,5 @@
 import type { Location, Point } from '../../shared/geo.js';
-import type { MovementMode } from '../../game/panorama.js';
+import type { MovementMode } from '../../rendering/panorama/panorama.js';
 
 export interface ChallengeRules {
   movement: MovementMode;

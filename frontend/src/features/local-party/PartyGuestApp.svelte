@@ -1,9 +1,9 @@
 <script lang="ts">
   import Spinner from '../../components/Spinner.svelte';
   import { onMount, tick } from 'svelte';
-  import { requestJSON as request } from '../../api.js';
-  import { formatDistance } from '../../game/scoring.js';
-  import { GuessMap, createRevealMaps } from '../../maps/map.js';
+  import { requestJSON as request } from '../../platform/http.js';
+  import { formatDistance } from '../game/scoring.js';
+  import { GuessMap, createRevealMaps } from '../../rendering/map/map.js';
   import { applyAccentColor, normalizeLauncherTheme } from '../../styles/theme.js';
   import type { Point } from '../../shared/geo.js';
   import type { PartyGuestState } from './types.js';

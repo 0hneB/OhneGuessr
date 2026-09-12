@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mapSources, registerMapSource } from '@/library/map-sources.js';
-import type { MapItem } from '@/library/types.js';
+import { mapSources, registerMapSource } from '@/features/map-library/map-sources.js';
+import type { MapItem } from '@/features/map-library/types.js';
 import {
   buildLibraryRows,
   canMoveMap,
   mapMoveTargets
-} from '@/library/library-tree.js';
+} from '@/features/map-library/library-tree.js';
 
 const EDITABLE_ROOT = 'editable-sync';
 const LOCKED_ROOT = 'Locked Sync';
