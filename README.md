@@ -190,6 +190,8 @@ Frontend tests live directly in `frontend/test/`, grouped by filename prefixes: 
 
 Reusable UI controls live in `frontend/src/components/`; settings, library, and plugin components stay with their features. Keep a component's styles in its `.svelte` file, with theme variables and shared layout defaults in CSS. Select, range, icon-button, and spinner styles also support DOM-based plugins, so their existing global class names and eager style imports in `main.ts` must remain available in every app window.
 
+Game progression lives in `frontend/src/game/session.ts`, renderer setup and live display settings in `game/runtime.ts`, and keyboard/compass actions in `game/input.ts`. `app/game/setup.ts` connects them to Challenges, Learnable Meta, and additional plugins. Keep named integration imports in the application setup and preserve startup order when changing that wiring.
+
 Run backend checks with `go vet ./...` and `go test ./...`. CI also runs `go test -race ./...` (requires CGO and a C compiler). To measure map sampling time and allocations, run `go test ./internal/backend -run '^$' -bench BenchmarkSampleMapLocations -benchmem`.
 
 ### Repository structure

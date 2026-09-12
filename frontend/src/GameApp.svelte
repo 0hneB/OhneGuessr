@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { init } from './app/game/setup.js';
   import LoadingOverlay from './game/LoadingOverlay.svelte';
   import { CONFIG } from './config.js';
   import { onMount } from 'svelte';
@@ -13,14 +14,13 @@
     completeModeRound,
     endUnlimitedGame,
     endModeGame,
-    init,
     nextRound,
     rematchModeGame,
     selectFinalRound,
     startModeGame,
     startGame,
     submitGuess
-  } from './game/game.js';
+  } from './game/session.js';
   import {
     challengeAction,
     challengeActionVisible,

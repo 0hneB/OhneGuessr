@@ -1,25 +1,11 @@
-// Game hub: owns the view singletons and round lifecycle, wires the modules together.
+// Owns round progression and scoring; app setup supplies the feature effects.
 import { CONFIG } from '../config.js';
-import {
-  desktopRuntimeAvailable,
-  getGameWindowState,
-  setGameFullscreen
-} from '../desktop.js';
-import { OpenSvViewer, loadOpenSV } from './panorama.js';
-import { GuessMap, createRevealMaps, openStreetView } from '../maps/map.js';
-import { haversineKm, scoreFor } from './scoring.js';
-import { CompassHUD } from './compass.js';
-import { $, setLoading } from '../dom.js';
+import { setLoading } from '../dom.js';
 import { GAME_PHASE, state, settings } from './state.svelte.js';
+import { haversineKm, scoreFor } from './scoring.js';
 import { RoundTimer } from './timer.js';
-import { Keybindings } from '../settings/keybindings.js';
-import { createGuessPanel } from '../maps/guess-panel.js';
-import { activateExternalPlugins, loadExternalPlugins } from '../plugins/runtime.js';
-import {
-  initSettingsSync,
-  onSettingsChanged,
-  updateSettings
-} from '../settings/store.svelte.js';
+import { gameMode } from './game-mode.svelte.js';
+import { viewer, gmap, resultMap, summaryMap, guessPanel } from './runtime.js';
 import { loadLibrary, sampleMap } from '../library/api.js';
 import {
   createSampledDeck, ensureDeckIndex, hasNextRound, hasSampledLocations,
@@ -29,27 +15,19 @@ import {
   cancelRoundPreload, preparationMatches, prepareRound, scheduleNextRoundPreload,
   takeRoundPreload, type RoundPreparation
 } from './round-preparation.js';
-import { challengeAction } from '../features/challenges/game.svelte.js';
-import { gameMode } from './game-mode.svelte.js';
-import {
-  resetLearnableMetaClues,
-  selectLearnableMetaFinalRound,
-  selectLearnableMetaMap,
-  setupLearnableMeta,
-  showLearnableMetaResult,
-  startLearnableMetaRound
-} from '../features/learnable-meta/index.js';
-import type {
-  GamePhase,
-  GuessMapSize,
-  Location,
-  MapItem,
-  Point,
-  RoundResult,
-  Settings,
-  Trail
-} from '../types.js';
+import type { GamePhase, Location, MapItem, Point, RoundResult, Settings, Trail } from '../types.js';
 import { ui } from '../ui.svelte.js';
+
+export interface SessionEffects {
+  beforeStart(): void;
+  reset(): void;
+  selectMap(map: MapItem | null): void;
+  startRound(map: MapItem | null, location: Location): void;
+  showResult(map: MapItem | null, location: Location, round: number): void;
+  selectFinalRound(map: MapItem | null, location: Location | null, round: number | null): void;
+}
+
+let effects: SessionEffects;
 
 // World: fixed scale. Country: the loaded map's bbox diagonal.
 const effectiveScaleKm = () =>
@@ -73,13 +51,6 @@ const ACTIVE_GAME_PHASES = new Set<GamePhase>([
 ]);
 
 let modeRoundPending = false;
-
-let viewer: OpenSvViewer;
-let gmap: GuessMap;
-let resultMap: ReturnType<typeof createRevealMaps>['resultMap'];
-let summaryMap: ReturnType<typeof createRevealMaps>['summaryMap'];
-let compass: CompassHUD;
-let guessPanel: ReturnType<typeof createGuessPanel>;
 
 const currentMapItem = (): MapItem | null => {
   const map = state.map;
@@ -105,11 +76,11 @@ function updateResultActions() {
 }
 
 export async function startGame() {
-  challengeAction.error = '';
+  effects.beforeStart();
   gameMode.current?.reset?.();
   cancelRoundPreload();
   roundTimer.stop();
-  resetLearnableMetaClues();
+  effects.reset();
   state.phase = GAME_PHASE.LOADING;
   ui.resultVisible = false;
   ui.finalVisible = false;
@@ -233,104 +204,15 @@ async function loadRound(preparation: RoundPreparation | null = null) {
   }
   setLoading(false);
   roundTimer.start(); // start after load so loading time isn't counted
-  startLearnableMetaRound(currentMapItem(), { ...state.current });
+  effects.startRound(currentMapItem(), { ...state.current });
   if (completeImmediately) void completeModeRound();
 }
 
-function onPlaceGuess(_guess: Point, { submit = false }: { submit?: boolean } = {}) {
+export function onPlaceGuess(_guess: Point, { submit = false }: { submit?: boolean } = {}) {
   if (state.phase !== GAME_PHASE.GUESSING) return;
   ui.hasGuess = true;
   if (submit) submitGuess();
 }
-
-const canInteractWithGuess = () =>
-  state.phase === GAME_PHASE.GUESSING && (gameMode.current?.allowsGuess ?? true);
-
-function setGuessMapSize(size: unknown, { persist = true }: { persist?: boolean } = {}) {
-  const next = guessPanel.setSize(size);
-  if (next === settings.guessMapSize) return false;
-  if (persist) updateSettings({ guessMapSize: next });
-  return true;
-}
-
-function setGuessMapSizeFromShortcut(size: GuessMapSize, event: KeyboardEvent) {
-  if (event.repeat || !canInteractWithGuess()) return;
-  setGuessMapSize(size);
-}
-
-// What each shortcut does; names match keybindings.js.
-const KEY_ACTIONS: Record<string, (event: KeyboardEvent) => void> = {
-  submitOrNext: (event) => {
-    if (event.repeat) return;
-    if (state.phase === GAME_PHASE.FINAL) {
-      if (gameMode.current) void rematchModeGame();
-      else void startGame();
-    }
-    else if (state.phase === GAME_PHASE.RESULT) nextRound();
-    else if (state.phase === GAME_PHASE.GUESSING) {
-      if (gameMode.current?.completeRound) void finishRound();
-      else if (gmap.guess) submitGuess();
-    }
-  },
-  placeGuessAtCenter: (event) => {
-    if (!event.repeat && canInteractWithGuess()) onPlaceGuess(gmap.placeGuessAtCenter());
-  },
-  zoomIn: () => { if (canInteractWithGuess()) viewer.zoomFull(1); },
-  zoomOut: () => { if (canInteractWithGuess()) viewer.zoomFull(-1); },
-  resetView: () => { if (canInteractWithGuess()) viewer.resetView(); },
-  checkpoint: (event) => {
-    if (!event.repeat && canInteractWithGuess()) viewer.toggleCheckpoint();
-  },
-  checkpointPeek: (event) => {
-    if (!event.repeat && canInteractWithGuess()) viewer.startCheckpointPeek();
-  },
-  lookBehind: (event) => {
-    if (!event.repeat && canInteractWithGuess()) viewer.startLookBehind();
-  },
-  faceNorth: () => {
-    if (!canInteractWithGuess()) return;
-    // Press once to face north; again while north to look straight down.
-    const h = viewer.getHeading();
-    const atNorth = Math.min(h, 360 - h) < 1.5;
-    if (atNorth && Math.abs(viewer.lat) < 2) viewer.faceNorthDown();
-    else viewer.faceNorth();
-  },
-  toggleMapPinned: (event) => {
-    if (!event.repeat && canInteractWithGuess()) guessPanel.setPinned(!guessPanel.isPinned());
-  },
-  toggleMapFullscreen: () => {
-    if (canInteractWithGuess()) guessPanel.setFullscreen(!guessPanel.isFullscreen());
-  },
-  toggleDesktopFullscreen: (event) => {
-    if (event.repeat || !desktopRuntimeAvailable()) return;
-    event.preventDefault();
-    void getGameWindowState().then(({ fullscreen }) => setGameFullscreen(!fullscreen));
-  },
-  openStreetView: (event) => {
-    if (!event.repeat && state.current &&
-        (state.phase === GAME_PHASE.GUESSING || state.phase === GAME_PHASE.RESULT)) {
-      openStreetView(state.current);
-    }
-  },
-  mapSizeDefault: (event) => setGuessMapSizeFromShortcut('default', event),
-  mapSizeLarge: (event) => setGuessMapSizeFromShortcut('large', event),
-  mapSizeXl: (event) => setGuessMapSizeFromShortcut('xl', event),
-  mapSizeXxl: (event) => setGuessMapSizeFromShortcut('xxl', event),
-  mapSizeMax: (event) => setGuessMapSizeFromShortcut('max', event),
-  hideHud: () => {
-    if (state.phase === GAME_PHASE.GUESSING) document.body.classList.toggle('ui-hidden');
-  }
-};
-
-const KEY_RELEASES: Record<string, (event: KeyboardEvent) => void> = {
-  checkpointPeek: () => viewer.endCheckpointPeek(),
-  lookBehind: () => viewer.endLookBehind()
-};
-
-const keybindings = new Keybindings({
-  actions: KEY_ACTIONS,
-  releases: KEY_RELEASES
-});
 
 export function submitGuess() {
   if (state.phase === GAME_PHASE.RESULT) { nextRound(); return; }
@@ -354,7 +236,7 @@ function recordModeResult(round: number, result: RoundResult) {
 }
 
 // Score and reveal the round. A null guess (timeout) is a forfeit, 0 points.
-async function finishRound() {
+export async function finishRound() {
   if (state.phase !== GAME_PHASE.GUESSING) return;
   if (gameMode.current?.completeRound) {
     await completeModeRound();
@@ -433,7 +315,7 @@ function showRoundResult(result: RoundResult, trail: Trail | null = null) {
   const modeResults = gameMode.current?.roundResults?.(state.round, result);
   if (modeResults?.length) resultMap.showMany(modeResults, trail);
   else resultMap.show(result, trail);
-  showLearnableMetaResult(currentMapItem(), { ...actual }, state.round);
+  effects.showResult(currentMapItem(), { ...actual }, state.round);
   scheduleNextRoundPreload(viewer);
 }
 
@@ -486,7 +368,7 @@ function applyFinalRoundSelection() {
   const selectedResult = ui.selectedFinalRound == null
     ? null
     : state.results[ui.selectedFinalRound];
-  selectLearnableMetaFinalRound(
+  effects.selectFinalRound(
     currentMapItem(),
     selectedResult?.actual ? { ...selectedResult.actual } : null,
     ui.selectedFinalRound
@@ -514,39 +396,15 @@ function showFinal() {
   else applyFinalRoundSelection();
 }
 
-function applyLiveSettings(next: Settings, previous: Settings) {
-  if (next.mapStyle !== previous.mapStyle) {
-    gmap.setStyle(next.mapStyle);
-    resultMap.setStyle(next.mapStyle);
-  }
-  if (next.guessMapSize !== previous.guessMapSize) {
-    guessPanel.setSize(next.guessMapSize);
-    guessPanel.syncLayout();
-  }
-  if (next.compassStyle !== previous.compassStyle) compass.setStyle(next.compassStyle);
-  if (next.mapZoomSpeed !== previous.mapZoomSpeed) {
-    gmap.setZoomSpeed(next.mapZoomSpeed);
-    resultMap.setZoomSpeed(next.mapZoomSpeed);
-  }
-  if (next.accentColor !== previous.accentColor) {
-    gmap.setAccent(next.accentColor);
-    resultMap.setAccent(next.accentColor);
-  }
-  if (next.theme !== previous.theme) compass.render();
-  if (!gameMode.current && next.movement !== previous.movement) viewer.setMode(next.movement);
-  if (!gameMode.current && next.streetViewZoomedOut !== previous.streetViewZoomedOut) {
-    viewer.setStartZoomedOut(next.streetViewZoomedOut);
-  }
-  if (next.hideCar !== previous.hideCar) viewer.setCarHidden(next.hideCar);
+export function applySessionSettings(next: Settings, previous: Settings) {
   if (!gameMode.current && next.rounds !== previous.rounds) void applyRoundLimitChange();
   if (!gameMode.current && next.timer !== previous.timer) {
     if (state.phase === GAME_PHASE.GUESSING) roundTimer.start();
     else roundTimer.stop();
   }
-  keybindings.rebuild();
 }
 
-async function loadRequestedGameData() {
+export async function loadRequestedGameData() {
   const mode = gameMode.current;
   const loaded = await mode?.load?.();
   if (loaded) {
@@ -569,13 +427,14 @@ async function loadRequestedGameData() {
   };
 }
 
-async function activateRequestedGame({
+export async function activateRequestedGame({
   mode,
   map,
   sample
-}: Awaited<ReturnType<typeof loadRequestedGameData>>) {
+}: Awaited<ReturnType<typeof loadRequestedGameData>>, sessionEffects: SessionEffects) {
+  effects = sessionEffects;
   state.map = map;
-  selectLearnableMetaMap(currentMapItem());
+  effects.selectMap(currentMapItem());
   setLoading(true, `Loading ${map.name}…`);
   selectSampledMap(map, sample);
   if (sample && !sample.locationCount) throw new Error(`"${map.name}" has no playable locations`);
@@ -594,13 +453,7 @@ async function activateRequestedGame({
   await startGame();
 }
 
-function showGameLoadError(error: unknown) {
-  state.phase = GAME_PHASE.ERROR;
-  const message = error instanceof Error ? error.message : String(error);
-  setLoading(true, `Could not load game: ${message}. Return to the launcher and choose another map or file.`);
-}
-
-async function refreshGameMode() {
+export async function refreshGameMode() {
   const mode = gameMode.current;
   if (!mode?.refresh) return;
   try {
@@ -610,64 +463,3 @@ async function refreshGameMode() {
   }
 }
 
-export async function init() {
-  const startup = Promise.all([
-    loadRequestedGameData(),
-    loadOpenSV(),
-    loadExternalPlugins(),
-    setupLearnableMeta().catch((error) => {
-      console.warn('Learnable Meta plugin unavailable:', error);
-      return null;
-    })
-  ]);
-  const compassCanvas = $<HTMLCanvasElement>('compass-hud');
-  const classicCompass = $('classicCompass');
-  compass = new CompassHUD(compassCanvas, $('classicCompassNeedle'), settings.compassStyle);
-  let requestedGame: Awaited<ReturnType<typeof loadRequestedGameData>>;
-  try {
-    [requestedGame] = await startup;
-  } catch (error) {
-    showGameLoadError(error);
-    return;
-  }
-  viewer = new OpenSvViewer($('pano'), settings.hideCar);
-  await activateExternalPlugins(viewer);
-  const faceNorth = () => {
-    if (canInteractWithGuess()) viewer.faceNorth();
-  };
-  compassCanvas.addEventListener('click', faceNorth);
-  classicCompass.addEventListener('click', faceNorth);
-  classicCompass.addEventListener('keydown', (event) => {
-    if (event.code === 'Space' || event.code === 'Enter') event.stopPropagation();
-  });
-  viewer.onChange = (heading) => compass.setHeading(heading);
-  viewer.setMode(movementForGame());
-  gmap = new GuessMap('map', onPlaceGuess, settings.mapStyle);
-  ({ resultMap, summaryMap } = createRevealMaps(
-    'resultMap', 'finalMap', settings.mapStyle
-  ));
-  guessPanel = createGuessPanel(gmap);
-  setGuessMapSize(settings.guessMapSize, { persist: false });
-  guessPanel.setup();
-  viewer.setStartZoomedOut(settings.streetViewZoomedOut);
-  gmap.setZoomSpeed(settings.mapZoomSpeed);
-  resultMap.setZoomSpeed(settings.mapZoomSpeed);
-  gmap.setAccent(settings.accentColor);
-  resultMap.setAccent(settings.accentColor);
-  onSettingsChanged(applyLiveSettings);
-  initSettingsSync();
-  gameMode.current?.subscribe?.(() => { void refreshGameMode(); });
-
-  window.addEventListener('keydown', keybindings.onKeyDown);
-  window.addEventListener('keyup', keybindings.onKeyUp);
-  window.addEventListener('blur', () => {
-    viewer.endCheckpointPeek();
-    viewer.endLookBehind();
-  });
-
-  try {
-    await activateRequestedGame(requestedGame);
-  } catch (error) {
-    showGameLoadError(error);
-  }
-}

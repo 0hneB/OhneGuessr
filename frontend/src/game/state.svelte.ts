@@ -1,4 +1,4 @@
-// Shared game state and persisted settings. View singletons stay in game.js.
+// Shared game state and persisted settings. View singletons stay in runtime.ts.
 import { CONFIG } from '../config.js';
 import { settings } from '../settings/store.svelte.js';
 import type { GameState } from '../types.js';
