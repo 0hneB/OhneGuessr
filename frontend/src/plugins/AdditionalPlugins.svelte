@@ -1,7 +1,7 @@
 <script lang="ts">
   import PluginSummary from './PluginSummary.svelte';
   import ToggleSwitch from '../components/ToggleSwitch.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, type Snippet } from 'svelte';
   import {
     PluginService,
     type PluginInfo,
@@ -9,16 +9,11 @@
   } from '../../bindings/github.com/0hneB/OhneGuessr/internal/pluginmanager/index.js';
   import { desktopRuntimeAvailable } from '../desktop.js';
   import { mergePluginEntries } from './marketplace.js';
-  import ChallengeSettings from '../features/challenges/SettingsRow.svelte';
-  import CountryStreakSettings from '../features/country-streak/SettingsRow.svelte';
-  import LearnableMetaSettings from '../features/learnable-meta/SettingsRow.svelte';
-  import LocalPartySettings from '../features/local-party/SettingsRow.svelte';
-  import MapMakingAppSettings from '../features/map-making-app/SettingsRow.svelte';
-  import './plugins.css';
 
-  let { message = '' }: { message?: string } = $props();
-  let tab = $state<'core' | 'additional'>('core');
-  let error = $state('');
+  let { error = $bindable(''), children }: {
+    error?: string;
+    children: Snippet<[Snippet]>;
+  } = $props();
   let catalogError = $state('');
   let loading = $state(false);
   let busy = $state('');
@@ -77,45 +72,8 @@
   onMount(refresh);
 </script>
 
-<section class="launcher-settings-page plugins-page" aria-label="Plugins">
-  <div class="plugin-tabs" role="tablist" aria-label="Plugin categories">
-    <button
-      type="button"
-      role="tab"
-      aria-selected={tab === 'core'}
-      class:active={tab === 'core'}
-      onclick={() => {
-        tab = 'core';
-      }}>Core</button
-    >
-    <button
-      type="button"
-      role="tab"
-      aria-selected={tab === 'additional'}
-      class:active={tab === 'additional'}
-      onclick={() => {
-        tab = 'additional';
-      }}>Additional</button
-    >
-  </div>
-
-  {#if tab === 'core'}
-    <div class="plugin-list" role="tabpanel">
-      <ChallengeSettings />
-      <CountryStreakSettings />
-      <LocalPartySettings />
-      <MapMakingAppSettings
-        reportError={(next) => {
-          error = next;
-        }}
-      />
-      <LearnableMetaSettings
-        reportError={(next) => {
-          error = next;
-        }}
-      />
-    </div>
-  {:else if !desktopRuntimeAvailable()}
+{#snippet content()}
+  {#if !desktopRuntimeAvailable()}
     <div role="tabpanel"><p class="plugin-empty">Additional plugins require the desktop app.</p></div>
   {:else}
     <div class="plugin-list" role="tabpanel" aria-busy={loading}>
@@ -237,7 +195,7 @@
       </p>
     {/if}
   {/if}
-  {#if error || message}
-    <p class="settings-note plugin-error" role="alert">{error || message}</p>
-  {/if}
-</section>
+{/snippet}
+
+<!-- Keep catalog state and refresh timing alive while the page displays its Core tab. -->
+{@render children(content)}

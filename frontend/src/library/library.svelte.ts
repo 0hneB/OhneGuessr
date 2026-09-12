@@ -1,8 +1,6 @@
 import { SvelteSet } from 'svelte/reactivity';
 import { closeGame, exportMaps as exportMapsToFile, launchMap } from '../desktop.js';
 import { normalizeLocations, mapNameFrom } from '../game/locations.js';
-import { isChallengeFilename } from '../features/challenges/challenge.js';
-import { openChallengeFile } from '../features/challenges/open.js';
 import type { MapAction } from './map-actions.js';
 import { mapSourceFor, refreshMapSourceRoot } from './map-sources.js';
 import type { MapItem } from '../types.js';
@@ -175,18 +173,6 @@ export async function importMap(file: File) {
     return true;
   } catch (error) {
     setNotice(errorMessage(error, 'Could not import that map.'), true);
-    return false;
-  }
-}
-
-export async function importFile(file: File) {
-  if (!isChallengeFilename(file.name)) return importMap(file);
-  try {
-    await openChallengeFile(file);
-    setNotice('');
-    return true;
-  } catch (error) {
-    setNotice(errorMessage(error, 'Could not open that challenge.'), true);
     return false;
   }
 }

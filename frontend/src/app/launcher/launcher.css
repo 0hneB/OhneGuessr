@@ -1,7 +1,7 @@
 /* Keep feature styles between the shell defaults and the responsive overrides. */
 @import "./launcher-shell.css";
-@import "./library/library.css";
-@import "./features/map-sync/panel.css";
+@import "../../library/library.css";
+@import "./map-sync.css";
 
 button:focus-visible,
 summary:focus-visible,

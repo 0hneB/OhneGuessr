@@ -1,4 +1,4 @@
-import { requestLauncherPage } from '../../launcher-events.js';
+import { requestLauncherPage } from '../../app/launcher/events.js';
 import { launchChallenge } from './api.js';
 import { MAX_CHALLENGE_BYTES, parseChallenge } from './challenge.js';
 import { challengeSettings } from './settings.svelte.js';

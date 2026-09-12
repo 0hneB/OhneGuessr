@@ -1,17 +1,17 @@
 <script lang="ts">
   import { onMount, type Snippet } from 'svelte';
-  import LearnableMetaSettings from '../learnable-meta/Settings.svelte';
+  import LearnableMetaSettings from '../../features/learnable-meta/Settings.svelte';
   import {
     learnableMetaPlugin,
     publishLearnableMetaStatus,
     refreshLearnableMetaStatus
-  } from '../learnable-meta/status.svelte.js';
-  import MapMakingAppSettings from '../map-making-app/Settings.svelte';
+  } from '../../features/learnable-meta/status.svelte.js';
+  import MapMakingAppSettings from '../../features/map-making-app/Settings.svelte';
   import {
     mapMakingAppPlugin,
     publishMapMakingAppStatus,
     refreshMapMakingAppStatus
-  } from '../map-making-app/status.svelte.js';
+  } from '../../features/map-making-app/status.svelte.js';
 
   let { children }: { children: Snippet } = $props();
   const mmaEnabled = $derived(Boolean(mapMakingAppPlugin.status?.enabled));

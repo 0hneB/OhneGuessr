@@ -1,17 +1,19 @@
 <script lang="ts">
-  import LauncherTitlebar from './components/LauncherTitlebar.svelte';
+  import LauncherTitlebar from './LauncherTitlebar.svelte';
   import { onMount } from 'svelte';
-  import { getGameWindowState, onGameWindowState, type GameWindowState } from './desktop.js';
-  import MapLibrary from './library/MapLibrary.svelte';
-  import { initLibrary, setActiveMap, showLibraryNotice } from './library/library.svelte.js';
-  import { onLauncherPageRequested } from './launcher-events.js';
-  import MapSyncLayout from './features/map-sync/MapSyncLayout.svelte';
-  import PluginsPanel from './plugins/PluginsPanel.svelte';
-  import GameSettings from './settings/GameSettings.svelte';
-  import DisplaySettings from './settings/DisplaySettings.svelte';
-  import ControlsSettings from './settings/ControlsSettings.svelte';
-  import { initSettingsSync, settings } from './settings/store.svelte.js';
-  import UpdatePanel from './settings/UpdatePanel.svelte';
+  import { getGameWindowState, onGameWindowState, type GameWindowState } from '../../desktop.js';
+  import { fileTypes, openFiles } from './file-open.js';
+  import { mapActions } from './map-actions.js';
+  import MapLibrary from '../../library/MapLibrary.svelte';
+  import { initLibrary, setActiveMap, showLibraryNotice } from '../../library/library.svelte.js';
+  import { onLauncherPageRequested } from './events.js';
+  import MapSyncLayout from './MapSyncLayout.svelte';
+  import PluginsPage from './PluginsPage.svelte';
+  import GameSettings from '../../settings/GameSettings.svelte';
+  import DisplaySettings from '../../settings/DisplaySettings.svelte';
+  import ControlsSettings from '../../settings/ControlsSettings.svelte';
+  import { initSettingsSync, settings } from '../../settings/store.svelte.js';
+  import UpdatePanel from '../../settings/UpdatePanel.svelte';
 
   type Page = 'maps' | 'plugins' | 'game' | 'display' | 'controls';
 
@@ -98,10 +100,10 @@
   <main class="launcher-main">
     {#if page === 'maps'}
       <MapSyncLayout>
-        <MapLibrary />
+        <MapLibrary actions={mapActions} {fileTypes} onFiles={openFiles} />
       </MapSyncLayout>
     {:else if page === 'plugins'}
-      <PluginsPanel message={pluginMessage} />
+      <PluginsPage message={pluginMessage} />
     {:else if page === 'game'}
       <GameSettings bind:roundsDraft bind:timerDraft />
     {:else if page === 'display'}

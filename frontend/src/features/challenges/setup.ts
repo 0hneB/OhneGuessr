@@ -1,4 +1,4 @@
-import { requestLauncherPage } from '../../launcher-events.js';
+import { requestLauncherPage } from '../../app/launcher/events.js';
 import { onChallengeFileOpened, takePendingChallenge } from './api.js';
 import { installChallengeGame } from './game.svelte.js';
 import { openChallengeContents } from './open.js';

@@ -3,8 +3,7 @@
   import DeleteConfirmation from './DeleteConfirmation.svelte';
   import IconButton from '../components/IconButton.svelte';
   import { onDestroy, tick } from 'svelte';
-  import { isChallengeFilename } from '../features/challenges/challenge.js';
-  import { mapActions } from './map-actions.js';
+  import type { MapAction } from './map-actions.js';
   import {
     managedMapBadge,
     managedMapRemoveLabel,
@@ -16,7 +15,6 @@
     canStoreLocalMap,
     createFolder,
     exportMaps,
-    importFile,
     isManagedRoot,
     library,
     libraryRows,
@@ -32,11 +30,16 @@
     toggleFolder
   } from './library.svelte.js';
 
+  let { actions, fileTypes, onFiles }: {
+    actions: MapAction[];
+    fileTypes: string;
+    onFiles: (files: File[]) => Promise<void>;
+  } = $props();
+
   const rows = $derived.by(libraryRows);
   const folderName = $derived(library.search.trim());
   const folderCreationAllowed = $derived(canCreateFolder(library.selectedFolder));
   const importAllowed = $derived(canStoreLocalMap(library.selectedFolder));
-  const fileTypes = '.json,application/json,.ohne';
 
   let fileInput: HTMLInputElement;
   let searchInput = $state<HTMLInputElement>();
@@ -225,10 +228,7 @@
   }
 
   async function acceptFiles(files?: FileList | null) {
-    for (const file of Array.from(files || [])) {
-      const challenge = isChallengeFilename(file.name);
-      if (!await importFile(file) || challenge) break;
-    }
+    await onFiles(Array.from(files || []));
     if (fileInput) fileInput.value = '';
   }
 
@@ -467,7 +467,7 @@
               />
             {:else}
               <div class="row-actions">
-                {#each mapActions as action (action.id)}
+                {#each actions as action (action.id)}
                   {#if action.visible(row.map)}
                     <IconButton
                       variant="row"

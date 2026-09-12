@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { init } from './app/game/setup.js';
-  import LoadingOverlay from './game/LoadingOverlay.svelte';
-  import { CONFIG } from './config.js';
+  import { init } from './setup.js';
+  import LoadingOverlay from '../../game/LoadingOverlay.svelte';
+  import { CONFIG } from '../../config.js';
   import { onMount } from 'svelte';
   import {
     focusLauncher,
     gameReady,
     syncGameWindowTheme
-  } from './desktop.js';
-  import { formatDistance } from './game/scoring.js';
-  import { settings, state as gameState } from './game/state.svelte.js';
+  } from '../../desktop.js';
+  import { formatDistance } from '../../game/scoring.js';
+  import { settings, state as gameState } from '../../game/state.svelte.js';
   import {
     completeModeRound,
     endUnlimitedGame,
@@ -20,16 +20,16 @@
     startModeGame,
     startGame,
     submitGuess
-  } from './game/session.js';
+  } from '../../game/session.js';
   import {
     challengeAction,
     challengeActionVisible,
     runChallengeAction
-  } from './features/challenges/game.svelte.js';
-  import { gameMode } from './game/game-mode.svelte.js';
-  import { finalRoundFromWheel, ui } from './ui.svelte.js';
-  import { pluginHudButtons } from './plugins/host.svelte.js';
-  import { onSettingsChanged } from './settings/store.svelte.js';
+  } from '../../features/challenges/game.svelte.js';
+  import { gameMode } from '../../game/game-mode.svelte.js';
+  import { finalRoundFromWheel, ui } from '../../ui.svelte.js';
+  import { pluginHudButtons } from '../../plugins/host.svelte.js';
+  import { onSettingsChanged } from '../../settings/store.svelte.js';
 
   const currentResult = $derived(gameState.results[gameState.round] ?? null);
   const modeActive = $derived(Boolean(gameMode.current));

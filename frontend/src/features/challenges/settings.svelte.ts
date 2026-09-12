@@ -1,4 +1,4 @@
-import { requestLauncherPage } from '../../launcher-events.js';
+import { requestLauncherPage } from '../../app/launcher/events.js';
 
 const KEY = 'ohneguessr.plugin.challenges.enabled';
 

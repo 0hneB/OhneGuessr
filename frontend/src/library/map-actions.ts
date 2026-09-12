@@ -1,6 +1,4 @@
 import type { MapItem } from '../types.js';
-import { countryStreakMapAction } from '../features/country-streak/map-action.js';
-import { localPartyMapAction } from '../features/local-party/map-action.js';
 
 export interface MapAction {
   id: string;
@@ -11,5 +9,3 @@ export interface MapAction {
   visible: (map: MapItem) => boolean;
   run: (map: MapItem) => Promise<unknown>;
 }
-
-export const mapActions: MapAction[] = [countryStreakMapAction, localPartyMapAction];
