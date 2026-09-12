@@ -1,5 +1,6 @@
 * text=auto
 *.bat text eol=crlf
+*.sh text eol=lf
 frontend/** text=auto eol=lf
 frontend/dist/** linguist-generated=true whitespace=-blank-at-eol
 frontend/public/vendor/** linguist-vendored=true
