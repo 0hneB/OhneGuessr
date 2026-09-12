@@ -2,7 +2,8 @@
 // cached library can still run from any static HTTP server.
 import { requestJSON as api } from '../api.js';
 import { isManagedSource } from './map-sources.js';
-import type { Location, MapItem, MapSource } from '../types.js';
+import type { Location } from '../shared/geo.js';
+import type { MapItem, MapSource } from './types.js';
 
 const MANIFEST_URL = '/data/maps.json';
 

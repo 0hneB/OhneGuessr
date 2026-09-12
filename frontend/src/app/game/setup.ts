@@ -1,5 +1,5 @@
 // Connect the game session, renderers, input, and installed integrations.
-import { setLoading } from '../../dom.js';
+import { setLoading } from '../../game/ui.svelte.js';
 import { GAME_PHASE, state } from '../../game/state.svelte.js';
 import { gameMode } from '../../game/game-mode.svelte.js';
 import { loadOpenSV } from '../../game/panorama.js';

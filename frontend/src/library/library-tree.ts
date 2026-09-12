@@ -1,4 +1,4 @@
-import type { MapItem } from '../types.js';
+import type { MapItem } from './types.js';
 import {
   canCreateManagedFolder,
   canDeleteManagedFolder,

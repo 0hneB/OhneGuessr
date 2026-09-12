@@ -1,6 +1,6 @@
-import { DEFAULT_MAP_STYLE_KEY, MAP_STYLES } from '../settings/settings.js';
+import { DEFAULT_MAP_STYLE_KEY, MAP_STYLES } from './config.js';
 import type { LayerSpecification, RasterSourceSpecification, StyleSpecification } from 'maplibre-gl';
-import type { MapStyleDefinition } from '../types.js';
+import type { MapStyleDefinition } from './types.js';
 
 const BACKGROUND_COLOR = '#1b1b1b';
 const MAPLIBRE_WORLD_TILE_SIZE = 512;

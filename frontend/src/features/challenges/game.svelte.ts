@@ -1,4 +1,4 @@
-import { CONFIG } from '../../config.js';
+import { CONFIG } from '../../game/config.js';
 import { state, settings } from '../../game/state.svelte.js';
 import { gameMode, installGameMode, type GameMode } from '../../game/game-mode.svelte.js';
 import {

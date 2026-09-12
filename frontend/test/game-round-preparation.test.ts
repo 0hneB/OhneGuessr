@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { gameMode, type GameMode } from '@/game/game-mode.svelte.js';
 import { sampleMap } from '@/library/api.js';
-import type { MapItem } from '@/types.js';
+import type { MapItem } from '@/library/types.js';
 import { createSampledDeck, selectSampledMap, useFixedDeck } from '@/game/deck.js';
 import type { OpenSvViewer } from '@/game/panorama.js';
 import {

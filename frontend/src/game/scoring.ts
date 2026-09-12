@@ -1,5 +1,5 @@
-import { CONFIG } from '../config.js';
-import type { Point } from '../types.js';
+import { CONFIG } from './config.js';
+import type { Point } from '../shared/geo.js';
 
 const rad = (degrees: number) => (degrees * Math.PI) / 180;
 

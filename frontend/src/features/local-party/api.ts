@@ -1,6 +1,6 @@
 import { LocalParty } from '../../../bindings/github.com/0hneB/OhneGuessr/internal/plugins/local-party/index.js';
 import { desktopRuntimeAvailable, onDesktopEvent } from '../../desktop.js';
-import type { LauncherTheme } from '../../types.js';
+import type { LauncherTheme } from '../../styles/theme.js';
 import type { PartyRoundReveal } from './types.js';
 
 export function launchParty(mapID: string, theme: LauncherTheme, accentColor: string) {

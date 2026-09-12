@@ -2,13 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { settings, state } from '@/game/state.svelte.js';
 import { gameMode, type GameMode } from '@/game/game-mode.svelte.js';
 import { gmap, viewer, resultMap, summaryMap } from '@/game/runtime.js';
-import { ui } from '@/ui.svelte.js';
+import { ui } from '@/game/ui.svelte.js';
 import {
   activateRequestedGame, completeModeRound, finishRound, nextRound,
   selectFinalRound, startModeGame, type SessionEffects
 } from '@/game/session.js';
 import { cancelRoundPreload } from '@/game/round-preparation.js';
-import type { MapItem, RevealResult } from '@/types.js';
+import type { MapItem } from '@/library/types.js';
+import type { RevealResult } from '@/maps/types.js';
 
 vi.mock('@/settings/store.svelte.js', () => ({ settings: {} }));
 vi.mock('@/library/api.js', () => ({ loadLibrary: vi.fn(), sampleMap: vi.fn() }));

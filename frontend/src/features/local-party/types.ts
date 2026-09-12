@@ -1,4 +1,5 @@
-import type { LauncherTheme, Point } from '../../types.js';
+import type { LauncherTheme } from '../../styles/theme.js';
+import type { Point } from '../../shared/geo.js';
 
 export type {
   PartyHostPlayer,

@@ -1,6 +1,6 @@
 // Owns round progression and scoring; app setup supplies the feature effects.
-import { CONFIG } from '../config.js';
-import { setLoading } from '../dom.js';
+import { CONFIG } from './config.js';
+import { setLoading, ui } from './ui.svelte.js';
 import { GAME_PHASE, state, settings } from './state.svelte.js';
 import { haversineKm, scoreFor } from './scoring.js';
 import { RoundTimer } from './timer.js';
@@ -15,8 +15,10 @@ import {
   cancelRoundPreload, preparationMatches, prepareRound, scheduleNextRoundPreload,
   takeRoundPreload, type RoundPreparation
 } from './round-preparation.js';
-import type { GamePhase, Location, MapItem, Point, RoundResult, Settings, Trail } from '../types.js';
-import { ui } from '../ui.svelte.js';
+import type { GamePhase, RoundResult } from './types.js';
+import type { Location, Point, Trail } from '../shared/geo.js';
+import type { MapItem } from '../library/types.js';
+import type { Settings } from '../settings/types.js';
 
 export interface SessionEffects {
   beforeStart(): void;

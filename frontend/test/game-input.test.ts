@@ -6,7 +6,7 @@ import { gmap, viewer, setGuessMapSize } from '@/game/runtime.js';
 import { finishRound, nextRound, rematchModeGame, startGame, submitGuess } from '@/game/session.js';
 
 vi.mock('@/settings/store.svelte.js', () => ({ settings: {}, updateSettings: vi.fn() }));
-vi.mock('@/settings/settings.js', () => ({ DEFAULT_MAP_ZOOM_SPEED: 1 }));
+vi.mock('@/maps/config.js', () => ({ DEFAULT_MAP_ZOOM_SPEED: 1 }));
 vi.mock('@/desktop.js', () => ({
   desktopRuntimeAvailable: () => false, getGameWindowState: vi.fn(), setGameFullscreen: vi.fn()
 }));

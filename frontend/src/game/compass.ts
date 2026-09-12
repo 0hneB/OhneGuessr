@@ -1,5 +1,5 @@
 // Shared heading state for the horizontal bar and classic needle.
-import type { CompassStyle } from '../types.js';
+import type { CompassStyle } from './view-options.js';
 
 const CONFIG = {
   size: { w: 240, h: 32 },

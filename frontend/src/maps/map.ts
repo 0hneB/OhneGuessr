@@ -17,10 +17,11 @@ import {
   DEFAULT_MAP_ZOOM_SPEED,
   isDarkMapStyle,
   normalizeMapZoomSpeed
-} from '../settings/settings.js';
+} from './config.js';
 import { buildMapStyle } from './map-style.js';
 import { ResultLayers } from './result-layers.js';
-import type { Location, Point, RevealResult, Trail } from '../types.js';
+import type { Location, Point, Trail } from '../shared/geo.js';
+import type { RevealResult } from './types.js';
 
 maplibregl.setWorkerUrl(workerUrl);
 

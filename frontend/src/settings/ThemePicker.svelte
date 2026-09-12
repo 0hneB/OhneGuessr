@@ -2,8 +2,7 @@
   import SelectControl from '../components/SelectControl.svelte';
   import IconButton from '../components/IconButton.svelte';
   import { settings, updateSettings } from './store.svelte.js';
-  import { LAUNCHER_THEMES } from './settings.js';
-  import type { LauncherTheme } from '../types.js';
+  import { LAUNCHER_THEMES, type LauncherTheme } from '../styles/theme.js';
 
   function selectTheme(theme: LauncherTheme) {
     updateSettings({ theme, accentColor: LAUNCHER_THEMES[theme].accent });

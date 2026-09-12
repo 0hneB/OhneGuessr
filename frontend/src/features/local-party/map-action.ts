@@ -1,6 +1,6 @@
 import { desktopRuntimeAvailable } from '../../desktop.js';
 import { settings } from '../../settings/store.svelte.js';
-import type { MapItem } from '../../types.js';
+import type { MapItem } from '../../library/types.js';
 import { launchParty } from './api.js';
 import { localPartySettings } from './settings.svelte.js';
 

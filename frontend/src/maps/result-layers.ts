@@ -1,4 +1,4 @@
-import { publicAsset } from '../config.js';
+import { publicAsset } from '../platform/assets.js';
 import type { Feature, FeatureCollection, Geometry, Position } from 'geojson';
 import type {
   GeoJSONSource,
@@ -6,7 +6,8 @@ import type {
   Map as MapLibreMap,
   PointLike
 } from 'maplibre-gl';
-import type { Location, Point, RevealResult, Trail } from '../types.js';
+import type { Location, Point, Trail } from '../shared/geo.js';
+import type { RevealResult } from './types.js';
 
 const GUESS_ASSET = publicAsset('icons/pin-guess.svg');
 const CORRECT_ASSET = publicAsset('images/correct-location.webp');

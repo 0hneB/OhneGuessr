@@ -1,11 +1,13 @@
+export type MovementMode = 'moving' | 'nm' | 'nmpz';
+
 // Panorama viewer backed by Google's real Street View (the vendored, key-less Maps
 // JS API in vendor/opensv/opensv.js). Movement mode is set via setMode():
 //   moving — walk (click the road / arrows), pan, and zoom
 //   nm     — no moving; pan and zoom allowed
 //   nmpz   — no move, pan, or zoom (locked to the spawn view)
 
-import { publicAsset } from '../config.js';
-import type { Location, MovementMode, Point, Trail } from '../types.js';
+import { publicAsset } from '../platform/assets.js';
+import type { Location, Point, Trail } from '../shared/geo.js';
 import { capturePanoViewport, type PanoramaCaptureOptions } from './panorama-capture.js';
 import { installCarMask, setCarHidden } from './car-mask.js';
 import { fetchPanoramaDetails, type PanoramaDetails } from './panorama-details.js';

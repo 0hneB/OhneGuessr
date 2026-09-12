@@ -5,8 +5,8 @@
   import SegmentedControl from '../components/SegmentedControl.svelte';
   import ToggleSwitch from '../components/ToggleSwitch.svelte';
   import { settings, updateSettings } from './store.svelte.js';
-  import { MAP_STYLES } from './settings.js';
-  import type { CompassStyle, GuessMapSize } from '../types.js';
+  import { MAP_STYLES } from '../maps/config.js';
+  import type { CompassStyle, GuessMapSize } from '../game/view-options.js';
   import { setGameFullscreen, type GameWindowState } from '../desktop.js';
 
   let { gameWindow = $bindable() }: { gameWindow: GameWindowState } = $props();

@@ -1,7 +1,29 @@
-import { KEYBINDINGS } from '../config.js';
-import { DEFAULT_MAP_ZOOM_SPEED } from './settings.js';
+import { DEFAULT_MAP_ZOOM_SPEED } from '../maps/config.js';
 import { settings, updateSettings } from './store.svelte.js';
-import type { Settings } from '../types.js';
+import type { Settings } from './types.js';
+
+// KeyboardEvent.code values per action. Several codes = several keys; [] disables.
+export const KEYBINDINGS: Record<string, string[]> = {
+  submitOrNext: ['Space'],
+  placeGuessAtCenter: [],
+  zoomIn: ['KeyE'],
+  zoomOut: ['KeyQ'],
+  resetView: ['KeyR'],
+  checkpoint: ['KeyC'],
+  checkpointPeek: ['KeyV'],
+  lookBehind: ['KeyB'],
+  faceNorth: ['KeyN'],
+  toggleMapPinned: ['KeyM'],
+  toggleMapFullscreen: ['KeyF'],
+  toggleDesktopFullscreen: ['F11'],
+  openStreetView: [],
+  mapSizeDefault: ['Digit1'],
+  mapSizeLarge: ['Digit2'],
+  mapSizeXl: ['Digit3'],
+  mapSizeXxl: ['Digit4'],
+  mapSizeMax: ['Digit5'],
+  hideHud: ['KeyH']
+};
 
 export interface ControlItem {
   action: string;

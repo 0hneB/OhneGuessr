@@ -4,11 +4,11 @@ import { activateRequestedGame, loadRequestedGameData } from '@/game/session.js'
 import { initMaps, viewer } from '@/game/runtime.js';
 import { activateExternalPlugins } from '@/extensions/runtime.js';
 import { setupLearnableMeta } from '@/features/learnable-meta/index.js';
-import { setLoading } from '@/dom.js';
+import { setLoading } from '@/game/ui.svelte.js';
 import { state } from '@/game/state.svelte.js';
 
 const trace = vi.hoisted(() => [] as string[]);
-vi.mock('@/dom.js', () => ({ setLoading: vi.fn() }));
+vi.mock('@/game/ui.svelte.js', () => ({ setLoading: vi.fn() }));
 vi.mock('@/game/state.svelte.js', () => ({ state: {}, GAME_PHASE: { ERROR: 'error' } }));
 vi.mock('@/game/game-mode.svelte.js', () => ({ gameMode: { current: null } }));
 vi.mock('@/game/panorama.js', () => ({ loadOpenSV: vi.fn(async () => { trace.push('load viewer'); }) }));

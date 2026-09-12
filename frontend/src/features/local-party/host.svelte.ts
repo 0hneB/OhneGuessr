@@ -1,4 +1,4 @@
-import type { RevealResult } from '../../types.js';
+import type { RevealResult } from '../../maps/types.js';
 import type { PartyHostPlayer, PartyHostState, PartyRoundReveal } from './types.js';
 
 export const partyHost = $state({

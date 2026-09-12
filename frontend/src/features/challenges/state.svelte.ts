@@ -1,4 +1,6 @@
-import type { Point, RevealResult, RoundResult } from '../../types.js';
+import type { Point } from '../../shared/geo.js';
+import type { RevealResult } from '../../maps/types.js';
+import type { RoundResult } from '../../game/types.js';
 import type { GameModeResult } from '../../game/game-mode.svelte.js';
 import type { Challenge } from './types.js';
 

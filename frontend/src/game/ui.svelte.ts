@@ -1,4 +1,4 @@
-import type { GuessMapSize } from './types.js';
+import type { GuessMapSize } from './view-options.js';
 
 export const ui = $state({
   loading: true,
@@ -21,4 +21,9 @@ export function finalRoundFromWheel(current: number | null, count: number, delta
   if (!count || !deltaY) return current;
   if (current == null) return deltaY > 0 ? 0 : count - 1;
   return Math.max(0, Math.min(count - 1, current + Math.sign(deltaY)));
+}
+
+export function setLoading(on: boolean, msg?: string) {
+  ui.loading = on;
+  if (msg) ui.loadingText = msg;
 }

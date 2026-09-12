@@ -1,12 +1,9 @@
 import type { Component } from 'svelte';
-import type {
-  Location,
-  MapItem,
-  MovementMode,
-  Point,
-  RevealResult,
-  RoundResult
-} from '../types.js';
+import type { Location, Point } from '../shared/geo.js';
+import type { MapItem } from '../library/types.js';
+import type { MovementMode } from './panorama.js';
+import type { RevealResult } from '../maps/types.js';
+import type { RoundResult } from './types.js';
 
 export interface GameModeRound {
   round: number;

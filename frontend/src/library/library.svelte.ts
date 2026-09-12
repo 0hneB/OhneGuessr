@@ -1,9 +1,9 @@
 import { SvelteSet } from 'svelte/reactivity';
 import { closeGame, exportMaps as exportMapsToFile, launchMap } from '../desktop.js';
-import { normalizeLocations, mapNameFrom } from '../game/locations.js';
+import { normalizeLocations, mapNameFrom } from './import.js';
 import type { MapAction } from './map-actions.js';
 import { mapSourceFor, refreshMapSourceRoot } from './map-sources.js';
-import type { MapItem } from '../types.js';
+import type { MapItem } from './types.js';
 import {
   addUserMap,
   createFolder as createFolderAPI,

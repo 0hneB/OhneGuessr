@@ -8,7 +8,7 @@ import {
   viewer, gmap, guessPanel, compassCanvas, classicCompass, setGuessMapSize
 } from './runtime.js';
 import { finishRound, nextRound, onPlaceGuess, rematchModeGame, startGame, submitGuess } from './session.js';
-import type { GuessMapSize } from '../types.js';
+import type { GuessMapSize } from './view-options.js';
 
 const canInteractWithGuess = () =>
   state.phase === GAME_PHASE.GUESSING && (gameMode.current?.allowsGuess ?? true);

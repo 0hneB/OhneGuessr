@@ -3,7 +3,8 @@
   import SettingsPage from './SettingsPage.svelte';
   import SegmentedControl from '../components/SegmentedControl.svelte';
   import { settings, updateSettings } from './store.svelte.js';
-  import type { MovementMode, ScoringMode } from '../types.js';
+  import type { MovementMode } from '../game/panorama.js';
+  import type { ScoringMode } from '../game/types.js';
 
   let {
     roundsDraft = $bindable(),

@@ -1,6 +1,6 @@
 // Accepts flat exports, { customCoordinates }, or the exact nested JSON returned
 // by the Map Making App API. API flags preserve the map maker's coverage intent.
-import type { Location } from '../types.js';
+import type { Location } from '../shared/geo.js';
 
 type JsonObject = Record<string, unknown>;
 

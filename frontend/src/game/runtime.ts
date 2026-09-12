@@ -1,12 +1,13 @@
 // Owns renderer instances and applies their live settings.
-import { $ } from '../dom.js';
+import { $ } from '../shared/dom.js';
 import { OpenSvViewer } from './panorama.js';
 import { GuessMap, createRevealMaps } from '../maps/map.js';
 import { createGuessPanel } from '../maps/guess-panel.js';
 import { CompassHUD } from './compass.js';
 import { gameMode } from './game-mode.svelte.js';
 import { settings, updateSettings } from '../settings/store.svelte.js';
-import type { Point, Settings } from '../types.js';
+import type { Point } from '../shared/geo.js';
+import type { Settings } from '../settings/types.js';
 
 export let viewer: OpenSvViewer;
 export let gmap: GuessMap;

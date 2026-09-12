@@ -1,4 +1,4 @@
-import type { Point } from '../../types.js';
+import type { Point } from '../../shared/geo.js';
 import countriesURL from './data/countries-50m.geojson?url';
 
 export interface Country {

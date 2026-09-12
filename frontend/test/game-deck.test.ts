@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sampleMap, type MapSample } from '@/library/api.js';
-import type { MapItem } from '@/types.js';
+import type { MapItem } from '@/library/types.js';
 import {
   createSampledDeck, ensureDeckIndex, nextRoundFallback, replaceDeckLocation,
   resizeSampledDeck, selectSampledMap, useFixedDeck

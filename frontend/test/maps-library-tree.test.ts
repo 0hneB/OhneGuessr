@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mapSources, registerMapSource } from '@/library/map-sources.js';
-import type { MapItem } from '@/types.js';
+import type { MapItem } from '@/library/types.js';
 import {
   buildLibraryRows,
   canMoveMap,

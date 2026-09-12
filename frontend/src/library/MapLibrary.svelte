@@ -9,7 +9,7 @@
     managedMapRemoveLabel,
     managedMapRemovePrompt
   } from './map-sources.js';
-  import type { MapItem } from '../types.js';
+  import type { MapItem } from './types.js';
   import {
     canCreateFolder,
     canStoreLocalMap,

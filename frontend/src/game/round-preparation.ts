@@ -5,7 +5,7 @@ import {
 } from './deck.js';
 import { GAME_PHASE, state } from './state.svelte.js';
 import type { OpenSvViewer } from './panorama.js';
-import type { Location } from '../types.js';
+import type { Location } from '../shared/geo.js';
 
 type RoundViewer = Pick<OpenSvViewer, 'showLocation'>;
 

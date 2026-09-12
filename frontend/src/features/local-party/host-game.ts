@@ -1,5 +1,5 @@
 import { closeGame } from '../../desktop.js';
-import type { Point } from '../../types.js';
+import type { Point } from '../../shared/geo.js';
 import {
   installGameMode,
   type GameMode,

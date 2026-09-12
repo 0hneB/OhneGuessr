@@ -1,13 +1,8 @@
 import { Events } from '@wailsio/runtime';
 import { desktopRuntimeAvailable } from '../desktop.js';
-import type { Settings } from '../types.js';
-import {
-  applyAccentColor,
-  loadSettings,
-  normalizeSettings,
-  saveSettings,
-  SETTINGS_KEY
-} from './settings.js';
+import type { Settings } from './types.js';
+import { applyAccentColor } from '../styles/theme.js';
+import { loadSettings, normalizeSettings, saveSettings, SETTINGS_KEY } from './settings.js';
 
 type SettingsListener = (next: Settings, previous: Settings) => void;
 

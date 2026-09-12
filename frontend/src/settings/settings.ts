@@ -1,199 +1,21 @@
-// Settings (localStorage) and the free, keyless map-tile styles.
-import { publicAsset } from '../config.js';
-import type {
-  CompassStyle,
-  GuessMapSize,
-  LauncherTheme,
-  MapStyleDefinition,
-  Settings
-} from '../types.js';
-
-// maxNativeZoom is set where a provider stops early so MapLibre overzooms the
-// last available tiles instead of blanking. Attributions are provider-required.
-export const DEFAULT_MAP_STYLE_KEY = 'roadmap';
-
-export const MAP_STYLES: Record<string, MapStyleDefinition> = {
-  roadmap: {
-    name: 'Roadmap',
-    url: 'https://mt1.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}',
-    options: { maxZoom: 20, attribution: '&copy; Google' }
-  },
-  googleTerrain: {
-    name: 'Terrain',
-    url: 'https://mt1.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}',
-    options: { maxZoom: 20, attribution: '&copy; Google' }
-  },
-  googleSatellite: {
-    name: 'Satellite',
-    url: 'https://mt1.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}',
-    options: { maxZoom: 20, attribution: '&copy; Google' }
-  },
-  satelliteLabels: {
-    name: 'Satellite + Labels',
-    url: 'https://mt1.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}',
-    options: { maxZoom: 20, attribution: '&copy; Google' }
-  },
-  darkMode: {
-    name: 'Dark Mode',
-    dark: true,
-    url: 'https://mt1.google.com/vt/lyrs=h&hl=en&x={x}&y={y}&z={z}',
-    underlay: {
-      url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png',
-      options: {
-        maxZoom: 20,
-        subdomains: 'abcd',
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-      }
-    },
-    options: { maxZoom: 20, attribution: '&copy; Google' }
-  },
-  osm: {
-    name: 'OpenStreetMap',
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    options: { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }
-  },
-  terrain: {
-    name: 'OpenTopoMap',
-    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    options: { maxZoom: 19, maxNativeZoom: 17, subdomains: 'abc', attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | &copy; OpenTopoMap' }
-  },
-  osmHot: {
-    name: 'OSM Humanitarian',
-    url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
-    options: { maxZoom: 19, subdomains: 'ab', attribution: '&copy; OpenStreetMap contributors, Humanitarian OSM Team' }
-  },
-  cartoLight: {
-    name: 'CartoDB Light',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-    options: { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }
-  },
-  cartoVoyager: {
-    name: 'CartoDB Voyager',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-    options: { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }
-  },
-  cartoDark: {
-    name: 'CartoDB Dark',
-    dark: true,
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-    options: { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }
-  },
-  esriLightGray: {
-    name: 'Esri Light Gray',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-    options: { maxZoom: 19, maxNativeZoom: 16, attribution: 'Tiles &copy; Esri' }
-  },
-  esriDarkGray: {
-    name: 'Esri Dark Gray',
-    dark: true,
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-    options: { maxZoom: 19, maxNativeZoom: 16, attribution: 'Tiles &copy; Esri' }
-  },
-  satellite: {
-    name: 'Esri World Imagery',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    options: { maxZoom: 19, maxNativeZoom: 18, attribution: 'Tiles &copy; Esri, Maxar, Earthstar Geographics' }
-  }
-};
-
-export const isDarkMapStyle = (key: string) => MAP_STYLES[key]?.dark === true;
-
-export const DEFAULT_ACCENT_COLOR = '#22c55e';
-export const DEFAULT_LAUNCHER_THEME: LauncherTheme = 'ohneguessr';
-export const LAUNCHER_THEMES = {
-  ohneguessr: { label: 'OhneGuessr', accent: DEFAULT_ACCENT_COLOR },
-  'dark-mode': { label: 'Dark Mode', accent: DEFAULT_ACCENT_COLOR },
-  ohneb: { label: 'OhneB', accent: '#df783c' },
-  'gruvbox-dark-soft': { label: 'Warm Dark', accent: '#83a598' },
-  'gruvbox-light-soft': { label: 'Warm Light', accent: '#0b6678' },
-  'ayu-light': { label: 'Cool Light', accent: '#3b9ee5' },
-  'ayu-mirage': { label: 'Cool Dark', accent: '#72cffe' }
-} satisfies Record<LauncherTheme, { label: string; accent: string }>;
-export const GUESS_MAP_SIZES = Object.freeze(['default', 'large', 'xl', 'xxl', 'max']);
-export const COMPASS_STYLES = Object.freeze(['bar', 'classic', 'both']);
-export const DEFAULT_MAP_ZOOM_SPEED = 1;
-const MAP_ZOOM_SPEED_MIN = 0.5;
-const MAP_ZOOM_SPEED_MAX = 3;
-const HEX_COLOR = /^#[0-9a-f]{6}$/i;
-let logoSvgPromise: Promise<string> | null = null;
-
-export function normalizeAccentColor(value: unknown) {
-  return typeof value === 'string' && HEX_COLOR.test(value)
-    ? value.toLowerCase()
-    : DEFAULT_ACCENT_COLOR;
-}
-
-export function normalizeLauncherTheme(value: unknown): LauncherTheme {
-  return typeof value === 'string' && Object.hasOwn(LAUNCHER_THEMES, value)
-    ? value as LauncherTheme
-    : DEFAULT_LAUNCHER_THEME;
-}
-
-export function normalizeGuessMapSize(value: unknown): GuessMapSize {
-  return typeof value === 'string' && (GUESS_MAP_SIZES as readonly string[]).includes(value)
-    ? value as GuessMapSize
-    : 'default';
-}
-
-export function normalizeCompassStyle(value: unknown): CompassStyle {
-  return typeof value === 'string' && (COMPASS_STYLES as readonly string[]).includes(value)
-    ? value as CompassStyle
-    : 'bar';
-}
-
-export function normalizeMapZoomSpeed(value: unknown) {
-  if (value == null || value === '') return DEFAULT_MAP_ZOOM_SPEED;
-  const speed = Number(value);
-  if (!Number.isFinite(speed)) return DEFAULT_MAP_ZOOM_SPEED;
-  return Math.min(MAP_ZOOM_SPEED_MAX, Math.max(
-    MAP_ZOOM_SPEED_MIN,
-    Math.round(speed * 10) / 10
-  ));
-}
-
-const channelHex = (value: number) => Math.round(value).toString(16).padStart(2, '0');
-
-function applyFaviconAccent(color: string) {
-  logoSvgPromise ||= fetch(publicAsset('images/ohneguessr-logo.svg')).then((res) => {
-    if (!res.ok) throw new Error(`logo ${res.status}`);
-    return res.text();
-  });
-  logoSvgPromise.then((source) => {
-    const themed = source.replace(/#22c55e/gi, color);
-    const href = `data:image/svg+xml,${encodeURIComponent(themed)}`;
-    for (const link of document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]')) {
-      link.type = 'image/svg+xml';
-      link.href = href;
-    }
-  }).catch(() => { /* keep the default favicon */ });
-}
-
-export function applyAccentColor(value: unknown) {
-  const color = normalizeAccentColor(value);
-  const rgb = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16));
-  const linear = rgb.map((channel) => {
-    const c = channel / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
-  const target = luminance < 0.08 ? 255 : 0;
-  const strong = color === DEFAULT_ACCENT_COLOR
-    ? '#16a34a'
-    : '#' + rgb.map((channel) => channelHex(channel + (target - channel) * 0.18)).join('');
-  const ink = color === DEFAULT_ACCENT_COLOR
-    ? '#06240f'
-    : (luminance > 0.179 ? '#000000' : '#ffffff');
-
-  const root = document.documentElement.style;
-  root.setProperty('--accent', color);
-  root.setProperty('--accent-strong', strong);
-  root.setProperty('--accent-ink', ink);
-  root.setProperty('--accent-rgb', rgb.join(', '));
-  applyFaviconAccent(color);
-  return color;
-}
+// Persisted preferences and validation at the localStorage boundary.
+import type { Settings } from './types.js';
+import {
+  DEFAULT_MAP_STYLE_KEY,
+  MAP_STYLES,
+  DEFAULT_MAP_ZOOM_SPEED,
+  normalizeMapZoomSpeed
+} from '../maps/config.js';
+import {
+  DEFAULT_LAUNCHER_THEME,
+  DEFAULT_ACCENT_COLOR,
+  normalizeLauncherTheme,
+  normalizeAccentColor
+} from '../styles/theme.js';
+import { normalizeGuessMapSize, normalizeCompassStyle } from '../game/view-options.js';
 
 export const SETTINGS_KEY = 'ohneguessr.settings';
+
 // rounds: 'unlimited' or a count. timer: 'unlimited' or seconds per location.
 export const DEFAULT_SETTINGS: Settings = {
   mapStyle: DEFAULT_MAP_STYLE_KEY, rounds: '5', timer: 'unlimited',

@@ -1,7 +1,8 @@
 // Sampling, replacement locations, and the current deck's source indexes.
 import { sampleMap, type MapSample, type SampledLocation } from '../library/api.js';
 import { state } from './state.svelte.js';
-import type { Location, MapItem } from '../types.js';
+import type { Location } from '../shared/geo.js';
+import type { MapItem } from '../library/types.js';
 
 export const PANORAMA_RETRIES = 8;
 export const UNLIMITED_BATCH_ROUNDS = 100;

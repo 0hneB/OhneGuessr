@@ -1,7 +1,7 @@
 // The in-game guess map panel owns its expanded, pinned, and fullscreen states.
-import { $ } from '../dom.js';
-import { normalizeGuessMapSize } from '../settings/settings.js';
-import { ui } from '../ui.svelte.js';
+import { $ } from '../shared/dom.js';
+import { normalizeGuessMapSize } from '../game/view-options.js';
+import { ui } from '../game/ui.svelte.js';
 
 interface ResizableMap {
   resize: () => void;

@@ -1,7 +1,7 @@
 // Shared game state and persisted settings. View singletons stay in runtime.ts.
-import { CONFIG } from '../config.js';
+import { CONFIG } from './config.js';
 import { settings } from '../settings/store.svelte.js';
-import type { GameState } from '../types.js';
+import type { GameState } from './types.js';
 
 export const GAME_PHASE = Object.freeze({
   BOOTING: 'booting',

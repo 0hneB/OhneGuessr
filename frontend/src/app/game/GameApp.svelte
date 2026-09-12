@@ -1,7 +1,7 @@
 <script lang="ts">
   import { init } from './setup.js';
   import LoadingOverlay from '../../game/LoadingOverlay.svelte';
-  import { CONFIG } from '../../config.js';
+  import { CONFIG } from '../../game/config.js';
   import { onMount } from 'svelte';
   import {
     focusLauncher,
@@ -27,7 +27,7 @@
     runChallengeAction
   } from '../../features/challenges/game.svelte.js';
   import { gameMode } from '../../game/game-mode.svelte.js';
-  import { finalRoundFromWheel, ui } from '../../ui.svelte.js';
+  import { finalRoundFromWheel, ui } from '../../game/ui.svelte.js';
   import { pluginHudButtons } from '../../extensions/host.svelte.js';
   import { onSettingsChanged } from '../../settings/store.svelte.js';
 

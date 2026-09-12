@@ -1,4 +1,4 @@
-import type { MapItem, MapSource } from '../types.js';
+import type { MapItem, MapSource } from './types.js';
 
 type RenameMap = true | ((map: MapItem, name: string) => Promise<unknown>);
 type RemoveMap = true | ((map: MapItem) => Promise<unknown>);
