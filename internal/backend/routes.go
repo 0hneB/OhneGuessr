@@ -9,6 +9,21 @@ import (
 	"github.com/0hneB/OhneGuessr/internal/httpjson"
 )
 
+func (a *Backend) Handler() http.Handler {
+	mux := http.NewServeMux()
+	a.registerMapRoutes(mux)
+	for _, plugin := range a.mapPlugins {
+		plugin.RegisterRoutes(mux)
+	}
+	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
+		mux.HandleFunc(method+" /api/{path...}", func(w http.ResponseWriter, _ *http.Request) {
+			httpjson.Write(w, http.StatusNotFound, map[string]string{"error": "not found"})
+		})
+	}
+	mux.HandleFunc("GET /data/{file...}", a.serveMapData)
+	return mux
+}
+
 func (a *Backend) registerMapRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/maps", httpjson.Handler(func(r *http.Request) (any, int, error) {
 		body, err := httpjson.Decode[struct {
