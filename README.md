@@ -141,7 +141,7 @@ API keys stay only in `plugin-data/`; they are never included in `maps.json` or 
 | <kbd>F</kbd> | Toggle the fullscreen map |
 | <kbd>F11</kbd> | Toggle game-window fullscreen |
 | _Unbound_ | Open the current location in Google Street View |
-| <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>4</kbd> | Select expanded map size |
+| <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>4</kbd> / <kbd>5</kbd> | Select expanded map size |
 | <kbd>H</kbd> | Hide / show the interface |
 | <kbd>Esc</kbd> | Focus the launcher |
 | Click map | Place or move a guess |
@@ -152,7 +152,7 @@ Gameplay bindings are rebindable under **Controls** in the launcher.
 
 ## Development
 
-Backend: Go 1.26 and Wails v3.0.0-beta.12. Frontend: Svelte 5, Vite, and TypeScript.
+Backend: Go 1.26 and Wails v3.0.0-beta.16. Frontend: Svelte 5, Vite, and TypeScript.
 
 Install Go 1.26 and Node.js 20.19+, 22.12+, or 24+. The Wails CLI is tracked in `go.mod`, so no global installation is needed.
 
@@ -175,7 +175,7 @@ go tool wails3 build
 For the Setup EXE, install [NSIS](https://nsis.sourceforge.io/) and run:
 
 ```powershell
-go tool wails3 task windows:package VERSION=0.0.2
+go tool wails3 task windows:package VERSION=0.0.0
 ```
 
 Builds go to `bin/`. To build only the frontend, run:
@@ -186,27 +186,21 @@ npm --prefix frontend run build
 
 This creates the ignored `frontend/dist/` directory. The **Check** workflow runs source checks on pushes and pull requests; its temporary Windows package is manual. The **Release** workflow builds Windows, Linux, and macOS files and uploads them to a draft release.
 
-Frontend tests live directly in `frontend/test/`, grouped by filename prefixes: `app-`, `game-`, `maps-`, `feature-`, and `plugin-`. Import frontend source with `@/` (for example, `@/game/deck.js`). Downloadable plugins keep their tests in `plugins/<plugin>/`. Run both with `npm --prefix frontend test`.
+See [Architecture and test ownership](docs/architecture.md) for the source map, dependency rules, state and styling contracts, and release script inputs.
 
-Reusable UI controls live in `frontend/src/components/`; settings, library, and plugin components stay with their features. Keep a component's styles in its `.svelte` file, with theme variables and shared layout defaults in CSS. Select, range, icon-button, and spinner styles also support DOM-based plugins, so their existing global class names and eager style imports in `app/bootstrap.ts` must remain available in every app window.
-
-`frontend/src/app/` owns routes, window shells, and the code that connects features. The launcher supplies map actions and file dispatch to the map library and composes the built-in plugin settings and sync panels. Its `events.ts` is the small navigation-request contract used by features. Keep page drafts and catalog state alive across their existing navigation boundaries.
-
-Built-in functionality lives in `frontend/src/features/`, with its Go services in `internal/plugins/`. `frontend/src/extensions/` owns the catalog UI and runtime for downloadable plugins. Controls and window UI used by both live in `frontend/src/components/`. The root `plugins/` directory remains the published catalog: its registry, manifests, compiled entry points, and per-plugin tests keep their existing paths.
-
-Game progression lives in `frontend/src/game/session.ts`, renderer setup and live display settings in `game/runtime.ts`, and keyboard/compass actions in `game/input.ts`. `app/game/setup.ts` connects them to Challenges, Learnable Meta, and additional plugins. Keep named integration imports in the application setup and preserve startup order when changing that wiring.
-
-Run backend checks with `go vet ./...` and `go test ./...`. CI also runs `go test -race ./...` (requires CGO and a C compiler). To measure map sampling time and allocations, run `go test ./internal/backend -run '^$' -bench BenchmarkSampleMapLocations -benchmem`.
+Frontend tests stay flat in `frontend/test/`, grouped by filename prefix, and import source through `@/` (for example, `@/features/game/deck.js`). Downloadable plugins keep their tests in `plugins/<id>/`; Go tests stay beside their packages. Run frontend and downloadable-plugin tests with `npm --prefix frontend test`, plugin build checks with `npm --prefix plugins run check`, and backend checks with `go vet ./...` and `go test ./...`.
 
 ### Repository structure
 
 ```text
 OhneGuessr/
 |-- .github/workflows/     GitHub Actions
-|-- build/                 Wails build and packaging files
+|-- build/                 Wails tasks and platform release scripts
+|-- docs/                  architecture and test ownership
 |-- frontend/
 |   |-- src/               Svelte and TypeScript source
 |   |-- test/              frontend tests, grouped by filename prefix
+|   |-- bindings/          generated, committed Wails bindings
 |   |-- public/            static assets, country flags, and vendored OpenSV
 |   |-- dist/              generated frontend (ignored)
 |   `-- package.json       frontend dependencies and scripts
