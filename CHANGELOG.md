@@ -1,12 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- share frontend controls and keep their styles alongside the components, preserving the existing appearance and behavior
-- separate game session logic, keyboard actions, and renderer setup, and group frontend code by feature
-- split backend storage, sync coordination, and plugin management by responsibility, and move built-in Go services directly under `internal/`
-- move release packaging and signing scripts into `build/` and document the code structure and test locations
-
 ## [v0.2.1](https://github.com/0hneB/OhneGuessr/releases/tag/v0.2.1) — 2026-09-11
 
 - keep maps playable and editable during Map Making App sync, preserving library edits made while downloads are running
