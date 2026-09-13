@@ -206,9 +206,12 @@ OhneGuessr/
 |   `-- package.json       frontend dependencies and scripts
 |-- internal/
 |   |-- backend/           map storage and local HTTP backend
+|   |-- challenges/        challenge files and desktop service
 |   |-- desktop/           Wails runtime and window service
+|   |-- learnable-meta/    Learnable Meta synchronization
+|   |-- local-party/       party service and server
+|   |-- map-making-app/    Map Making App synchronization
 |   |-- pluginmanager/     additional-plugin installation and state
-|   |-- plugins/           built-in core plugins
 |   `-- updates/           cross-platform update service
 |-- plugins/               published additional-plugin catalog and sources
 |-- main.go                embedded frontend and executable entry point

@@ -10,41 +10,41 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as $models from "./models.js";
 
 export function Active(): $CancellablePromise<boolean> {
-    return $Call.ByID(1210347922);
+    return $Call.ByID(819846437);
 }
 
 export function BeginPartyRound(id: string, round: number, rounds: number, deadline: number, mapStyle: string): $CancellablePromise<void> {
-    return $Call.ByID(4241674941, id, round, rounds, deadline, mapStyle);
+    return $Call.ByID(1451094648, id, round, rounds, deadline, mapStyle);
 }
 
 export function ClosePartyRound(id: string, round: number): $CancellablePromise<$models.PartyHostPlayer[] | null> {
-    return $Call.ByID(1662613352, id, round);
+    return $Call.ByID(951521993, id, round);
 }
 
 export function FinishParty(id: string): $CancellablePromise<$models.PartyHostState> {
-    return $Call.ByID(683094329, id);
+    return $Call.ByID(752630456, id);
 }
 
 export function GetPartyHostState(id: string): $CancellablePromise<$models.PartyHostState> {
-    return $Call.ByID(3612643439, id);
+    return $Call.ByID(684255826, id);
 }
 
 export function LaunchParty(mapID: string, theme: string, accentColor: string): $CancellablePromise<$models.PartyHostState> {
-    return $Call.ByID(2153733853, mapID, theme, accentColor);
+    return $Call.ByID(27297256, mapID, theme, accentColor);
 }
 
 export function LockPartyRoster(id: string): $CancellablePromise<$models.PartyHostState> {
-    return $Call.ByID(1995385526, id);
+    return $Call.ByID(3824418251, id);
 }
 
 export function PublishPartyReveal(id: string, reveal: $models.PartyRoundReveal): $CancellablePromise<void> {
-    return $Call.ByID(741482288, id, reveal);
+    return $Call.ByID(2250165803, id, reveal);
 }
 
 export function ResetParty(id: string): $CancellablePromise<void> {
-    return $Call.ByID(1547376665, id);
+    return $Call.ByID(553110246, id);
 }
 
 export function StopParty(id: string): $CancellablePromise<void> {
-    return $Call.ByID(2167706180, id);
+    return $Call.ByID(1459140293, id);
 }

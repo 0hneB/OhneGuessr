@@ -43,9 +43,12 @@ frontend/
 
 internal/
 |-- backend/                    map storage, HTTP routes, sync coordination
+|-- challenges/                 challenge files and desktop service
 |-- desktop/                    Wails composition, windows, native services
+|-- learnable-meta/              Learnable Meta client and synchronization
+|-- local-party/                 party service, sessions, and HTTP server
+|-- map-making-app/              Map Making App client and synchronization
 |-- pluginmanager/              downloadable-plugin catalog and installation
-|-- plugins/                    built-in Go services, each with its own tests
 |-- pluginhost/                 map integration contracts
 |-- plugintest/                 shared helpers for Go integration tests
 |-- httpjson/                   HTTP JSON and response limits
@@ -142,9 +145,13 @@ and reads installed modules; `state.go` owns enabled state and private settings;
 `manifest.go` owns payload types, validation, and checksums. Keep the Wails
 service names, public methods, JSON fields, limits, and validation behavior stable.
 
-The three plugin locations serve different roles: `features/` contains built-in
-frontend functionality, `internal/plugins/` contains the Go services that need
-backend support, and root `plugins/` is the published downloadable catalog.
+Built-in frontend functionality lives in `features/`. Its Go services live in
+packages directly under `internal/`, such as `challenges/` and `local-party/`,
+with tests beside their implementations. Moving a Go service package changes
+its generated Wails binding IDs; regenerate bindings and rebuild the frontend
+together with the backend when changing those paths.
+
+Root `plugins/` is the published downloadable catalog.
 Released clients fetch `/plugins/registry.json`, `/plugins/<id>/manifest.json`,
 and `/plugins/<id>/index.js`. Keep these paths, IDs, API version, and checksum
 format compatible. See [the plugin guide](../plugins/README.md).
