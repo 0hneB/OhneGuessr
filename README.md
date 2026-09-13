@@ -14,6 +14,8 @@
 
 Download the latest version from [GitHub Releases](https://github.com/0hneB/OhneGuessr/releases).
 
+See the [changelog](CHANGELOG.md) for release history.
+
 ## Features
 
 - Moving, No Moving, and NMPZ games with configurable rounds and timers.
