@@ -6,7 +6,7 @@ tool github.com/wailsapp/wails/v3/cmd/wails3
 
 require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/wailsapp/wails/v3 v3.0.0-beta.23
+	github.com/wailsapp/wails/v3 v3.0.0-beta.26
 )
 
 require (
@@ -26,7 +26,7 @@ require (
 	github.com/adrg/xdg v0.5.3 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
-	github.com/atterpac/refresh v1.0.0 // indirect
+	github.com/atterpac/refresh v1.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/blakesmith/ar v0.0.0-20190502131153-809d4375e1fb // indirect
